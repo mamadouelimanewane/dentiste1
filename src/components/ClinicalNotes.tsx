@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { StickyNote, Save, Trash2, Cloud, Check, Zap } from "lucide-react";
+import { Save, Zap, FileText, Check, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ClinicalNotesProps {
@@ -11,10 +11,9 @@ interface ClinicalNotesProps {
 export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [currentNote, setCurrentNote] = useState("");
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'success'>('idle');
 
-  // Load notes from local storage on mount
   useEffect(() => {
     const saved = localStorage.getItem("dentiste_lite_notes");
     if (saved) {
@@ -25,104 +24,54 @@ export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
   }, [phaseId]);
 
   const saveNote = () => {
+    setIsSaving(true);
     const newNotes = { ...notes, [phaseId]: currentNote };
     setNotes(newNotes);
     localStorage.setItem("dentiste_lite_notes", JSON.stringify(newNotes));
     
-    // Auto-Sync with Elite DB
-    if (currentNote) {
-      syncWithMainDB();
-    }
-  };
-
-  const syncWithMainDB = async () => {
-    setIsSyncing(true);
-    setSyncStatus('idle');
-    
-    try {
-      // Simulate API call with 10% chance of failure for testing
-      const isError = Math.random() < 0.1; 
-      await new Promise((resolve, reject) => setTimeout(isError ? reject : resolve, 1500));
-      
-      setSyncStatus('success');
-      setTimeout(() => setSyncStatus('idle'), 3000);
-    } catch (err) {
-      setSyncStatus('error');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const clearNote = () => {
-    setCurrentNote("");
-    const newNotes = { ...notes, [phaseId]: "" };
-    setNotes(newNotes);
-    localStorage.setItem("dentiste_lite_notes", JSON.stringify(newNotes));
-    setSyncStatus('idle');
+    setTimeout(() => {
+      setIsSaving(false);
+      setStatus('success');
+      setTimeout(() => setStatus('idle'), 2000);
+    }, 800);
   };
 
   return (
-    <div className="bg-amber-50 rounded-3xl p-6 border border-amber-200 shadow-sm space-y-4 relative overflow-hidden group">
-      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform">
-        <StickyNote className="h-16 w-16 text-amber-600" />
-      </div>
-      
-      <div className="flex items-center justify-between">
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[320px]">
+      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-          <h3 className="font-black text-amber-900 uppercase text-[10px] tracking-widest">Post-it Clinique (Phase {phaseId})</h3>
+          <FileText className="h-4 w-4 text-slate-400" />
+          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Notes Cliniques</h3>
         </div>
-        <button 
-          onClick={syncWithMainDB}
-          disabled={isSyncing || !currentNote}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-tighter transition-all shadow-sm",
-            syncStatus === 'success' ? "bg-emerald-500 text-white" : 
-            syncStatus === 'error' ? "bg-rose-500 text-white animate-shake" : 
-            "bg-white text-slate-500 hover:bg-slate-100 border border-slate-200"
-          )}
-        >
-          {isSyncing ? (
-            <Cloud className="h-3 w-3 animate-bounce" />
-          ) : syncStatus === 'success' ? (
-            <Check className="h-3 w-3" />
-          ) : syncStatus === 'error' ? (
-            <Zap className="h-3 w-3" />
-          ) : (
-            <Cloud className="h-3 w-3" />
-          )}
-          {isSyncing ? "Sync..." : syncStatus === 'success' ? "Sync OK" : syncStatus === 'error' ? "Échec Sync" : "Sync Elite"}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span className="text-[10px] font-bold text-emerald-600 uppercase">Live Sync</span>
+        </div>
       </div>
 
-      {syncStatus === 'error' && (
-        <p className="text-[8px] font-black text-rose-600 uppercase tracking-widest text-center animate-pulse">
-          Problème de connexion au serveur Elite
-        </p>
-      )}
-
-      <textarea
-        value={currentNote}
-        onChange={(e) => setCurrentNote(e.target.value)}
-        placeholder="Notez ici les points importants (antécédents, doléance, observation...)"
-        className="w-full h-32 bg-transparent border-none focus:ring-0 text-sm font-medium text-amber-900 placeholder:text-amber-300 resize-none no-scrollbar"
-      />
-
-      <div className="flex justify-between items-center pt-2 border-t border-amber-200">
-        <button 
-          onClick={clearNote}
-          className="p-2 rounded-lg text-amber-400 hover:text-rose-500 hover:bg-rose-50 transition-all"
-          title="Effacer"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+      <div className="flex-1 p-4 flex flex-col space-y-4">
+        <textarea
+          value={currentNote}
+          onChange={(e) => setCurrentNote(e.target.value)}
+          placeholder="Saisissez les observations pour cette phase..."
+          className="flex-1 w-full bg-white border border-slate-200 rounded-md p-3 text-xs font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none resize-none leading-relaxed"
+        />
+        
         <button 
           onClick={saveNote}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm"
+          disabled={isSaving}
+          className={cn(
+            "h-10 w-full rounded font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2",
+            status === 'success' 
+              ? "bg-emerald-600 text-white" 
+              : "bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50"
+          )}
         >
-          <Save className="h-3 w-3" /> Sauvegarder Note
+          {isSaving ? "Enregistrement..." : status === 'success' ? "Note Enregistrée" : "Sauvegarder"}
+          {status === 'success' ? <Check className="h-3.5 w-3.5" /> : !isSaving && <Save className="h-3.5 w-3.5" />}
         </button>
       </div>
     </div>
   );
 }
+

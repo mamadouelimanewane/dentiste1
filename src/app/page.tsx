@@ -20,8 +20,7 @@ import {
   FileText,
   History,
   CheckCircle2,
-  Menu,
-  X
+  Menu
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -64,29 +63,26 @@ export default function Home() {
   if (!isMounted) return null;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex overflow-hidden">
-      {/* SIDEBAR */}
+    <div className="min-h-screen bg-[#F1F5F9] flex overflow-hidden font-sans">
+      {/* PROFESSIONAL SIDEBAR */}
       <aside 
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transition-transform duration-300 transform lg:relative lg:translate-x-0 flex flex-col",
+          "fixed inset-y-0 left-0 z-50 w-64 bg-[#1E293B] text-slate-300 transition-transform duration-200 transform lg:relative lg:translate-x-0 flex flex-col border-r border-slate-800",
           !isSidebarOpen && "-translate-x-full lg:hidden"
         )}
       >
-        <div className="p-8 space-y-8 flex-1">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-              <Activity className="h-6 w-6" />
+        <div className="p-6 space-y-8 flex-1">
+          <div className="flex items-center gap-3 px-2">
+            <div className="h-8 w-8 bg-blue-600 rounded flex items-center justify-center text-white">
+              <Activity className="h-5 w-5" />
             </div>
-            <div>
-              <h1 className="font-black tracking-tighter uppercase italic leading-none text-lg">
-                Dentiste<span className="text-blue-600">Lite</span>
-              </h1>
-              <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">Workflow Engine</p>
-            </div>
+            <h1 className="font-bold tracking-tight text-white text-base">
+              Dentiste<span className="text-blue-400">Lite</span>
+            </h1>
           </div>
 
-          <nav className="space-y-2">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">Parcours Patient</p>
+          <nav className="space-y-1">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 mb-4">Navigation</p>
             {steps.map((step) => {
               const Icon = step.icon;
               const isActive = currentStep === step.id;
@@ -97,122 +93,89 @@ export default function Home() {
                   key={step.id}
                   onClick={() => setCurrentStep(step.id)}
                   className={cn(
-                    "w-full flex items-center gap-4 p-4 rounded-2xl transition-all group relative overflow-hidden",
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded transition-all text-sm font-medium",
                     isActive 
-                      ? "bg-blue-600 text-white shadow-xl shadow-blue-600/20" 
-                      : "text-slate-400 hover:bg-white/5 hover:text-white"
+                      ? "bg-blue-600/10 text-blue-400 border-r-2 border-blue-400" 
+                      : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
                   )}
                 >
-                  <div className={cn(
-                    "h-10 w-10 rounded-xl flex items-center justify-center transition-colors",
-                    isActive ? "bg-white/20" : isCompleted ? "bg-emerald-500/10 text-emerald-500" : "bg-slate-800 text-slate-500"
-                  )}>
-                    {isCompleted ? <CheckCircle2 className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
-                  </div>
-                  <div className="text-left">
-                    <p className="text-xs font-black uppercase tracking-wider leading-none mb-1">{step.title}</p>
-                    <p className={cn("text-[9px] font-medium opacity-60", isActive ? "text-white" : "text-slate-500")}>
-                      {isActive ? "En cours" : isCompleted ? "Terminé" : "À venir"}
-                    </p>
-                  </div>
-                  {isActive && (
-                    <motion.div 
-                      layoutId="sidebar-active"
-                      className="absolute right-0 top-0 bottom-0 w-1 bg-white"
-                    />
-                  )}
+                  <Icon className={cn("h-4 w-4", isActive ? "text-blue-400" : isCompleted ? "text-emerald-500" : "text-slate-500")} />
+                  <span>{step.title}</span>
+                  {isCompleted && <CheckCircle2 className="h-3 w-3 ml-auto text-emerald-500" />}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        <div className="p-8 border-t border-white/5">
-          <div className="bg-white/5 rounded-2xl p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Système Prêt</p>
-            </div>
-            <button 
-              onClick={reset}
-              className="w-full h-10 rounded-xl bg-white/10 hover:bg-white/20 transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest"
-            >
-              <RotateCcw className="h-3 w-3" /> Nouveau Patient
-            </button>
-          </div>
+        <div className="p-4 border-t border-slate-800">
+          <button 
+            onClick={reset}
+            className="w-full h-9 rounded bg-slate-800 hover:bg-slate-700 transition-all flex items-center justify-center gap-2 text-xs font-semibold text-slate-300"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Nouveau Dossier
+          </button>
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-20 bg-white border-b border-slate-100 flex items-center justify-between px-8 flex-shrink-0">
+        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0 shadow-sm z-10">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="lg:hidden p-2 text-slate-400 hover:text-slate-900"
+              className="lg:hidden p-1.5 text-slate-500 hover:bg-slate-100 rounded"
             >
-              <Menu className="h-6 w-6" />
+              <Menu className="h-5 w-5" />
             </button>
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center">
-                <User className="h-4 w-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Patient Actuel</p>
-                <p className="text-sm font-bold text-slate-900">Mamadou Diallo</p>
-              </div>
+            <div className="flex items-center gap-2 text-slate-600">
+              <User className="h-4 w-4" />
+              <span className="text-xs font-semibold">Patient : <span className="text-slate-900">Mamadou Diallo</span></span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-100 rounded-full">
-              <div className="h-2 w-2 rounded-full bg-blue-500" />
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">Live Workflow v1.3</span>
-            </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-1 rounded">v1.3 STABLE</span>
           </div>
         </header>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-8 lg:p-12 no-scrollbar pb-32">
-          <div className="max-w-4xl mx-auto space-y-12">
-            {/* Phase Intro */}
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-blue-600" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">Phase Opérationnelle</span>
+        {/* Workspace */}
+        <div className="flex-1 overflow-y-auto p-6 lg:p-8 no-scrollbar bg-[#F8FAFC]">
+          <div className="max-w-5xl mx-auto space-y-8 pb-20">
+            {/* Phase Header */}
+            <div className="border-b border-slate-200 pb-6">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Étape {currentStep}</span>
+                <div className="h-1 w-1 rounded-full bg-slate-300" />
+                <span className="text-[10px] font-medium text-slate-400 uppercase">{steps[currentStep-1].desc}</span>
               </div>
-              <h2 className="text-5xl font-black text-slate-900 tracking-tighter leading-tight">
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
                 {steps[currentStep-1].fullTitle}
               </h2>
-              <p className="text-slate-500 text-xl font-medium max-w-2xl">{steps[currentStep-1].desc}</p>
-            </section>
+            </div>
 
-            {/* Main Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <div className="lg:col-span-8 space-y-8">
+            {/* Content Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentStep}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
                   >
                     {currentStep === 1 && <PatientRegistration />}
                     {currentStep === 2 && <MedicalQuestionnaire />}
                     {currentStep === 3 && <QuoteBuilder />}
                     
                     {![1, 2, 3].includes(currentStep) && (
-                      <div className="bg-white rounded-[3rem] p-16 border border-slate-100 flex flex-col items-center justify-center text-center space-y-8 shadow-xl shadow-slate-200/20">
-                        <div className="h-24 w-24 bg-blue-50 rounded-[2rem] flex items-center justify-center rotate-3 group hover:rotate-0 transition-transform">
-                          <Activity className="h-12 w-12 text-blue-600" />
-                        </div>
-                        <div className="space-y-3">
-                          <h3 className="text-2xl font-black text-slate-900 tracking-tight">Prêt pour l'action</h3>
-                          <p className="text-slate-500 max-w-xs mx-auto leading-relaxed">
-                            Cette étape nécessite une attention particulière sur les notes cliniques et le suivi administratif.
-                          </p>
+                      <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
+                        <Activity className="h-10 w-10 text-slate-200" />
+                        <div className="space-y-1">
+                          <h3 className="text-lg font-bold text-slate-900">Phase en attente</h3>
+                          <p className="text-sm text-slate-500">Documentez les actes dans les notes cliniques.</p>
                         </div>
                       </div>
                     )}
@@ -220,68 +183,52 @@ export default function Home() {
                 </AnimatePresence>
               </div>
 
-              <div className="lg:col-span-4 space-y-6">
+              <div className="space-y-6">
                 <ClinicalNotes phaseId={currentStep} />
-                <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden group shadow-2xl shadow-slate-900/20">
-                  <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:rotate-12 transition-transform duration-700">
-                    <Zap className="h-32 w-32 text-blue-500" />
+                <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-4">
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <Sparkles className="h-4 w-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Aide au Diagnostic</span>
                   </div>
-                  <div className="relative z-10 space-y-6">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-blue-400" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Lite AI</span>
-                    </div>
-                    <p className="text-slate-400 text-xs leading-relaxed font-medium">
-                      "Un sourire est le chemin le plus court entre deux personnes."
-                    </p>
-                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Les antécédents médicaux du patient doivent être vérifiés avant toute intervention chirurgicale ou anesthésie.
+                  </p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* COMPACT FLOATING NAVIGATION */}
-        <div className="absolute bottom-10 inset-x-0 z-[60] flex justify-center pointer-events-none">
-          <div className="bg-white/70 backdrop-blur-xl border border-white/50 rounded-full p-2 shadow-2xl shadow-slate-900/10 flex items-center gap-2 pointer-events-auto">
-            <button 
-              onClick={prevStep}
-              disabled={currentStep === 1}
-              className={cn(
-                "h-12 w-12 rounded-full flex items-center justify-center transition-all",
-                currentStep === 1 
-                  ? "text-slate-200 cursor-not-allowed" 
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              )}
-              title="Précédent"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            
-            <div className="px-4 flex flex-col items-center">
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Phase</p>
-              <p className="text-sm font-black text-slate-900 leading-none">{currentStep}<span className="text-slate-300">/6</span></p>
-            </div>
-
-            <button 
-              onClick={nextStep}
-              disabled={currentStep === 6}
-              className={cn(
-                "h-12 px-8 rounded-full font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg",
-                currentStep === 6
-                  ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
-                  : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20"
-              )}
-            >
-              {currentStep === 6 ? "Terminé" : "Suivant"} 
-              <ChevronRight className="h-4 w-4" />
-            </button>
+        {/* BOTTOM NAVIGATION (SLIM) */}
+        <div className="absolute bottom-0 inset-x-0 bg-white border-t border-slate-200 p-3 px-6 z-40 flex items-center justify-between lg:pl-72 lg:pr-12">
+          <button 
+            onClick={prevStep}
+            disabled={currentStep === 1}
+            className="flex items-center gap-2 px-4 h-9 rounded border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" /> Précédent
+          </button>
+          
+          <div className="flex items-center gap-1.5">
+            {steps.map(s => (
+              <div key={s.id} className={cn("h-1.5 w-1.5 rounded-full", s.id === currentStep ? "bg-blue-600" : "bg-slate-200")} />
+            ))}
           </div>
+
+          <button 
+            onClick={nextStep}
+            disabled={currentStep === 6}
+            className="flex items-center gap-2 px-6 h-9 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 disabled:opacity-30 transition-all shadow-sm"
+          >
+            {currentStep === 6 ? "Terminer le parcours" : "Étape Suivante"} 
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </div>
   );
 }
+
 
 
 

@@ -15,105 +15,106 @@ export function PatientRegistration() {
   };
 
   return (
-    <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl shadow-slate-200/20 space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
         <div className="space-y-1">
-          <h3 className="font-black text-slate-900 uppercase text-[10px] tracking-widest">Enregistrement Patient</h3>
-          <p className="text-slate-500 text-xs font-medium">Saisissez les informations de base pour la création du dossier.</p>
+          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Fiche d'Enregistrement</h3>
+          <p className="text-slate-500 text-[10px] font-medium">Informations administratives du patient.</p>
         </div>
-        <div className="h-12 w-12 bg-blue-50 rounded-2xl flex items-center justify-center">
-          <User className="h-6 w-6 text-blue-600" />
-        </div>
+        <User className="h-5 w-5 text-slate-400" />
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Nom & Prénom */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Nom & Prénom</label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Nom Complet</label>
             <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <input 
                 type="text" 
                 placeholder="Ex: Mamadou Diallo"
-                className="w-full bg-slate-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-blue-100 transition-all"
+                className="w-full bg-white border border-slate-200 rounded-md py-2.5 pl-9 pr-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none"
                 required
               />
             </div>
           </div>
 
           {/* Date de Naissance */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Date de Naissance</label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Date de Naissance</label>
             <div className="relative">
-              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <input 
                 type="date" 
-                className="w-full bg-slate-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-blue-100 transition-all"
+                className="w-full bg-white border border-slate-200 rounded-md py-2.5 pl-9 pr-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none"
                 required
               />
             </div>
           </div>
 
           {/* Téléphone */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Téléphone</label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Téléphone</label>
             <div className="relative">
-              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <input 
                 type="tel" 
                 placeholder="+221 ..."
-                className="w-full bg-slate-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-blue-100 transition-all"
+                className="w-full bg-white border border-slate-200 rounded-md py-2.5 pl-9 pr-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none"
               />
             </div>
           </div>
 
           {/* N° Assuré / ID */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">N° Dossier / Assuré</label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Référence Dossier</label>
             <div className="relative">
-              <Shield className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+              <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <input 
                 type="text" 
                 placeholder="ID-8829-X"
-                className="w-full bg-slate-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:ring-2 focus:ring-blue-100 transition-all"
+                className="w-full bg-white border border-slate-200 rounded-md py-2.5 pl-9 pr-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none"
               />
             </div>
           </div>
         </div>
 
         {/* Adresse */}
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Adresse Résidentielle</label>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Adresse</label>
           <div className="relative">
-            <MapPin className="absolute left-4 top-4 h-4 w-4 text-slate-300" />
+            <MapPin className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-400" />
             <textarea 
-              placeholder="Quartier, Ville, Code Postal..."
-              className="w-full bg-slate-50 border-none rounded-2xl p-4 pl-12 text-sm font-bold focus:ring-2 focus:ring-blue-100 transition-all min-h-[100px] resize-none"
+              placeholder="Quartier, Ville..."
+              className="w-full bg-white border border-slate-200 rounded-md p-2.5 pl-9 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none min-h-[80px] resize-none"
             />
           </div>
         </div>
 
-        <button 
-          type="submit"
-          className={cn(
-            "w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl",
-            isSaved 
-              ? "bg-emerald-500 text-white shadow-emerald-500/20" 
-              : "bg-slate-900 text-white hover:bg-black shadow-slate-900/20"
-          )}
-        >
-          {isSaved ? (
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5" /> Enregistré avec succès
-            </motion.div>
-          ) : (
-            <>
-              <Save className="h-5 w-5" /> Créer le Dossier Patient
-            </>
-          )}
-        </button>
+        <div className="flex justify-end pt-2">
+          <button 
+            type="submit"
+            className={cn(
+              "h-10 px-8 rounded font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2",
+              isSaved 
+                ? "bg-emerald-600 text-white" 
+                : "bg-slate-900 text-white hover:bg-slate-800"
+            )}
+          >
+            {isSaved ? (
+              <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" /> Enregistré
+              </motion.div>
+            ) : (
+              <>
+                <Save className="h-4 w-4" /> Valider l'Enregistrement
+              </>
+            )}
+          </button>
+        </div>
       </form>
     </div>
   );
 }
+
