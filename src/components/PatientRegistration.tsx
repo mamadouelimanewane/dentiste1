@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { User, Calendar, Shield, MapPin, Phone, Save, CheckCircle2 } from "lucide-react";
+import { User, Calendar, Shield, MapPin, Phone, Save, CheckCircle2, CreditCard } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -15,106 +15,96 @@ export function PatientRegistration() {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+    <div className="bg-white border border-slate-200 shadow-sm rounded-sm max-w-2xl mx-auto overflow-hidden">
+      {/* Card Header - Business Card Style */}
+      <div className="bg-slate-900 p-6 text-white flex justify-between items-start">
         <div className="space-y-1">
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Fiche d'Enregistrement</h3>
-          <p className="text-slate-500 text-[10px] font-medium">Informations administratives du patient.</p>
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-blue-400" />
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em]">Fiche Identification</h3>
+          </div>
+          <p className="text-[10px] text-slate-400 font-medium">Cabinet Dentaire Elite — Dossier Patient</p>
         </div>
-        <User className="h-5 w-5 text-slate-400" />
+        <div className="h-10 w-10 border border-slate-700 rounded flex items-center justify-center">
+          <User className="h-5 w-5 text-slate-400" />
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <form onSubmit={handleSubmit} className="p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
           {/* Nom & Prénom */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Nom Complet</label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Ex: Mamadou Diallo"
-                className="w-full bg-white border border-slate-200 rounded-md py-2.5 pl-9 pr-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none"
-                required
-              />
-            </div>
+          <div className="space-y-1 border-b border-slate-100 pb-2">
+            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Nom & Prénom</label>
+            <input 
+              type="text" 
+              placeholder="Mamadou Diallo"
+              className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none"
+              required
+            />
           </div>
 
           {/* Date de Naissance */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Date de Naissance</label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <input 
-                type="date" 
-                className="w-full bg-white border border-slate-200 rounded-md py-2.5 pl-9 pr-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none"
-                required
-              />
-            </div>
+          <div className="space-y-1 border-b border-slate-100 pb-2">
+            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Né(e) le</label>
+            <input 
+              type="date" 
+              className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-900 focus:ring-0 outline-none"
+              required
+            />
           </div>
 
           {/* Téléphone */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Téléphone</label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <input 
-                type="tel" 
-                placeholder="+221 ..."
-                className="w-full bg-white border border-slate-200 rounded-md py-2.5 pl-9 pr-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none"
-              />
-            </div>
+          <div className="space-y-1 border-b border-slate-100 pb-2">
+            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Contact</label>
+            <input 
+              type="tel" 
+              placeholder="+221 77 000 00 00"
+              className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none"
+            />
           </div>
 
           {/* N° Assuré / ID */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Référence Dossier</label>
-            <div className="relative">
-              <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="ID-8829-X"
-                className="w-full bg-white border border-slate-200 rounded-md py-2.5 pl-9 pr-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Adresse */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Adresse</label>
-          <div className="relative">
-            <MapPin className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-400" />
-            <textarea 
-              placeholder="Quartier, Ville..."
-              className="w-full bg-white border border-slate-200 rounded-md p-2.5 pl-9 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none min-h-[80px] resize-none"
+          <div className="space-y-1 border-b border-slate-100 pb-2">
+            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Référence ID</label>
+            <input 
+              type="text" 
+              placeholder="SN-12345-X"
+              className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none"
             />
           </div>
         </div>
 
-        <div className="flex justify-end pt-2">
+        {/* Adresse */}
+        <div className="mt-8 space-y-1 border-b border-slate-100 pb-2">
+          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Adresse de Résidence</label>
+          <input 
+            type="text"
+            placeholder="Dakar, Plateau, Rue 12..."
+            className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none"
+          />
+        </div>
+
+        <div className="mt-10 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Certifié Elite Pro</span>
+          </div>
           <button 
             type="submit"
             className={cn(
-              "h-10 px-8 rounded font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2",
+              "h-9 px-6 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2",
               isSaved 
                 ? "bg-emerald-600 text-white" 
-                : "bg-slate-900 text-white hover:bg-slate-800"
+                : "bg-slate-900 text-white hover:bg-black"
             )}
           >
-            {isSaved ? (
-              <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" /> Enregistré
-              </motion.div>
-            ) : (
-              <>
-                <Save className="h-4 w-4" /> Valider l'Enregistrement
-              </>
-            )}
+            {isSaved ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+            {isSaved ? "Dossier Créé" : "Enregistrer la Fiche"}
           </button>
         </div>
       </form>
     </div>
   );
 }
+
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Save, Zap, FileText, Check, AlertCircle } from "lucide-react";
+import { Save, Zap, FileText, Check, StickyNote } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ClinicalNotesProps {
@@ -37,41 +37,54 @@ export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[320px]">
-      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+    <div className="bg-white border border-slate-200 shadow-sm rounded-sm overflow-hidden flex flex-col min-h-[350px]">
+      {/* Header - Card Style */}
+      <div className="bg-slate-900 p-5 text-white flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-slate-400" />
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Notes Cliniques</h3>
+          <StickyNote className="h-4 w-4 text-blue-400" />
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Notes de Séance</h3>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          <span className="text-[10px] font-bold text-emerald-600 uppercase">Live Sync</span>
+        <div className="h-6 w-6 border border-slate-700 rounded flex items-center justify-center">
+          <span className="text-[9px] font-bold text-slate-500">{phaseId}</span>
         </div>
       </div>
 
-      <div className="flex-1 p-4 flex flex-col space-y-4">
-        <textarea
-          value={currentNote}
-          onChange={(e) => setCurrentNote(e.target.value)}
-          placeholder="Saisissez les observations pour cette phase..."
-          className="flex-1 w-full bg-white border border-slate-200 rounded-md p-3 text-xs font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none resize-none leading-relaxed"
-        />
+      <div className="flex-1 p-6 flex flex-col space-y-4">
+        <div className="flex-1 relative">
+          <textarea
+            value={currentNote}
+            onChange={(e) => setCurrentNote(e.target.value)}
+            placeholder="Observations cliniques..."
+            className="w-full h-full bg-slate-50 border-none rounded-none p-4 text-xs font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none resize-none leading-relaxed italic"
+          />
+          {/* Subtle watermark style lines */}
+          <div className="absolute inset-0 pointer-events-none opacity-[0.03] flex flex-col gap-[24px] p-4 pt-10">
+            {[1,2,3,4,5,6,7,8].map(i => <div key={i} className="h-px bg-slate-900 w-full" />)}
+          </div>
+        </div>
         
-        <button 
-          onClick={saveNote}
-          disabled={isSaving}
-          className={cn(
-            "h-10 w-full rounded font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2",
-            status === 'success' 
-              ? "bg-emerald-600 text-white" 
-              : "bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50"
-          )}
-        >
-          {isSaving ? "Enregistrement..." : status === 'success' ? "Note Enregistrée" : "Sauvegarder"}
-          {status === 'success' ? <Check className="h-3.5 w-3.5" /> : !isSaving && <Save className="h-3.5 w-3.5" />}
-        </button>
+        <div className="flex justify-between items-center pt-2">
+          <div className="flex items-center gap-1.5">
+            <Zap className="h-3 w-3 text-emerald-500" />
+            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Auto-Archive</span>
+          </div>
+          <button 
+            onClick={saveNote}
+            disabled={isSaving}
+            className={cn(
+              "h-8 px-5 rounded-sm font-bold text-[9px] uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm",
+              status === 'success' 
+                ? "bg-emerald-600 text-white" 
+                : "bg-slate-900 text-white hover:bg-black disabled:opacity-50"
+            )}
+          >
+            {isSaving ? "Sync..." : status === 'success' ? "Archivé" : "Sauvegarder"}
+            {status === 'success' ? <Check className="h-3 w-3" /> : !isSaving && <Save className="h-3 w-3" />}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
+
 
