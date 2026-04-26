@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { QuoteBuilder } from "@/components/QuoteBuilder";
 import { ClinicalNotes } from "@/components/ClinicalNotes";
 import { MedicalQuestionnaire } from "@/components/MedicalQuestionnaire";
+import { PatientRegistration } from "@/components/PatientRegistration";
 import { 
   Activity, 
   User, 
@@ -198,10 +199,11 @@ export default function Home() {
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.3 }}
                   >
+                    {currentStep === 1 && <PatientRegistration />}
                     {currentStep === 2 && <MedicalQuestionnaire />}
                     {currentStep === 3 && <QuoteBuilder />}
                     
-                    {![2, 3].includes(currentStep) && (
+                    {![1, 2, 3].includes(currentStep) && (
                       <div className="bg-white rounded-[3rem] p-16 border border-slate-100 flex flex-col items-center justify-center text-center space-y-8 shadow-xl shadow-slate-200/20">
                         <div className="h-24 w-24 bg-blue-50 rounded-[2rem] flex items-center justify-center rotate-3 group hover:rotate-0 transition-transform">
                           <Activity className="h-12 w-12 text-blue-600" />
