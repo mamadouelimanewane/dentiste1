@@ -239,50 +239,47 @@ export default function Home() {
           </div>
         </div>
 
-        {/* BOTTOM ACTION BAR */}
-        <div className="absolute bottom-0 inset-x-0 z-[60] p-6 pointer-events-none">
-          <div className="max-w-4xl mx-auto pointer-events-auto">
-            <div className="bg-white/80 backdrop-blur-2xl border border-white/50 rounded-[2.5rem] p-4 shadow-2xl shadow-slate-900/10 flex items-center justify-between gap-6">
-              <button 
-                onClick={prevStep}
-                disabled={currentStep === 1}
-                className={cn(
-                  "flex items-center gap-3 px-10 h-16 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest transition-all",
-                  currentStep === 1 
-                    ? "text-slate-200 cursor-not-allowed" 
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                )}
-              >
-                <ChevronLeft className="h-5 w-5" /> Précédent
-              </button>
-              
-              <div className="flex-1 flex justify-center">
-                <div className="bg-slate-50 px-6 py-2 rounded-full border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Phase <span className="text-blue-600">{currentStep}</span> / 6
-                  </p>
-                </div>
-              </div>
-
-              <button 
-                onClick={nextStep}
-                disabled={currentStep === 6}
-                className={cn(
-                  "flex-1 md:flex-none flex items-center justify-center gap-3 px-14 h-16 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest transition-all shadow-xl shadow-blue-500/20",
-                  currentStep === 6
-                    ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
-                    : "bg-blue-600 text-white hover:bg-blue-700 hover:scale-[1.02] active:scale-95"
-                )}
-              >
-                {currentStep === 6 ? "Terminé" : "Phase Suivante"} 
-                <ChevronRight className="h-5 w-5" />
-              </button>
+        {/* COMPACT FLOATING NAVIGATION */}
+        <div className="absolute bottom-10 inset-x-0 z-[60] flex justify-center pointer-events-none">
+          <div className="bg-white/70 backdrop-blur-xl border border-white/50 rounded-full p-2 shadow-2xl shadow-slate-900/10 flex items-center gap-2 pointer-events-auto">
+            <button 
+              onClick={prevStep}
+              disabled={currentStep === 1}
+              className={cn(
+                "h-12 w-12 rounded-full flex items-center justify-center transition-all",
+                currentStep === 1 
+                  ? "text-slate-200 cursor-not-allowed" 
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              )}
+              title="Précédent"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            
+            <div className="px-4 flex flex-col items-center">
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Phase</p>
+              <p className="text-sm font-black text-slate-900 leading-none">{currentStep}<span className="text-slate-300">/6</span></p>
             </div>
+
+            <button 
+              onClick={nextStep}
+              disabled={currentStep === 6}
+              className={cn(
+                "h-12 px-8 rounded-full font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg",
+                currentStep === 6
+                  ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+                  : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20"
+              )}
+            >
+              {currentStep === 6 ? "Terminé" : "Suivant"} 
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 
