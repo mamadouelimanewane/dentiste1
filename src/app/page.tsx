@@ -21,6 +21,7 @@ import { PrescriptionEditor } from "@/components/PrescriptionEditor";
 import { CommunicationHub } from "@/components/CommunicationHub";
 import { InventoryManager } from "@/components/InventoryManager";
 import { PatientDirectory } from "@/components/PatientDirectory";
+import { ClinicSettings } from "@/components/ClinicSettings";
 import { 
   Activity, 
   User, 
@@ -48,7 +49,8 @@ import {
   Pill,
   MessageSquare,
   Package,
-  FolderOpen
+  FolderOpen,
+  Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -72,6 +74,7 @@ const steps = [
   { id: 16, title: "Communication", fullTitle: "WhatsApp & SMS Hub", desc: "Gestion automatisée des rendez-vous et rappels.", icon: MessageSquare },
   { id: 17, title: "Stocks", fullTitle: "Inventory Manager Pro", desc: "Gestion des consommables et commandes.", icon: Package },
   { id: 18, title: "Recherche", fullTitle: "Base de Données Centralisée", desc: "Recherche et indexation des dossiers patients.", icon: FolderOpen },
+  { id: 19, title: "Configuration", fullTitle: "Paramètres du Cabinet", desc: "Configuration du profil, logo et infos légales.", icon: Settings },
 ];
 
 type Role = 'admin' | 'praticien' | 'accueil' | 'comptable';
@@ -293,8 +296,9 @@ export default function Home() {
                     {currentStep === 16 && <CommunicationHub />}
                     {currentStep === 17 && <InventoryManager />}
                     {currentStep === 18 && <PatientDirectory />}
+                    {currentStep === 19 && <ClinicSettings />}
                     
-                    {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(currentStep) && (
+                    {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].includes(currentStep) && (
                       <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
                         <Activity className="h-10 w-10 text-slate-200" />
                         <div className="space-y-1">
