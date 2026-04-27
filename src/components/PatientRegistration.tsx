@@ -23,7 +23,7 @@ export function PatientRegistration() {
             <CreditCard className="h-4 w-4 text-blue-400" />
             <h3 className="text-xs font-bold uppercase tracking-[0.2em]">Fiche Identification</h3>
           </div>
-          <p className="text-[10px] text-slate-400 font-medium">Cabinet Dentaire Elite — Dossier Patient</p>
+          <p className="text-[10px] text-slate-400 font-medium">Clinique du Cap Vert — Dossier Patient</p>
         </div>
         <div className="h-10 w-10 border border-slate-700 rounded flex items-center justify-center">
           <User className="h-5 w-5 text-slate-400" />

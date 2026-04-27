@@ -41,7 +41,15 @@ const steps = [
   { id: 7, title: "Comptabilité", fullTitle: "Comptabilité & Finances", desc: "Registre, factures et destinataires.", icon: Calculator },
 ];
 
-type Role = 'admin' | 'praticien' | 'accueil';
+type Role = 'admin' | 'praticien' | 'accueil' | 'comptable';
+
+const getUserInfo = (r: Role) => {
+  if (r === 'admin') return "Dr. Ndiaye";
+  if (r === 'praticien') return "Dr. Diallo";
+  if (r === 'accueil') return "Aïssatou";
+  if (r === 'comptable') return "M. Fall";
+  return "";
+}
 
 export default function Home() {
   const [role, setRole] = useState<Role>('admin');
@@ -73,6 +81,7 @@ export default function Home() {
     if (role === 'admin') return true;
     if (role === 'accueil') return [1, 2, 5, 6, 7].includes(s.id);
     if (role === 'praticien') return [2, 3, 4, 6].includes(s.id);
+    if (role === 'comptable') return [5, 7].includes(s.id);
     return true;
   });
 
@@ -91,6 +100,7 @@ export default function Home() {
       if (newRole === 'admin') return true;
       if (newRole === 'accueil') return [1, 2, 5, 6, 7].includes(s.id);
       if (newRole === 'praticien') return [2, 3, 4, 6].includes(s.id);
+      if (newRole === 'comptable') return [5, 7].includes(s.id);
       return true;
     });
     if (!newVisible.find(s => s.id === currentStep)) {
@@ -190,15 +200,14 @@ export default function Home() {
             >
               <option value="admin">👑 Administrateur</option>
               <option value="praticien">🩺 Praticien</option>
-              <option value="accueil">👋 Accueil / Secrétariat</option>
+              <option value="accueil">👋 Accueil</option>
+              <option value="comptable">📊 Comptable</option>
             </select>
 
-            {role !== 'accueil' && (
-              <div className="hidden md:flex flex-col text-right mr-2 border-l border-slate-200 pl-4">
-                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Bienvenue</span>
-                <span className="text-xs font-black text-slate-900 tracking-tight">Dr. Diallo</span>
-              </div>
-            )}
+            <div className="hidden md:flex flex-col text-right mr-2 border-l border-slate-200 pl-4">
+              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Bienvenue</span>
+              <span className="text-xs font-black text-slate-900 tracking-tight">{getUserInfo(role)}</span>
+            </div>
             <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-1 rounded">v1.3 STABLE</span>
           </div>
         </header>
@@ -252,7 +261,7 @@ export default function Home() {
               </div>
 
               <div className="space-y-6">
-                {role !== 'accueil' && <PractitionerHub />}
+                {(role === 'admin' || role === 'praticien') && <PractitionerHub />}
                 {(role === 'admin' || role === 'praticien') && <ClinicalNotes phaseId={currentStep} />}
               </div>
             </div>

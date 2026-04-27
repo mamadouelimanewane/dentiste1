@@ -56,7 +56,7 @@ export const QuotePDF = ({ items, total, patientName }: QuotePDFProps) => (
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.brand}>Cabinet Elite</Text>
+          <Text style={styles.brand}>Clinique du Cap Vert</Text>
           <Text style={styles.brandSub}>Chirurgie & Esthétique Dentaire</Text>
           <Text style={styles.docTitle}>Devis Conventionnel</Text>
           <Text style={styles.docSubtitle}>Valable pour une durée de 30 jours</Text>
@@ -128,7 +128,7 @@ export const QuotePDF = ({ items, total, patientName }: QuotePDFProps) => (
       </View>
 
       <Text style={styles.footer}>
-        Cabinet Dentaire Elite - Dakar, Plateau - Tél: +221 77 000 00 00 - NINEA: 012345678{'\n'}
+        Clinique du Cap Vert - Dakar, Plateau - Tél: +221 77 000 00 00 - NINEA: 012345678{'\n'}
         Généré par DentisteLite Hub Praticien
       </Text>
     </Page>
