@@ -8,6 +8,7 @@ import { PatientRegistration } from "@/components/PatientRegistration";
 import { ProcedureExecution } from "@/components/ProcedureExecution";
 import { BillingManager } from "@/components/BillingManager";
 import { PatientFollowUp } from "@/components/PatientFollowUp";
+import { PractitionerHub } from "@/components/PractitionerHub";
 import { 
   Activity, 
   User, 
@@ -139,6 +140,10 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
+            <div className="hidden md:flex flex-col text-right mr-2">
+              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Bienvenue</span>
+              <span className="text-xs font-black text-slate-900 tracking-tight">Dr. Diallo</span>
+            </div>
             <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-1 rounded">v1.3 STABLE</span>
           </div>
         </header>
@@ -191,16 +196,8 @@ export default function Home() {
               </div>
 
               <div className="space-y-6">
+                <PractitionerHub />
                 <ClinicalNotes phaseId={currentStep} />
-                <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-4">
-                  <div className="flex items-center gap-2 text-blue-600">
-                    <Sparkles className="h-4 w-4" />
-                    <span className="text-xs font-bold uppercase tracking-wider">Aide au Diagnostic</span>
-                  </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Les antécédents médicaux du patient doivent être vérifiés avant toute intervention chirurgicale ou anesthésie.
-                  </p>
-                </div>
               </div>
             </div>
           </div>
