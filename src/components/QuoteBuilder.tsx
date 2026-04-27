@@ -63,7 +63,7 @@ export function QuoteBuilder() {
 
         {/* SUMMARY & ACTION PANEL */}
         <div className="space-y-6">
-          <div className="bg-[#1E293B] rounded-lg border border-slate-800 shadow-sm p-6 text-white space-y-6 min-h-[300px] flex flex-col">
+          <div className="bg-[#1E3A8A] rounded-lg border border-blue-800 shadow-sm p-6 text-white space-y-6 min-h-[300px] flex flex-col">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4 text-blue-400" />

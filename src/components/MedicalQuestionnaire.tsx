@@ -62,7 +62,7 @@ export function MedicalQuestionnaire() {
         </div>
 
         <div className="pt-4 space-y-1.5">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Observations Supplémentaires</label>
+          <label className="text-[11px] font-bold text-blue-700 uppercase tracking-wider ml-1">Observations Supplémentaires</label>
           <textarea 
             placeholder="Détaillez ici toute autre pathologie ou traitement..."
             className="w-full bg-white border border-slate-200 rounded-md p-3 text-xs font-medium focus:border-rose-500 focus:ring-1 focus:ring-rose-500 outline-none min-h-[80px] resize-none"

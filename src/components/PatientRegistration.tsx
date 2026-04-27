@@ -17,7 +17,7 @@ export function PatientRegistration() {
   return (
     <div className="bg-white border border-slate-200 shadow-sm rounded-sm max-w-2xl mx-auto overflow-hidden">
       {/* Card Header - Business Card Style */}
-      <div className="bg-slate-900 p-6 text-white flex justify-between items-start">
+      <div className="bg-[#1E3A8A] p-6 text-white flex justify-between items-start">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <CreditCard className="h-4 w-4 text-blue-400" />
@@ -33,50 +33,50 @@ export function PatientRegistration() {
       <form onSubmit={handleSubmit} className="p-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
           {/* Nom & Prénom */}
-          <div className="space-y-1 border-b border-slate-100 pb-2">
-            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Nom & Prénom</label>
+          <div className="space-y-2 border-b-2 border-blue-100 pb-3">
+            <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Nom & Prénom</label>
             <input 
               type="text" 
               placeholder="Mamadou Diallo"
-              className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none"
+              className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none"
               required
             />
           </div>
 
           {/* Date de Naissance */}
-          <div className="space-y-1 border-b border-slate-100 pb-2">
-            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Né(e) le</label>
+          <div className="space-y-2 border-b-2 border-blue-100 pb-3">
+            <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Né(e) le</label>
             <input 
               type="date" 
-              className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-900 focus:ring-0 outline-none"
+              className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 focus:ring-0 outline-none"
               required
             />
           </div>
 
           {/* Téléphone */}
-          <div className="space-y-1 border-b border-slate-100 pb-2">
-            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Contact</label>
+          <div className="space-y-2 border-b-2 border-blue-100 pb-3">
+            <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Contact / Téléphone</label>
             <input 
               type="tel" 
               placeholder="+221 77 000 00 00"
-              className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none"
+              className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none"
             />
           </div>
 
           {/* N° Assuré / ID */}
-          <div className="space-y-1 border-b border-slate-100 pb-2">
-            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Référence ID</label>
+          <div className="space-y-2 border-b-2 border-blue-100 pb-3">
+            <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Référence ID / Dossier</label>
             <input 
               type="text" 
               placeholder="SN-12345-X"
-              className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none"
+              className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none"
             />
           </div>
         </div>
 
         {/* Adresse */}
-        <div className="mt-8 space-y-1 border-b border-slate-100 pb-2">
-          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Adresse de Résidence</label>
+        <div className="mt-8 space-y-2 border-b-2 border-blue-100 pb-3">
+          <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Adresse de Résidence</label>
           <input 
             type="text"
             placeholder="Dakar, Plateau, Rue 12..."

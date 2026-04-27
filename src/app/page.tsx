@@ -5,6 +5,9 @@ import { QuoteBuilder } from "@/components/QuoteBuilder";
 import { ClinicalNotes } from "@/components/ClinicalNotes";
 import { MedicalQuestionnaire } from "@/components/MedicalQuestionnaire";
 import { PatientRegistration } from "@/components/PatientRegistration";
+import { ProcedureExecution } from "@/components/ProcedureExecution";
+import { BillingManager } from "@/components/BillingManager";
+import { PatientFollowUp } from "@/components/PatientFollowUp";
 import { 
   Activity, 
   User, 
@@ -64,10 +67,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#F1F5F9] flex overflow-hidden font-sans">
-      {/* PROFESSIONAL SIDEBAR */}
+      {/* PROFESSIONAL SIDEBAR (NAVY BLUE) */}
       <aside 
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-[#1E293B] text-slate-300 transition-transform duration-200 transform lg:relative lg:translate-x-0 flex flex-col border-r border-slate-800",
+          "fixed inset-y-0 left-0 z-50 w-64 bg-[#0F172A] text-slate-300 transition-transform duration-200 transform lg:relative lg:translate-x-0 flex flex-col border-r border-blue-900/20",
           !isSidebarOpen && "-translate-x-full lg:hidden"
         )}
       >
@@ -95,8 +98,8 @@ export default function Home() {
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded transition-all text-sm font-medium",
                     isActive 
-                      ? "bg-blue-600/10 text-blue-400 border-r-2 border-blue-400" 
-                      : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                      ? "bg-blue-600/20 text-blue-400 border-r-2 border-blue-400" 
+                      : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
                   )}
                 >
                   <Icon className={cn("h-4 w-4", isActive ? "text-blue-400" : isCompleted ? "text-emerald-500" : "text-slate-500")} />
@@ -170,7 +173,11 @@ export default function Home() {
                     {currentStep === 2 && <MedicalQuestionnaire />}
                     {currentStep === 3 && <QuoteBuilder />}
                     
-                    {![1, 2, 3].includes(currentStep) && (
+                    {currentStep === 4 && <ProcedureExecution />}
+                    {currentStep === 5 && <BillingManager />}
+                    {currentStep === 6 && <PatientFollowUp />}
+                    
+                    {![1, 2, 3, 4, 5, 6].includes(currentStep) && (
                       <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
                         <Activity className="h-10 w-10 text-slate-200" />
                         <div className="space-y-1">
@@ -228,6 +235,7 @@ export default function Home() {
     </div>
   );
 }
+
 
 
 

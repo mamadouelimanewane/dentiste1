@@ -39,7 +39,7 @@ export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
   return (
     <div className="bg-white border border-slate-200 shadow-sm rounded-sm overflow-hidden flex flex-col min-h-[350px]">
       {/* Header - Card Style */}
-      <div className="bg-slate-900 p-5 text-white flex justify-between items-center">
+      <div className="bg-[#1E3A8A] p-5 text-white flex justify-between items-center">
         <div className="flex items-center gap-2">
           <StickyNote className="h-4 w-4 text-blue-400" />
           <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Notes de Séance</h3>
@@ -66,7 +66,7 @@ export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
         <div className="flex justify-between items-center pt-2">
           <div className="flex items-center gap-1.5">
             <Zap className="h-3 w-3 text-emerald-500" />
-            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Auto-Archive</span>
+            <span className="text-[9px] font-bold text-blue-700 uppercase tracking-widest">Auto-Archive</span>
           </div>
           <button 
             onClick={saveNote}
