@@ -10,6 +10,7 @@ import { BillingManager } from "@/components/BillingManager";
 import { PatientFollowUp } from "@/components/PatientFollowUp";
 import { PractitionerHub } from "@/components/PractitionerHub";
 import { AccountingDashboard } from "@/components/AccountingDashboard";
+import { UserManagement } from "@/components/UserManagement";
 import { 
   Activity, 
   User, 
@@ -26,7 +27,8 @@ import {
   History,
   CheckCircle2,
   Menu,
-  Calculator
+  Calculator,
+  Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,6 +41,7 @@ const steps = [
   { id: 5, title: "Administration", fullTitle: "Gestion Administrative", desc: "Facturation et règlements.", icon: FileText },
   { id: 6, title: "Suivi", fullTitle: "Suivi & Archivage", desc: "Clôture et planification futurs RDV.", icon: History },
   { id: 7, title: "Comptabilité", fullTitle: "Comptabilité & Finances", desc: "Registre, factures et destinataires.", icon: Calculator },
+  { id: 8, title: "Utilisateurs", fullTitle: "Gestion des Utilisateurs", desc: "Rôles, privilèges et comptes.", icon: Users },
 ];
 
 type Role = 'admin' | 'praticien' | 'accueil' | 'comptable';
@@ -246,8 +249,9 @@ export default function Home() {
                     {currentStep === 5 && <BillingManager />}
                     {currentStep === 6 && <PatientFollowUp />}
                     {currentStep === 7 && <AccountingDashboard />}
+                    {currentStep === 8 && <UserManagement />}
                     
-                    {![1, 2, 3, 4, 5, 6, 7].includes(currentStep) && (
+                    {![1, 2, 3, 4, 5, 6, 7, 8].includes(currentStep) && (
                       <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
                         <Activity className="h-10 w-10 text-slate-200" />
                         <div className="space-y-1">
