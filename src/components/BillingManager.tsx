@@ -108,6 +108,32 @@ export function BillingManager() {
             </button>
           </div>
         </div>
+
+        {/* ACCOUNTING / DESTINATAIRES */}
+        <div className="bg-white border border-slate-200 rounded-sm p-6 space-y-4 shadow-sm">
+          <h3 className="text-sm font-black text-blue-900 uppercase tracking-tight">Transmission Facture & Comptabilité</h3>
+          <div className="space-y-3">
+            {[
+              { id: 'compta', label: 'Envoyer copie à la Comptabilité du Cabinet', default: true },
+              { id: 'patient', label: 'Envoyer copie au Patient (Email)', default: true },
+              { id: 'assurance', label: 'Transmettre à l\'Assurance / Mutuelle', default: paymentMethod === 'insurance' }
+            ].map((dest) => (
+              <label key={dest.id} className="flex items-center gap-3 p-3 border border-slate-100 rounded-sm cursor-pointer hover:bg-slate-50 transition-colors">
+                <input type="checkbox" defaultChecked={dest.default} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                <span className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">{dest.label}</span>
+              </label>
+            ))}
+          </div>
+          {isPaid && (
+            <div className="mt-4 p-3 bg-emerald-50 border border-emerald-100 rounded-sm flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5" />
+              <p className="text-[10px] font-bold text-emerald-800 uppercase leading-relaxed">
+                Les écritures comptables ont été générées et les exemplaires transmis aux destinataires sélectionnés.
+              </p>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );

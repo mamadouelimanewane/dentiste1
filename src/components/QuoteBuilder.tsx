@@ -122,7 +122,23 @@ export function QuoteBuilder() {
             </div>
           </div>
 
+          {/* DESTINATAIRES PANEL */}
+          {selected.length > 0 && (
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-5 space-y-4">
+              <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Transmission des Exemplaires</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {['Patient (Email/Imprimé)', 'Comptabilité Cabinet', 'Assurance / Mutuelle'].map((dest, i) => (
+                  <label key={dest} className="flex items-center gap-3 p-3 border border-slate-100 rounded-sm cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input type="checkbox" defaultChecked={i < 2} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                    <span className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">{dest}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* SIGNATURE PANEL */}
+
           {selected.length > 0 && (
             <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-5 space-y-4">
               <div className="flex items-center justify-between">
