@@ -1,26 +1,44 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CreditCard, Banknote, Shield, Download, CheckCircle2, Receipt } from "lucide-react";
-import { DENTAL_NOMENCLATURE } from "@/lib/pricing";
+import { CreditCard, Banknote, Shield, Download, CheckCircle2, Receipt, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePatient } from "@/lib/context";
+import dynamic from "next/dynamic";
+
+const PDFDownloadLink = dynamic(
+  () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
+  { ssr: false }
+);
+import { InvoicePDF } from "./InvoicePDF";
+
+interface ExecutedAct {
+  id: string;
+  procedureId: string;
+  label: string;
+  tooth?: number;
+  price: number;
+  timestamp: string;
+}
 
 export function BillingManager() {
-  const [executedIds, setExecutedIds] = useState<string[]>([]);
+  const { currentPatient } = usePatient();
+  const [executedActs, setExecutedActs] = useState<ExecutedAct[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'insurance'>('cash');
   const [isPaid, setIsPaid] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("dentiste_lite_executed");
-    if (saved) setExecutedIds(JSON.parse(saved));
+    const saved = localStorage.getItem("dentiste_lite_executed_acts");
+    if (saved) setExecutedActs(JSON.parse(saved));
   }, []);
 
-  const executedItems = DENTAL_NOMENCLATURE.filter(p => executedIds.includes(p.id));
-  const total = executedItems.reduce((sum, item) => sum + (item.price || 0), 0);
+  const total = executedActs.reduce((sum, item) => sum + (item.price || 0), 0);
 
   const handlePayment = () => {
     setIsPaid(true);
   };
+
+  const invoiceNumber = `FAC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -31,19 +49,29 @@ export function BillingManager() {
             <Receipt className="h-4 w-4 text-blue-400" />
             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Note d'Honoraires</h3>
           </div>
-          <span className="text-[9px] font-bold text-slate-500 uppercase">Facture #2024-001</span>
+          <span className="text-[9px] font-bold text-blue-200 uppercase">{invoiceNumber}</span>
         </div>
 
         <div className="p-6 flex-1 space-y-4">
           <div className="space-y-3">
-            {executedItems.length === 0 ? (
-              <p className="text-xs text-slate-400 italic">Aucun acte réalisé à facturer.</p>
+            {executedActs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 opacity-20 text-center space-y-2">
+                <FileText className="h-10 w-10" />
+                <p className="text-[10px] font-bold uppercase tracking-widest">Aucun acte à facturer</p>
+              </div>
             ) : (
-              executedItems.map(item => (
-                <div key={item.id} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-900 uppercase">{item.label}</p>
-                    <p className="text-[8px] text-slate-400 font-bold uppercase">{item.cotation}</p>
+              executedActs.map(item => (
+                <div key={item.id} className="flex justify-between items-center py-3 border-b border-slate-100 last:border-0">
+                  <div className="flex items-center gap-3">
+                    {item.tooth && (
+                      <div className="h-6 w-6 rounded bg-blue-50 border border-blue-100 flex items-center justify-center text-[10px] font-black text-blue-600">
+                        {item.tooth}
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-900 uppercase">{item.label}</p>
+                      <p className="text-[8px] text-slate-400 font-bold uppercase">{item.timestamp}</p>
+                    </div>
                   </div>
                   <p className="text-xs font-bold text-slate-900">{item.price?.toLocaleString()} FCFA</p>
                 </div>
@@ -58,16 +86,34 @@ export function BillingManager() {
             <span className="text-2xl font-bold text-slate-900">{total.toLocaleString()} <span className="text-xs text-slate-400 ml-1">FCFA</span></span>
           </div>
           
-          <button 
-            disabled={total === 0 || isPaid}
-            className={cn(
-              "w-full h-10 rounded-sm text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all",
-              isPaid ? "bg-emerald-600 text-white" : "bg-slate-900 text-white hover:bg-black disabled:opacity-50"
-            )}
-          >
-            {isPaid ? <CheckCircle2 className="h-4 w-4" /> : <Download className="h-4 w-4" />}
-            {isPaid ? "Facture Payée & Téléchargée" : "Générer la Facture"}
-          </button>
+          {total > 0 && (
+            <PDFDownloadLink
+              document={
+                <InvoicePDF 
+                  items={executedActs} 
+                  total={total} 
+                  patientName={currentPatient?.name || "Patient Anonyme"} 
+                  patientId={currentPatient?.idNumber}
+                  invoiceNumber={invoiceNumber}
+                />
+              }
+              fileName={`Facture_${currentPatient?.name || "Patient"}_${invoiceNumber}.pdf`}
+            >
+              {/* @ts-ignore */}
+              {({ loading }) => (
+                <button 
+                  disabled={loading || isPaid}
+                  className={cn(
+                    "w-full h-10 rounded-sm text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all",
+                    isPaid ? "bg-emerald-600 text-white" : "bg-slate-900 text-white hover:bg-black disabled:opacity-50"
+                  )}
+                >
+                  {isPaid ? <CheckCircle2 className="h-4 w-4" /> : <Download className="h-4 w-4" />}
+                  {loading ? "Génération..." : isPaid ? "Facture Payée & Téléchargée" : "Générer la Facture PDF"}
+                </button>
+              )}
+            </PDFDownloadLink>
+          )}
         </div>
       </div>
 
@@ -133,7 +179,6 @@ export function BillingManager() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: "Version allégée basée sur le workflow 6 phases",
 };
 
+import { PatientProvider } from "@/lib/context";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -16,7 +18,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <PatientProvider>
+          {children}
+        </PatientProvider>
+      </body>
     </html>
   );
 }

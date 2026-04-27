@@ -1,17 +1,38 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { User, Calendar, Shield, MapPin, Phone, Save, CheckCircle2, CreditCard } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { usePatient } from "@/lib/context";
 
 export function PatientRegistration() {
+  const { currentPatient, setCurrentPatient } = usePatient();
   const [isSaved, setIsSaved] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    name: "",
+    birthDate: "",
+    phone: "",
+    idNumber: "",
+    address: ""
+  });
+
+  useEffect(() => {
+    if (currentPatient) {
+      setFormData(currentPatient);
+    }
+  }, [currentPatient]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setCurrentPatient(formData);
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   return (
@@ -23,7 +44,7 @@ export function PatientRegistration() {
             <CreditCard className="h-4 w-4 text-blue-400" />
             <h3 className="text-xs font-bold uppercase tracking-[0.2em]">Fiche Identification</h3>
           </div>
-          <p className="text-[10px] text-slate-400 font-medium">Clinique du Cap Vert — Dossier Patient</p>
+          <p className="text-[10px] text-slate-400 font-medium">Cabinet Dentaire Elite — Dossier Patient</p>
         </div>
         <div className="h-10 w-10 border border-slate-700 rounded flex items-center justify-center">
           <User className="h-5 w-5 text-slate-400" />
@@ -37,6 +58,9 @@ export function PatientRegistration() {
             <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Nom & Prénom</label>
             <input 
               type="text" 
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
               placeholder="Mamadou Diallo"
               className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none"
               required
@@ -48,6 +72,9 @@ export function PatientRegistration() {
             <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Né(e) le</label>
             <input 
               type="date" 
+              name="birthDate"
+              value={formData.birthDate}
+              onChange={handleChange}
               className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 focus:ring-0 outline-none"
               required
             />
@@ -58,6 +85,9 @@ export function PatientRegistration() {
             <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Contact / Téléphone</label>
             <input 
               type="tel" 
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
               placeholder="+221 77 000 00 00"
               className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none"
             />
@@ -68,6 +98,9 @@ export function PatientRegistration() {
             <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Référence ID / Dossier</label>
             <input 
               type="text" 
+              name="idNumber"
+              value={formData.idNumber}
+              onChange={handleChange}
               placeholder="SN-12345-X"
               className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none"
             />
@@ -79,6 +112,9 @@ export function PatientRegistration() {
           <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Adresse de Résidence</label>
           <input 
             type="text"
+            name="address"
+            value={formData.address}
+            onChange={handleChange}
             placeholder="Dakar, Plateau, Rue 12..."
             className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none"
           />

@@ -1,13 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
-import { Calendar, Archive, FileCheck, Star, ArrowRight, MessageSquare } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Calendar, Archive, FileCheck, Star, ArrowRight, MessageSquare, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PatientFollowUp() {
   const [nextAppointment, setNextAppointment] = useState("");
   const [satisfaction, setSatisfaction] = useState(5);
   const [isArchived, setIsArchived] = useState(false);
+  const [dictations, setDictations] = useState<any[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("dentiste_lite_dictations");
+    if (saved) {
+      setDictations(JSON.parse(saved));
+    }
+  }, []);
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -21,8 +29,29 @@ export function PatientFollowUp() {
         </div>
 
         <div className="p-8 space-y-10">
+          {/* Dictations Summary */}
+          {dictations.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Mic className="h-4 w-4 text-blue-600" />
+                <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Notes Vocales IA (Séance)</h4>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-sm p-4 space-y-3">
+                {dictations.map((d, i) => (
+                  <div key={d.id || i} className="border-b border-slate-200 last:border-0 pb-3 last:pb-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest">{d.category}</span>
+                      <span className="text-[9px] text-slate-400 font-bold">{d.date}</span>
+                    </div>
+                    <p className="text-sm text-slate-700 italic">"{d.text}"</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Next Appointment */}
-          <div className="space-y-4">
+          <div className="space-y-4 pt-4 border-t border-slate-100">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="h-4 w-4 text-blue-600" />
               <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Prochain Rendez-vous</h4>

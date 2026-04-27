@@ -12,6 +12,14 @@ import { PractitionerHub } from "@/components/PractitionerHub";
 import { AccountingDashboard } from "@/components/AccountingDashboard";
 import { UserManagement } from "@/components/UserManagement";
 import { Teleconsultation } from "@/components/Teleconsultation";
+import { VoiceDictation } from "@/components/VoiceDictation";
+import { AgendaModule } from "@/components/AgendaModule";
+import { AiRadioLab } from "@/components/AiRadioLab";
+import { SmileDesignStudio } from "@/components/SmileDesignStudio";
+import { ProstheticsLab } from "@/components/ProstheticsLab";
+import { PrescriptionEditor } from "@/components/PrescriptionEditor";
+import { CommunicationHub } from "@/components/CommunicationHub";
+import { InventoryManager } from "@/components/InventoryManager";
 import { 
   Activity, 
   User, 
@@ -30,7 +38,15 @@ import {
   Menu,
   Calculator,
   Users,
-  Video
+  Video,
+  Brain,
+  Calendar,
+  Scan,
+  Smile,
+  Layers,
+  Pill,
+  MessageSquare,
+  Package
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -45,6 +61,14 @@ const steps = [
   { id: 7, title: "Comptabilité", fullTitle: "Comptabilité & Finances", desc: "Registre, factures et destinataires.", icon: Calculator },
   { id: 8, title: "Utilisateurs", fullTitle: "Gestion des Utilisateurs", desc: "Rôles, privilèges et comptes.", icon: Users },
   { id: 9, title: "Téléconsult", fullTitle: "Médecine à Distance", desc: "Consultations vidéo et suivi à distance.", icon: Video },
+  { id: 10, title: "Dictée IA", fullTitle: "Neural Dictation Suite", desc: "Dictée vocale intelligente et structuration IA.", icon: Brain },
+  { id: 11, title: "Agenda", fullTitle: "Elite Planner Pro", desc: "Gestion des rendez-vous et ressources.", icon: Calendar },
+  { id: 12, title: "Radio IA", fullTitle: "Advanced Neural Imaging", desc: "Diagnostic assisté par ordinateur.", icon: Scan },
+  { id: 13, title: "Smile Design", fullTitle: "Smile Design Studio Pro", desc: "Simulation esthétique par IA.", icon: Smile },
+  { id: 14, title: "Labo & CFAO", fullTitle: "Prosthetics Lab Center", desc: "Gestion des flux numériques et travaux prothétiques.", icon: Layers },
+  { id: 15, title: "Ordonnances", fullTitle: "Éditeur d'Ordonnance", desc: "Création et impression d'ordonnances.", icon: Pill },
+  { id: 16, title: "Communication", fullTitle: "WhatsApp & SMS Hub", desc: "Gestion automatisée des rendez-vous et rappels.", icon: MessageSquare },
+  { id: 17, title: "Stocks", fullTitle: "Inventory Manager Pro", desc: "Gestion des consommables et commandes.", icon: Package },
 ];
 
 type Role = 'admin' | 'praticien' | 'accueil' | 'comptable';
@@ -57,7 +81,10 @@ const getUserInfo = (r: Role) => {
   return "";
 }
 
+import { usePatient } from "@/lib/context";
+
 export default function Home() {
+  const { currentPatient } = usePatient();
   const [role, setRole] = useState<Role>('admin');
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -85,8 +112,8 @@ export default function Home() {
 
   const visibleSteps = steps.filter(s => {
     if (role === 'admin') return true;
-    if (role === 'accueil') return [1, 2, 5, 6, 7].includes(s.id);
-    if (role === 'praticien') return [2, 3, 4, 6, 9].includes(s.id);
+    if (role === 'accueil') return [1, 2, 5, 6, 7, 11, 16, 17].includes(s.id);
+    if (role === 'praticien') return [2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(s.id);
     if (role === 'comptable') return [5, 7].includes(s.id);
     return true;
   });
@@ -104,8 +131,8 @@ export default function Home() {
     // Adjust current step if it's no longer accessible
     const newVisible = steps.filter(s => {
       if (newRole === 'admin') return true;
-      if (newRole === 'accueil') return [1, 2, 5, 6, 7].includes(s.id);
-      if (newRole === 'praticien') return [2, 3, 4, 6, 9].includes(s.id);
+      if (newRole === 'accueil') return [1, 2, 5, 6, 7, 11, 16, 17].includes(s.id);
+      if (newRole === 'praticien') return [2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(s.id);
       if (newRole === 'comptable') return [5, 7].includes(s.id);
       return true;
     });
@@ -194,7 +221,7 @@ export default function Home() {
             </button>
             <div className="flex items-center gap-2 text-slate-600">
               <User className="h-4 w-4" />
-              <span className="text-xs font-semibold">Patient : <span className="text-slate-900">Mamadou Diallo</span></span>
+              <span className="text-xs font-semibold">Patient : <span className="text-slate-900">{currentPatient ? currentPatient.name : "Aucun"}</span></span>
             </div>
           </div>
 
@@ -254,8 +281,16 @@ export default function Home() {
                     {currentStep === 7 && <AccountingDashboard />}
                     {currentStep === 8 && <UserManagement />}
                     {currentStep === 9 && <Teleconsultation />}
+                    {currentStep === 10 && <VoiceDictation />}
+                    {currentStep === 11 && <AgendaModule />}
+                    {currentStep === 12 && <AiRadioLab />}
+                    {currentStep === 13 && <SmileDesignStudio />}
+                    {currentStep === 14 && <ProstheticsLab />}
+                    {currentStep === 15 && <PrescriptionEditor />}
+                    {currentStep === 16 && <CommunicationHub />}
+                    {currentStep === 17 && <InventoryManager />}
                     
-                    {![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(currentStep) && (
+                    {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(currentStep) && (
                       <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
                         <Activity className="h-10 w-10 text-slate-200" />
                         <div className="space-y-1">
