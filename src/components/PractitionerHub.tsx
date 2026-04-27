@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Zap, Activity, Users, Clock, BrainCircuit, Calendar, X } from "lucide-react";
+import { Zap, Activity, Users, Clock, BrainCircuit, Calendar, X, Pill, Stethoscope, Syringe, BookOpen, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -84,6 +84,31 @@ export function PractitionerHub() {
                  </p>
                </div>
              </div>
+          </div>
+           </div>
+
+          {/* Trousseau du Praticien */}
+          <div className="pt-4 border-t border-slate-100">
+            <h4 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center justify-between">
+              <span>Trousseau Clinique</span>
+              <span className="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[8px]">RACCOURCIS</span>
+            </h4>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Odontogramme", icon: Activity, color: "text-blue-600", bg: "bg-blue-50" },
+                { label: "Ordonnance", icon: Pill, color: "text-emerald-600", bg: "bg-emerald-50" },
+                { label: "Anesthésie", icon: Syringe, color: "text-rose-600", bg: "bg-rose-50" },
+                { label: "Protocoles", icon: BookOpen, color: "text-amber-600", bg: "bg-amber-50" },
+              ].map((tool, idx) => (
+                <button key={idx} className="flex items-center gap-2 p-2 rounded-sm border border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all text-left group">
+                  <div className={cn("p-1.5 rounded flex-shrink-0", tool.bg)}>
+                    <tool.icon className={cn("h-3 w-3", tool.color)} />
+                  </div>
+                  <span className="text-[9px] font-bold text-slate-700 uppercase tracking-tight flex-1">{tool.label}</span>
+                  <ChevronRight className="h-3 w-3 text-slate-300 group-hover:text-slate-600 transition-colors" />
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
