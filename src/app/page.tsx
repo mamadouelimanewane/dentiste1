@@ -11,6 +11,7 @@ import { PatientFollowUp } from "@/components/PatientFollowUp";
 import { PractitionerHub } from "@/components/PractitionerHub";
 import { AccountingDashboard } from "@/components/AccountingDashboard";
 import { UserManagement } from "@/components/UserManagement";
+import { Teleconsultation } from "@/components/Teleconsultation";
 import { 
   Activity, 
   User, 
@@ -28,7 +29,8 @@ import {
   CheckCircle2,
   Menu,
   Calculator,
-  Users
+  Users,
+  Video
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -42,6 +44,7 @@ const steps = [
   { id: 6, title: "Suivi", fullTitle: "Suivi & Archivage", desc: "Clôture et planification futurs RDV.", icon: History },
   { id: 7, title: "Comptabilité", fullTitle: "Comptabilité & Finances", desc: "Registre, factures et destinataires.", icon: Calculator },
   { id: 8, title: "Utilisateurs", fullTitle: "Gestion des Utilisateurs", desc: "Rôles, privilèges et comptes.", icon: Users },
+  { id: 9, title: "Téléconsult", fullTitle: "Médecine à Distance", desc: "Consultations vidéo et suivi à distance.", icon: Video },
 ];
 
 type Role = 'admin' | 'praticien' | 'accueil' | 'comptable';
@@ -83,7 +86,7 @@ export default function Home() {
   const visibleSteps = steps.filter(s => {
     if (role === 'admin') return true;
     if (role === 'accueil') return [1, 2, 5, 6, 7].includes(s.id);
-    if (role === 'praticien') return [2, 3, 4, 6].includes(s.id);
+    if (role === 'praticien') return [2, 3, 4, 6, 9].includes(s.id);
     if (role === 'comptable') return [5, 7].includes(s.id);
     return true;
   });
@@ -102,7 +105,7 @@ export default function Home() {
     const newVisible = steps.filter(s => {
       if (newRole === 'admin') return true;
       if (newRole === 'accueil') return [1, 2, 5, 6, 7].includes(s.id);
-      if (newRole === 'praticien') return [2, 3, 4, 6].includes(s.id);
+      if (newRole === 'praticien') return [2, 3, 4, 6, 9].includes(s.id);
       if (newRole === 'comptable') return [5, 7].includes(s.id);
       return true;
     });
@@ -250,8 +253,9 @@ export default function Home() {
                     {currentStep === 6 && <PatientFollowUp />}
                     {currentStep === 7 && <AccountingDashboard />}
                     {currentStep === 8 && <UserManagement />}
+                    {currentStep === 9 && <Teleconsultation />}
                     
-                    {![1, 2, 3, 4, 5, 6, 7, 8].includes(currentStep) && (
+                    {![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(currentStep) && (
                       <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
                         <Activity className="h-10 w-10 text-slate-200" />
                         <div className="space-y-1">
