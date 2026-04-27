@@ -85,7 +85,6 @@ export function PractitionerHub() {
                </div>
              </div>
           </div>
-           </div>
 
           {/* Trousseau du Praticien */}
           <div className="pt-4 border-t border-slate-100">
