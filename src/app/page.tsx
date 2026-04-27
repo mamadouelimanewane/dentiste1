@@ -38,7 +38,11 @@ const steps = [
   { id: 6, title: "Suivi", fullTitle: "Suivi & Archivage", desc: "Clôture et planification futurs RDV.", icon: History },
 ];
 
+type Role = 'admin' | 'praticien' | 'accueil';
+
 export default function Home() {
+  const [role, setRole] = useState<Role>('admin');
+
   const [currentStep, setCurrentStep] = useState(1);
   const [isMounted, setIsMounted] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -52,12 +56,45 @@ export default function Home() {
   useEffect(() => {
     if (isMounted) {
       localStorage.setItem("dentiste_lite_step", currentStep.toString());
+      localStorage.setItem("dentiste_lite_role", role);
     }
-  }, [currentStep, isMounted]);
+  }, [currentStep, role, isMounted]);
 
-  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 6));
-  const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+  useEffect(() => {
+    const savedRole = localStorage.getItem("dentiste_lite_role") as Role;
+    if (savedRole) setRole(savedRole);
+  }, []);
+
+  const visibleSteps = steps.filter(s => {
+    if (role === 'admin') return true;
+    if (role === 'accueil') return [1, 2, 5, 6].includes(s.id);
+    if (role === 'praticien') return [2, 3, 4, 6].includes(s.id);
+    return true;
+  });
+
+  const currentIndex = visibleSteps.findIndex(s => s.id === currentStep);
+
+  const nextStep = () => {
+    if (currentIndex < visibleSteps.length - 1) setCurrentStep(visibleSteps[currentIndex + 1].id);
+  };
+  const prevStep = () => {
+    if (currentIndex > 0) setCurrentStep(visibleSteps[currentIndex - 1].id);
+  };
+  const handleRoleChange = (newRole: Role) => {
+    setRole(newRole);
+    // Adjust current step if it's no longer accessible
+    const newVisible = steps.filter(s => {
+      if (newRole === 'admin') return true;
+      if (newRole === 'accueil') return [1, 2, 5, 6].includes(s.id);
+      if (newRole === 'praticien') return [2, 3, 4, 6].includes(s.id);
+      return true;
+    });
+    if (!newVisible.find(s => s.id === currentStep)) {
+      setCurrentStep(newVisible[0].id);
+    }
+  };
   const reset = () => {
+
     if (confirm("Réinitialiser le parcours patient ?")) {
       setCurrentStep(1);
       localStorage.removeItem("dentiste_lite_notes");
@@ -87,7 +124,7 @@ export default function Home() {
 
           <nav className="space-y-1">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 mb-4">Navigation</p>
-            {steps.map((step) => {
+            {visibleSteps.map((step) => {
               const Icon = step.icon;
               const isActive = currentStep === step.id;
               const isCompleted = currentStep > step.id;
@@ -140,10 +177,22 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex flex-col text-right mr-2">
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Bienvenue</span>
-              <span className="text-xs font-black text-slate-900 tracking-tight">Dr. Diallo</span>
-            </div>
+            <select 
+              value={role}
+              onChange={(e) => handleRoleChange(e.target.value as Role)}
+              className="bg-slate-100 border-none text-[10px] font-bold text-slate-600 uppercase tracking-widest rounded px-2 py-1 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="admin">👑 Administrateur</option>
+              <option value="praticien">🩺 Praticien</option>
+              <option value="accueil">👋 Accueil / Secrétariat</option>
+            </select>
+
+            {role !== 'accueil' && (
+              <div className="hidden md:flex flex-col text-right mr-2 border-l border-slate-200 pl-4">
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Bienvenue</span>
+                <span className="text-xs font-black text-slate-900 tracking-tight">Dr. Diallo</span>
+              </div>
+            )}
             <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-1 rounded">v1.3 STABLE</span>
           </div>
         </header>
@@ -196,35 +245,34 @@ export default function Home() {
               </div>
 
               <div className="space-y-6">
-                <PractitionerHub />
-                <ClinicalNotes phaseId={currentStep} />
+                {role !== 'accueil' && <PractitionerHub />}
+                {(role === 'admin' || role === 'praticien') && <ClinicalNotes phaseId={currentStep} />}
               </div>
             </div>
           </div>
         </div>
 
-        {/* BOTTOM NAVIGATION (SLIM) */}
         <div className="absolute bottom-0 inset-x-0 bg-white border-t border-slate-200 p-3 px-6 z-40 flex items-center justify-between lg:pl-72 lg:pr-12">
           <button 
             onClick={prevStep}
-            disabled={currentStep === 1}
+            disabled={currentIndex === 0}
             className="flex items-center gap-2 px-4 h-9 rounded border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition-colors"
           >
             <ChevronLeft className="h-4 w-4" /> Précédent
           </button>
           
           <div className="flex items-center gap-1.5">
-            {steps.map(s => (
+            {visibleSteps.map(s => (
               <div key={s.id} className={cn("h-1.5 w-1.5 rounded-full", s.id === currentStep ? "bg-blue-600" : "bg-slate-200")} />
             ))}
           </div>
 
           <button 
             onClick={nextStep}
-            disabled={currentStep === 6}
+            disabled={currentIndex === visibleSteps.length - 1}
             className="flex items-center gap-2 px-6 h-9 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 disabled:opacity-30 transition-all shadow-sm"
           >
-            {currentStep === 6 ? "Terminer le parcours" : "Étape Suivante"} 
+            {currentIndex === visibleSteps.length - 1 ? "Terminer le parcours" : "Étape Suivante"} 
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
