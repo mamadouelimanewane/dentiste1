@@ -49,6 +49,7 @@ export default function Home() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isMounted, setIsMounted] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [showResetModal, setShowResetModal] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -97,11 +98,13 @@ export default function Home() {
     }
   };
   const reset = () => {
-
-    if (confirm("Réinitialiser le parcours patient ?")) {
-      setCurrentStep(1);
-      localStorage.removeItem("dentiste_lite_notes");
-    }
+    setCurrentStep(1);
+    localStorage.removeItem("dentiste_lite_step");
+    localStorage.removeItem("dentiste_lite_notes");
+    localStorage.removeItem("dentiste_lite_executed");
+    setShowResetModal(false);
+    // Reloading ensures all nested component states are fully flushed
+    window.location.reload();
   };
 
   if (!isMounted) return null;
@@ -154,8 +157,8 @@ export default function Home() {
 
         <div className="p-4 border-t border-slate-800">
           <button 
-            onClick={reset}
-            className="w-full h-9 rounded bg-slate-800 hover:bg-slate-700 transition-all flex items-center justify-center gap-2 text-xs font-semibold text-slate-300"
+            onClick={() => setShowResetModal(true)}
+            className="w-full h-10 rounded bg-blue-600 hover:bg-blue-500 transition-all flex items-center justify-center gap-2 text-xs font-bold text-white shadow-lg shadow-blue-900/20"
           >
             <RotateCcw className="h-3.5 w-3.5" /> Nouveau Dossier
           </button>
@@ -281,6 +284,50 @@ export default function Home() {
           </button>
         </div>
       </div>
+
+      {/* MODAL NOUVEAU DOSSIER */}
+      <AnimatePresence>
+        {showResetModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden"
+            >
+              <div className="p-6">
+                <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
+                  <UserPlus className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight mb-2">Créer un Nouveau Dossier ?</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Cette action va clôturer le dossier en cours et réinitialiser toutes les étapes (Arrivée, Consultation, Facturation). Les données non sauvegardées seront perdues.
+                </p>
+              </div>
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button 
+                  onClick={() => setShowResetModal(false)}
+                  className="px-4 py-2 rounded text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button 
+                  onClick={reset}
+                  className="px-4 py-2 rounded bg-blue-600 text-white text-xs font-bold shadow-sm shadow-blue-200 hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Confirmer et Créer
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
