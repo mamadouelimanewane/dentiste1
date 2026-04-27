@@ -24,12 +24,12 @@ export function ProcedureExecution() {
   return (
     <div className="space-y-6">
       <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
-        <div className="bg-slate-900 p-5 text-white flex justify-between items-center">
+        <div className="bg-[#1E3A8A] p-5 text-white flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Activity className="h-4 w-4 text-blue-400" />
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Réalisation des Actes</h3>
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em]">Réalisation des Actes</h3>
           </div>
-          <span className="text-[9px] font-bold text-slate-500 uppercase">Séance en cours</span>
+          <span className="text-[9px] font-bold text-slate-400 uppercase">Séance en cours</span>
         </div>
 
         <div className="p-6">
