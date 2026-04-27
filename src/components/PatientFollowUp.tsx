@@ -25,7 +25,7 @@ export function PatientFollowUp() {
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="h-4 w-4 text-blue-600" />
-              <h4 className="text-[11px] font-bold uppercase tracking-widest text-blue-700">Prochain Rendez-vous</h4>
+              <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Prochain Rendez-vous</h4>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input 
@@ -43,7 +43,7 @@ export function PatientFollowUp() {
 
           {/* Satisfaction */}
           <div className="space-y-4 pt-6 border-t border-slate-100">
-            <h4 className="text-[11px] font-bold uppercase tracking-widest text-blue-700">Expérience Patient</h4>
+            <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Expérience Patient</h4>
             <div className="flex items-center gap-4">
               {[1, 2, 3, 4, 5].map(i => (
                 <button 

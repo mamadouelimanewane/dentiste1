@@ -74,7 +74,7 @@ export function BillingManager() {
       {/* Right: Payment Method */}
       <div className="space-y-6">
         <div className="bg-white border border-slate-200 rounded-sm p-6 space-y-6 shadow-sm">
-          <h3 className="text-[11px] font-bold uppercase tracking-widest text-blue-700">Mode de Règlement</h3>
+          <h3 className="text-sm font-black text-blue-900 uppercase tracking-tight">Mode de Règlement</h3>
           
           <div className="grid grid-cols-1 gap-3">
             {[
@@ -93,7 +93,7 @@ export function BillingManager() {
                 )}
               >
                 <method.icon className={cn("h-5 w-5", paymentMethod === method.id ? "text-blue-600" : "text-slate-400")} />
-                <span className="text-[10px] font-bold uppercase tracking-wider">{method.label}</span>
+                <span className="text-xs font-black uppercase tracking-tight">{method.label}</span>
               </button>
             ))}
           </div>

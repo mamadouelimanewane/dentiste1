@@ -36,7 +36,7 @@ export function QuoteBuilder() {
         {/* CATALOG PANEL */}
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[500px]">
           <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Catalogue des Actes</h3>
+            <h3 className="text-sm font-black text-blue-900 uppercase tracking-tight">Catalogue des Actes</h3>
             <span className="text-[9px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded uppercase">Tarif Conventionnel</span>
           </div>
           
@@ -67,7 +67,7 @@ export function QuoteBuilder() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4 text-blue-400" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Récapitulatif</h3>
+                <h3 className="text-sm font-black text-white uppercase tracking-tight">Récapitulatif</h3>
               </div>
               <span className="text-[10px] font-bold text-slate-500 uppercase">{selected.length} acte(s)</span>
             </div>
@@ -126,7 +126,7 @@ export function QuoteBuilder() {
           {selected.length > 0 && (
             <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Signature du Patient</h4>
+                <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Signature du Patient</h4>
                 <button onClick={clearSignature} className="text-slate-400 hover:text-rose-500" title="Effacer">
                   <Eraser className="h-3.5 w-3.5" />
                 </button>

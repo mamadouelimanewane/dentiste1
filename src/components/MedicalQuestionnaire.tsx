@@ -26,8 +26,8 @@ export function MedicalQuestionnaire() {
     <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
       <div className="p-5 border-b border-slate-100 bg-rose-50/30 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 text-rose-600" />
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Antécédents Médicaux</h3>
+          <AlertCircle className="h-4 w-4 text-blue-600" />
+          <h3 className="text-sm font-black text-blue-900 uppercase tracking-tight">Antécédents Médicaux</h3>
         </div>
         <span className="text-[9px] font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded uppercase">Points de vigilance</span>
       </div>
@@ -46,8 +46,8 @@ export function MedicalQuestionnaire() {
               )}
             >
               <span className={cn(
-                "text-xs font-semibold",
-                answers[q.id] ? "text-rose-900" : "text-slate-600"
+                "text-xs font-black uppercase tracking-tight",
+                answers[q.id] ? "text-rose-900" : "text-blue-900"
               )}>
                 {q.label}
               </span>
@@ -61,11 +61,11 @@ export function MedicalQuestionnaire() {
           ))}
         </div>
 
-        <div className="pt-4 space-y-1.5">
-          <label className="text-[11px] font-bold text-blue-700 uppercase tracking-wider ml-1">Observations Supplémentaires</label>
+        <div className="space-y-2 border-b-2 border-blue-100 pb-3 mt-8">
+          <label className="text-sm font-black text-blue-900 uppercase tracking-tight ml-1">Observations Supplémentaires</label>
           <textarea 
             placeholder="Détaillez ici toute autre pathologie ou traitement..."
-            className="w-full bg-white border border-slate-200 rounded-md p-3 text-xs font-medium focus:border-rose-500 focus:ring-1 focus:ring-rose-500 outline-none min-h-[80px] resize-none"
+            className="w-full bg-transparent border-none rounded-none p-2 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none min-h-[80px] resize-none"
           />
         </div>
       </div>

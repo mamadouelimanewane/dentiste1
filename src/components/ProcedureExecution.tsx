@@ -55,7 +55,7 @@ export function ProcedureExecution() {
                       {isDone ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-3 w-3 text-slate-200" />}
                     </div>
                     <div>
-                      <p className={cn("text-xs font-bold uppercase", isDone ? "text-emerald-900" : "text-slate-900")}>
+                      <p className={cn("text-sm font-black uppercase tracking-tight", isDone ? "text-emerald-900" : "text-blue-900")}>
                         {p.label}
                       </p>
                       <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">{p.category}</p>
