@@ -9,6 +9,7 @@ import { ProcedureExecution } from "@/components/ProcedureExecution";
 import { BillingManager } from "@/components/BillingManager";
 import { PatientFollowUp } from "@/components/PatientFollowUp";
 import { PractitionerHub } from "@/components/PractitionerHub";
+import { AccountingDashboard } from "@/components/AccountingDashboard";
 import { 
   Activity, 
   User, 
@@ -24,7 +25,8 @@ import {
   FileText,
   History,
   CheckCircle2,
-  Menu
+  Menu,
+  Calculator
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -36,6 +38,7 @@ const steps = [
   { id: 4, title: "Réalisation", fullTitle: "Réalisation des Actes", desc: "Soins et interventions techniques.", icon: Activity },
   { id: 5, title: "Administration", fullTitle: "Gestion Administrative", desc: "Facturation et règlements.", icon: FileText },
   { id: 6, title: "Suivi", fullTitle: "Suivi & Archivage", desc: "Clôture et planification futurs RDV.", icon: History },
+  { id: 7, title: "Comptabilité", fullTitle: "Comptabilité & Finances", desc: "Registre, factures et destinataires.", icon: Calculator },
 ];
 
 type Role = 'admin' | 'praticien' | 'accueil';
@@ -67,7 +70,7 @@ export default function Home() {
 
   const visibleSteps = steps.filter(s => {
     if (role === 'admin') return true;
-    if (role === 'accueil') return [1, 2, 5, 6].includes(s.id);
+    if (role === 'accueil') return [1, 2, 5, 6, 7].includes(s.id);
     if (role === 'praticien') return [2, 3, 4, 6].includes(s.id);
     return true;
   });
@@ -85,7 +88,7 @@ export default function Home() {
     // Adjust current step if it's no longer accessible
     const newVisible = steps.filter(s => {
       if (newRole === 'admin') return true;
-      if (newRole === 'accueil') return [1, 2, 5, 6].includes(s.id);
+      if (newRole === 'accueil') return [1, 2, 5, 6, 7].includes(s.id);
       if (newRole === 'praticien') return [2, 3, 4, 6].includes(s.id);
       return true;
     });
@@ -230,8 +233,9 @@ export default function Home() {
                     {currentStep === 4 && <ProcedureExecution />}
                     {currentStep === 5 && <BillingManager />}
                     {currentStep === 6 && <PatientFollowUp />}
+                    {currentStep === 7 && <AccountingDashboard />}
                     
-                    {![1, 2, 3, 4, 5, 6].includes(currentStep) && (
+                    {![1, 2, 3, 4, 5, 6, 7].includes(currentStep) && (
                       <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
                         <Activity className="h-10 w-10 text-slate-200" />
                         <div className="space-y-1">
