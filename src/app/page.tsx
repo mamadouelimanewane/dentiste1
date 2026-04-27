@@ -20,6 +20,7 @@ import { ProstheticsLab } from "@/components/ProstheticsLab";
 import { PrescriptionEditor } from "@/components/PrescriptionEditor";
 import { CommunicationHub } from "@/components/CommunicationHub";
 import { InventoryManager } from "@/components/InventoryManager";
+import { PatientDirectory } from "@/components/PatientDirectory";
 import { 
   Activity, 
   User, 
@@ -46,7 +47,8 @@ import {
   Layers,
   Pill,
   MessageSquare,
-  Package
+  Package,
+  FolderOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -69,6 +71,7 @@ const steps = [
   { id: 15, title: "Ordonnances", fullTitle: "Éditeur d'Ordonnance", desc: "Création et impression d'ordonnances.", icon: Pill },
   { id: 16, title: "Communication", fullTitle: "WhatsApp & SMS Hub", desc: "Gestion automatisée des rendez-vous et rappels.", icon: MessageSquare },
   { id: 17, title: "Stocks", fullTitle: "Inventory Manager Pro", desc: "Gestion des consommables et commandes.", icon: Package },
+  { id: 18, title: "Recherche", fullTitle: "Base de Données Centralisée", desc: "Recherche et indexation des dossiers patients.", icon: FolderOpen },
 ];
 
 type Role = 'admin' | 'praticien' | 'accueil' | 'comptable';
@@ -112,8 +115,8 @@ export default function Home() {
 
   const visibleSteps = steps.filter(s => {
     if (role === 'admin') return true;
-    if (role === 'accueil') return [1, 2, 5, 6, 7, 11, 16, 17].includes(s.id);
-    if (role === 'praticien') return [2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(s.id);
+    if (role === 'accueil') return [1, 2, 5, 6, 7, 11, 16, 17, 18].includes(s.id);
+    if (role === 'praticien') return [2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(s.id);
     if (role === 'comptable') return [5, 7].includes(s.id);
     return true;
   });
@@ -131,8 +134,8 @@ export default function Home() {
     // Adjust current step if it's no longer accessible
     const newVisible = steps.filter(s => {
       if (newRole === 'admin') return true;
-      if (newRole === 'accueil') return [1, 2, 5, 6, 7, 11, 16, 17].includes(s.id);
-      if (newRole === 'praticien') return [2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(s.id);
+      if (newRole === 'accueil') return [1, 2, 5, 6, 7, 11, 16, 17, 18].includes(s.id);
+      if (newRole === 'praticien') return [2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(s.id);
       if (newRole === 'comptable') return [5, 7].includes(s.id);
       return true;
     });
@@ -289,8 +292,9 @@ export default function Home() {
                     {currentStep === 15 && <PrescriptionEditor />}
                     {currentStep === 16 && <CommunicationHub />}
                     {currentStep === 17 && <InventoryManager />}
+                    {currentStep === 18 && <PatientDirectory />}
                     
-                    {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(currentStep) && (
+                    {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(currentStep) && (
                       <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
                         <Activity className="h-10 w-10 text-slate-200" />
                         <div className="space-y-1">

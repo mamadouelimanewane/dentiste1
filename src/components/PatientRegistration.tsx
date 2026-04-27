@@ -10,11 +10,13 @@ export function PatientRegistration() {
   const { currentPatient, setCurrentPatient } = usePatient();
   const [isSaved, setIsSaved] = useState(false);
   
+  const generateId = () => `SN-${Math.floor(10000 + Math.random() * 90000)}-X`;
+
   const [formData, setFormData] = useState({
     name: "",
     birthDate: "",
     phone: "",
-    idNumber: "",
+    idNumber: generateId(),
     address: ""
   });
 
