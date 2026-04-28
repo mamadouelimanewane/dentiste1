@@ -22,6 +22,7 @@ import { CommunicationHub } from "@/components/CommunicationHub";
 import { InventoryManager } from "@/components/InventoryManager";
 import { PatientDirectory } from "@/components/PatientDirectory";
 import { ClinicSettings } from "@/components/ClinicSettings";
+import { AdminHub } from "@/components/AdminHub";
 import { 
   Activity, 
   User, 
@@ -50,7 +51,8 @@ import {
   MessageSquare,
   Package,
   FolderOpen,
-  Settings
+  Settings,
+  ShieldAlert
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -75,6 +77,7 @@ const steps = [
   { id: 17, title: "Stocks", fullTitle: "Inventory Manager Pro", desc: "Gestion des consommables et commandes.", icon: Package },
   { id: 18, title: "Recherche", fullTitle: "Base de Données Centralisée", desc: "Recherche et indexation des dossiers patients.", icon: FolderOpen },
   { id: 19, title: "Configuration", fullTitle: "Paramètres du Cabinet", desc: "Configuration du profil, logo et infos légales.", icon: Settings },
+  { id: 20, title: "Super Admin", fullTitle: "Centre d'Administration Sécurisé", desc: "Utilisateurs, Logs, Catalogue et BI.", icon: ShieldAlert },
 ];
 
 type Role = 'admin' | 'praticien' | 'accueil' | 'comptable';
@@ -297,8 +300,9 @@ export default function Home() {
                     {currentStep === 17 && <InventoryManager />}
                     {currentStep === 18 && <PatientDirectory />}
                     {currentStep === 19 && <ClinicSettings />}
+                    {currentStep === 20 && <AdminHub />}
                     
-                    {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].includes(currentStep) && (
+                    {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(currentStep) && (
                       <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
                         <Activity className="h-10 w-10 text-slate-200" />
                         <div className="space-y-1">
