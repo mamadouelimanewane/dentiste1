@@ -24,6 +24,7 @@ import { ClinicSettings } from "@/components/ClinicSettings";
 import { AdminHub } from "@/components/AdminHub";
 import { InsuranceManager } from "@/components/InsuranceManager";
 import { NewDossier } from "@/components/NewDossier";
+import { StatsDashboard } from "@/components/StatsDashboard";
 import { 
   Activity, 
   User, 
@@ -82,6 +83,7 @@ const steps = [
   { id: 20, title: "Recherche", fullTitle: "Base de Données Centralisée", desc: "Recherche et indexation des dossiers patients.", icon: FolderOpen },
   { id: 21, title: "Configuration", fullTitle: "Paramètres du Cabinet", desc: "Configuration du profil, logo et infos légales.", icon: Settings },
   { id: 22, title: "Super Admin", fullTitle: "Centre d'Administration Sécurisé", desc: "Utilisateurs, Logs, Catalogue et BI.", icon: ShieldAlert },
+  { id: 23, title: "Statistiques", fullTitle: "Tableau de Bord Stratégique", desc: "Analyse de performance et pilotage confidentiel.", icon: Calculator },
 ];
 
 type Role = 'admin' | 'praticien' | 'accueil' | 'comptable';
@@ -125,9 +127,9 @@ export default function Home() {
 
   const visibleSteps = steps.filter(s => {
     if (role === 'admin') return true;
-    if (role === 'accueil') return [1, 2, 5, 6, 7, 11, 16, 17, 18].includes(s.id);
-    if (role === 'praticien') return [2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(s.id);
-    if (role === 'comptable') return [5, 7].includes(s.id);
+    if (role === 'accueil') return [1, 2, 5, 6, 7, 11, 16, 17, 18, 19, 20].includes(s.id);
+    if (role === 'praticien') return [2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(s.id);
+    if (role === 'comptable') return [5, 7, 8].includes(s.id);
     return true;
   });
 
@@ -191,7 +193,7 @@ export default function Home() {
               <Activity className="h-5 w-5" />
             </div>
             <h1 className="font-bold tracking-tight text-white text-base">
-              Dentiste<span className="text-blue-400">Lite</span>
+              Elite ERP <span className="text-blue-400">Cap Vert</span>
             </h1>
           </div>
 
@@ -341,8 +343,9 @@ export default function Home() {
                     {currentStep === 20 && <PatientDirectory />}
                     {currentStep === 21 && <ClinicSettings />}
                     {currentStep === 22 && <AdminHub />}
+                    {currentStep === 23 && <StatsDashboard />}
                     
-                    {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22].includes(currentStep) && (
+                    {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].includes(currentStep) && (
                       <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
                         <Activity className="h-10 w-10 text-slate-200" />
                         <div className="space-y-1">

@@ -7,12 +7,12 @@ import { cn } from "@/lib/utils";
 export function ClinicSettings() {
   const [isSaved, setIsSaved] = useState(false);
   const [formData, setFormData] = useState({
-    clinicName: "Cabinet Dentaire DentoPrestige Elite",
-    slogan: "L'excellence du sourire au quotidien",
+    clinicName: "CABINET DENTAIRE DU CAP VERT",
+    slogan: "L'excellence dentaire au Cap Vert",
     phone: "+221 33 800 00 00",
-    email: "contact@dentoprestige.sn",
-    website: "www.dentoprestige.sn",
-    address: "123 Avenue Leopold Sedar Senghor, Dakar, Sénégal",
+    email: "contact@capvert-dentaire.sn",
+    website: "www.capvert-dentaire.sn",
+    address: "Avenue du Cap Vert, Dakar, Sénégal",
     rpps: "10123456789",
     ninea: "001234567 2V2",
     rccm: "SN-DKR-2026-B-1234",

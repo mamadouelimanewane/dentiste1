@@ -128,7 +128,7 @@ export const InvoicePDF = ({ items, total, patientName, patientId, invoiceNumber
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.logoSection}>
-          <Text style={styles.title}>DENTISTE LITE</Text>
+          <Text style={styles.title}>ELITE ERP CAP VERT</Text>
           <Text style={styles.subtitle}>Cabinet Dentaire de Référence</Text>
         </View>
         <View style={{ textAlign: 'right' }}>
@@ -184,7 +184,7 @@ export const InvoicePDF = ({ items, total, patientName, patientId, invoiceNumber
           Merci de votre confiance. Cette facture est certifiée conforme aux tarifs en vigueur.
         </Text>
         <Text style={[styles.footerText, { marginTop: 4 }]}>
-          Dentiste Lite v1.3 - Système de Gestion Certifié Elite Pro
+          Elite ERP Cap Vert v1.3 - Système de Gestion Certifié CABINET DENTAIRE DU CAP VERT
         </Text>
       </View>
     </Page>

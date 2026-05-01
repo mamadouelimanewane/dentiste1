@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Dentiste Lite - Parcours Patient",
-  description: "Version allégée basée sur le workflow 6 phases",
+  title: "Elite ERP CABINET DENTAIRE DU CAP VERT",
+  description: "Système de Gestion Dentaire de Haute Précision",
 };
 
 import { PatientProvider } from "@/lib/context";

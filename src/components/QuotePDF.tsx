@@ -129,7 +129,7 @@ export const QuotePDF = ({ items, total, patientName }: QuotePDFProps) => (
 
       <Text style={styles.footer}>
         Clinique du Cap Vert - Dakar, Plateau - Tél: +221 77 000 00 00 - NINEA: 012345678{'\n'}
-        Généré par DentisteLite Hub Praticien
+        Généré par Elite ERP Cap Vert Hub Praticien
       </Text>
     </Page>
   </Document>

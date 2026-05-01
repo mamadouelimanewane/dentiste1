@@ -171,15 +171,15 @@ export function PrescriptionEditor() {
                <h1 className="text-2xl font-bold uppercase tracking-wider text-[#1E3A8A]">Dr. Diallo Mamadou</h1>
                <p className="text-sm font-semibold tracking-widest mt-1">Chirurgien Dentiste • Diplômé d'État</p>
                <div className="mt-4 text-xs space-y-1 text-slate-600">
-                 <p>123 Avenue de la République, 75011 Paris</p>
-                 <p>Tél: 01 23 45 67 89 • contact@dentiste.app</p>
+                 <p>Avenue du Cap Vert, Dakar, Sénégal</p>
+                 <p>Tél: +221 33 800 00 00 • contact@capvert-dentaire.sn</p>
                  <p>N° RPPS : 10123456789</p>
                </div>
              </div>
 
              {/* Date */}
              <div className="text-right mb-12">
-               <p className="text-sm italic">Paris, le {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+               <p className="text-sm italic">Dakar, le {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
              </div>
 
              {/* Patient */}

@@ -1,216 +1,255 @@
 "use client";
 
 import React, { useState } from "react";
-import { Smile, Sparkles, UploadCloud, History, Download, Image as ImageIcon, Camera, Wand2, PaintBucket, MoveUpRight, Eye, TrendingUp, Search } from "lucide-react";
+import { 
+  Smile, 
+  Sparkles, 
+  UploadCloud, 
+  History, 
+  Download, 
+  Image as ImageIcon, 
+  Camera, 
+  Wand2, 
+  PaintBucket, 
+  MoveUpRight, 
+  Eye, 
+  TrendingUp, 
+  Search,
+  Maximize2,
+  CheckCircle2,
+  Zap,
+  RotateCcw
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function SmileDesignStudio() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationDone, setSimulationDone] = useState(false);
+  const [sliderPos, setSliderPos] = useState(50);
 
   const runSimulation = () => {
     setIsSimulating(true);
     setTimeout(() => {
       setIsSimulating(false);
       setSimulationDone(true);
-    }, 2000);
+    }, 2500);
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* HEADER BAR - DASHBOARD STYLE */}
-      <div className="bg-white border border-slate-200 rounded-sm p-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="h-10 w-10 bg-[#1E3A8A] text-white rounded flex items-center justify-center shadow-lg shadow-blue-200">
-            <Smile className="h-6 w-6 text-amber-300" />
+    <div className="space-y-6 animate-in fade-in duration-700">
+      {/* ELITE HEADER */}
+      <div className="bg-white border border-slate-200 rounded-sm p-5 flex flex-col md:flex-row items-center justify-between shadow-sm gap-4">
+        <div className="flex items-center gap-5">
+          <div className="h-12 w-12 bg-blue-900 text-amber-400 rounded flex items-center justify-center shadow-xl shadow-blue-900/10">
+            <Smile className="h-7 w-7" />
           </div>
           <div>
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Smile Design Studio Pro</h2>
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-3 w-3 text-amber-500" />
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Esthetic Simulation Engine</p>
+            <h2 className="text-base font-black text-slate-900 uppercase tracking-tighter">Smile Design Studio Pro</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <Sparkles className="h-3 w-3 text-amber-500 fill-current" />
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Esthetic Simulation Engine v2.0</p>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full">
-            <Search className="h-3.5 w-3.5 text-slate-400" />
-            <input type="text" placeholder="Rechercher un module, patient..." className="bg-transparent border-none text-[10px] font-bold uppercase outline-none w-48" />
-          </div>
-          <div className="flex items-center gap-2 border-l border-slate-200 pl-6">
-            <div className="text-right">
-              <p className="text-[10px] font-black text-slate-900">22:37</p>
-              <p className="text-[9px] font-bold text-blue-600 uppercase">Dr. Diallo</p>
-            </div>
-            <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-black text-xs">
-              DR
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-[#0F172A] text-white p-6 rounded-sm flex justify-between items-center relative overflow-hidden">
-        <div className="relative z-10 space-y-1">
-          <h3 className="text-lg font-black uppercase tracking-widest text-amber-300">Simulation Esthétique par IA</h3>
-          <p className="text-slate-300 text-xs font-medium">Montrez le futur sourire à vos patients avant même de commencer le traitement.</p>
-        </div>
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-amber-500/20 to-transparent" />
-        <Wand2 className="absolute -right-4 -top-4 h-32 w-32 text-amber-500 opacity-20" />
-      </div>
-
-      {/* TOOLBAR */}
-      <div className="flex justify-between items-center bg-white p-3 border border-slate-200 rounded-sm shadow-sm">
-        <div className="flex gap-2">
-          <button className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded transition-colors">
+        
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all">
             <History className="h-4 w-4" /> Historique
           </button>
-        </div>
-        <div>
-           <button className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-4 py-2 rounded transition-colors">
-            <Download className="h-4 w-4" /> Exporter
+          <button className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-900/20">
+            <Download className="h-4 w-4" /> Exporter Simulation
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* MAIN IMAGE UPLOAD / PREVIEW */}
+        {/* MAIN VIEWER */}
         <div className="lg:col-span-3 space-y-4">
-          <div className="bg-white border border-slate-200 rounded-sm shadow-sm min-h-[450px] p-6 flex flex-col items-center justify-center relative overflow-hidden group">
+          <div className="bg-slate-900 border border-slate-800 rounded-sm shadow-2xl min-h-[500px] relative overflow-hidden flex flex-col">
+            
             {simulationDone ? (
-              <div className="absolute inset-0 flex">
-                 <div className="w-1/2 h-full bg-slate-100 border-r border-slate-300 relative overflow-hidden flex items-center justify-center">
-                    <p className="absolute top-4 left-4 bg-black/50 text-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest rounded backdrop-blur-sm">Avant</p>
-                    <Smile className="h-24 w-24 text-slate-300 opacity-50" />
-                 </div>
-                 <div className="w-1/2 h-full bg-blue-50 relative overflow-hidden flex items-center justify-center">
-                    <p className="absolute top-4 right-4 bg-amber-500 text-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest rounded shadow-lg shadow-amber-500/40">Après (IA)</p>
-                    <Smile className="h-24 w-24 text-amber-400" />
-                    {/* Simulation shine effect */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
-                 </div>
-                 {/* Drag handle line */}
-                 <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-amber-500 -ml-[0.5px] shadow-[0_0_10px_rgba(245,158,11,0.5)] cursor-ew-resize flex items-center justify-center">
-                    <div className="h-8 w-6 bg-white border-2 border-amber-500 rounded-full flex items-center justify-center shadow-md">
-                      <div className="h-4 w-0.5 bg-amber-500 rounded-full" />
-                    </div>
-                 </div>
+              <div className="relative flex-1 group">
+                {/* BEFORE (UNDER) */}
+                <div className="absolute inset-0 bg-slate-800 flex items-center justify-center overflow-hidden">
+                   <div className="opacity-40 grayscale blur-sm">
+                      <Smile className="h-48 w-48 text-slate-400" />
+                   </div>
+                   <p className="absolute top-6 left-6 bg-black/60 text-white px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] rounded-sm backdrop-blur-md border border-white/10">État Initial</p>
+                </div>
+
+                {/* AFTER (OVER) */}
+                <div 
+                  className="absolute inset-0 bg-blue-50/5 flex items-center justify-center overflow-hidden"
+                  style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
+                >
+                   <div className="flex flex-col items-center">
+                      <Smile className="h-48 w-48 text-amber-400 drop-shadow-[0_0_20px_rgba(245,158,11,0.3)]" />
+                      <div className="mt-4 flex gap-1">
+                         {[1,2,3,4,5,6,7,8].map(i => (
+                            <div key={i} className="h-8 w-4 bg-white/90 rounded-sm border border-slate-200" />
+                         ))}
+                      </div>
+                   </div>
+                   <p className="absolute top-6 right-6 bg-amber-500 text-white px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] rounded-sm shadow-xl border border-amber-400">Rendu IA Elite</p>
+                </div>
+
+                {/* SLIDER HANDLE */}
+                <div 
+                   className="absolute top-0 bottom-0 w-1 bg-amber-500 cursor-ew-resize z-20 group"
+                   style={{ left: `${sliderPos}%` }}
+                >
+                   <input 
+                      type="range" 
+                      min="0" 
+                      max="100" 
+                      value={sliderPos}
+                      onChange={(e) => setSliderPos(parseInt(e.target.value))}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize"
+                   />
+                   <div className="absolute top-1/2 -left-3 -translate-y-1/2 h-6 w-6 bg-white border-2 border-amber-500 rounded-full flex items-center justify-center shadow-2xl">
+                      <div className="flex gap-0.5">
+                         <div className="w-0.5 h-3 bg-amber-500 rounded-full" />
+                         <div className="w-0.5 h-3 bg-amber-500 rounded-full" />
+                      </div>
+                   </div>
+                </div>
+
+                {/* OVERLAY CONTROLS */}
+                <div className="absolute bottom-6 inset-x-6 flex justify-between items-center z-10">
+                   <div className="flex gap-2">
+                      <button onClick={() => setSimulationDone(false)} className="p-2 bg-black/40 hover:bg-black/60 rounded-sm border border-white/10 text-white transition-all">
+                        <RotateCcw className="h-4 w-4" />
+                      </button>
+                      <button className="p-2 bg-black/40 hover:bg-black/60 rounded-sm border border-white/10 text-white transition-all">
+                        <Maximize2 className="h-4 w-4" />
+                      </button>
+                   </div>
+                   <div className="bg-emerald-500/20 backdrop-blur-md border border-emerald-500/50 px-3 py-1.5 rounded-sm flex items-center gap-2">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                      <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Optimisé par DeepSmile AI</span>
+                   </div>
+                </div>
               </div>
             ) : (
-              <div className="text-center space-y-6 z-10">
-                <div className="h-24 w-24 bg-slate-50 border-2 border-dashed border-slate-300 rounded-full flex items-center justify-center mx-auto group-hover:scale-105 transition-transform cursor-pointer">
-                  <Camera className="h-10 w-10 text-slate-400" />
+              <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-8">
+                <div className="relative group">
+                   <div className="h-32 w-32 bg-slate-800 rounded-full flex items-center justify-center border-2 border-dashed border-slate-700 group-hover:border-amber-400 transition-all cursor-pointer">
+                      <Camera className="h-12 w-12 text-slate-500 group-hover:text-amber-400" />
+                   </div>
+                   <motion.div 
+                     animate={{ scale: [1, 1.2, 1] }}
+                     transition={{ repeat: Infinity, duration: 2 }}
+                     className="absolute -top-2 -right-2 h-8 w-8 bg-amber-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-amber-900/20"
+                   >
+                     <Plus className="h-5 w-5" />
+                   </motion.div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">Cliquez pour importer</h4>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Portrait Patient</p>
-                  <p className="text-xs text-slate-400 mt-3 max-w-sm mx-auto font-medium leading-relaxed">
-                    Importez une photo de face. Notre IA analysera automatiquement les paramètres esthétiques.
-                  </p>
+                
+                <div className="max-w-xs space-y-2">
+                   <h3 className="text-sm font-black text-white uppercase tracking-[0.2em]">Capture de Portrait</h3>
+                   <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                     Importez un cliché haute résolution pour une analyse biométrique et esthétique.
+                   </p>
                 </div>
-                <div className="flex items-center justify-center gap-4 pt-4">
-                  <button 
-                    onClick={runSimulation}
-                    disabled={isSimulating}
-                    className="flex items-center gap-2 bg-[#1E3A8A] hover:bg-blue-900 text-white px-6 py-3 rounded-sm text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50"
-                  >
-                    {isSimulating ? <Sparkles className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 text-amber-400" />}
-                    {isSimulating ? "Analyse en cours..." : "Générer Simulation IA"}
-                  </button>
-                  <button className="text-xs font-bold text-slate-500 uppercase tracking-widest hover:text-blue-600 transition-colors underline underline-offset-4">
-                    Essayer avec une démo
-                  </button>
-                </div>
+
+                <button 
+                  onClick={runSimulation}
+                  disabled={isSimulating}
+                  className="relative group overflow-hidden bg-white text-slate-900 px-8 py-4 rounded-sm text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-2xl hover:bg-amber-400 hover:text-white disabled:opacity-50"
+                >
+                  <span className="relative z-10 flex items-center gap-3">
+                    {isSimulating ? <Sparkles className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                    {isSimulating ? "Traitement Neural..." : "Lancer le Smile Studio"}
+                  </span>
+                  <AnimatePresence>
+                    {isSimulating && (
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: "100%" }}
+                        className="absolute inset-0 bg-blue-600 z-0"
+                        transition={{ duration: 2.5 }}
+                      />
+                    )}
+                  </AnimatePresence>
+                </button>
               </div>
             )}
-            {!simulationDone && <ImageIcon className="absolute -bottom-10 -right-10 h-64 w-64 text-slate-50 rotate-12" />}
           </div>
         </div>
 
         {/* ANALYSIS PANELS */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-5 space-y-3 relative overflow-hidden group">
-            <div className="flex items-center gap-3">
-               <div className="h-8 w-8 bg-amber-50 rounded flex items-center justify-center">
-                 <PaintBucket className="h-4 w-4 text-amber-500" />
-               </div>
-               <div>
-                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Analyse de Teinte</h4>
-                 <p className="text-sm font-black text-slate-900 uppercase tracking-tight">Suggéré : Vita 3D Master OM3</p>
-               </div>
-            </div>
-            <p className="text-xs text-slate-600 font-medium italic">
-              L'IA préconise cette teinte pour un rendu naturel sur la carnation détectée.
-            </p>
-            <div className="absolute right-0 top-0 h-full w-2 bg-amber-400" />
-          </div>
+           <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
+              <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
+                 <Zap className="h-4 w-4 text-amber-500" />
+                 <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Paramètres IA</h4>
+              </div>
+              <div className="p-5 space-y-5">
+                 {[
+                   { label: "Teinte (Shade)", value: "Vita Master OM3", icon: PaintBucket, color: "text-amber-500", bg: "bg-amber-50" },
+                   { label: "Architecture Gingivale", value: "Optimisation +1.2mm", icon: MoveUpRight, color: "text-emerald-500", bg: "bg-emerald-50" },
+                   { label: "Forme des Dents", value: "Ovalaire Esthétique", icon: Smile, color: "text-blue-500", bg: "bg-blue-50" }
+                 ].map((p, i) => (
+                   <div key={i} className="flex items-center gap-4 group cursor-pointer">
+                      <div className={cn("h-10 w-10 rounded flex items-center justify-center transition-all group-hover:scale-110", p.bg)}>
+                         <p.icon className={cn("h-5 w-5", p.color)} />
+                      </div>
+                      <div className="flex-1">
+                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{p.label}</p>
+                         <p className="text-xs font-black text-slate-900 uppercase mt-0.5">{p.value}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-600 transition-colors" />
+                   </div>
+                 ))}
+              </div>
+           </div>
 
-          <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-5 space-y-3 relative overflow-hidden">
-            <div className="flex items-center gap-3">
-               <div className="h-8 w-8 bg-emerald-50 rounded flex items-center justify-center">
-                 <MoveUpRight className="h-4 w-4 text-emerald-500" />
-               </div>
-               <div>
-                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Symétrie Gingivale</h4>
-                 <p className="text-sm font-black text-slate-900 uppercase tracking-tight">Optimisée (+1.2mm)</p>
-               </div>
-            </div>
-            <p className="text-xs text-slate-600 font-medium italic">
-              Correction de la ligne de sourire pour aligner les collets.
-            </p>
-            <div className="absolute right-0 top-0 h-full w-2 bg-emerald-400" />
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-5 space-y-3 relative overflow-hidden">
-            <div className="flex items-center gap-3">
-               <div className="h-8 w-8 bg-blue-50 rounded flex items-center justify-center">
-                 <Eye className="h-4 w-4 text-blue-500" />
-               </div>
-               <div>
-                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rendu Visuel 3D</h4>
-                 <p className="text-sm font-black text-slate-900 uppercase tracking-tight">Photoréalisme : 98.4%</p>
-               </div>
-            </div>
-            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-1 mb-2">
-              <div className="h-full bg-blue-500 w-[98.4%]" />
-            </div>
-            <p className="text-xs text-slate-600 font-medium italic">
-              L'éclairage a été harmonisé pour correspondre aux sources de lumière réelles.
-            </p>
-            <div className="absolute right-0 top-0 h-full w-2 bg-blue-500" />
-          </div>
+           <div className="bg-[#0F172A] text-white rounded-sm shadow-xl p-6 relative overflow-hidden">
+              <div className="relative z-10 space-y-4">
+                 <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-emerald-400" />
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Impact Prévisionnel</h4>
+                 </div>
+                 <div className="flex items-end gap-2">
+                    <span className="text-4xl font-black tracking-tighter text-white">+42%</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase pb-1.5">Score Confiance</span>
+                 </div>
+                 <p className="text-[11px] text-slate-400 leading-relaxed font-medium italic">
+                    "L'alignement neural et la correction chromatique suggèrent une amélioration significative de la ligne de sourire."
+                 </p>
+                 <button className="w-full mt-2 py-3 bg-white text-slate-900 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] hover:bg-amber-400 transition-all shadow-xl">
+                    Valider le Design
+                 </button>
+              </div>
+              <Sparkles className="absolute -right-4 -bottom-4 h-32 w-32 text-white/5" />
+           </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* BOTTOM PANEL - PLAN DE SOIN OPTIQUE */}
-      <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
-        <div className="bg-slate-50 p-4 border-b border-slate-100">
-           <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-700">Plan de Soin Optique</h4>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100">
-          <div className="p-6 flex flex-col justify-center">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Teinte sélectionnée</p>
-            <p className="text-sm font-black text-slate-900 uppercase">OM3 (Blanchiment)</p>
-          </div>
-          <div className="p-6 flex flex-col justify-center">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nb de Facettes</p>
-            <p className="text-sm font-black text-slate-900 uppercase">8 Unités (14 à 24)</p>
-          </div>
-          <div className="p-6 flex flex-col justify-center">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Forme des dents</p>
-            <p className="text-sm font-black text-slate-900 uppercase">Ovalaire / Soft Esthetic</p>
-          </div>
-          <div className="p-6 bg-amber-50/50 flex flex-col justify-center items-center text-center">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Impact prévisionnel du sourire</p>
-            </div>
-            <div className="flex items-end gap-1">
-               <span className="text-3xl font-black text-emerald-600">+42%</span>
-            </div>
-            <p className="text-[9px] font-bold text-emerald-700 uppercase tracking-widest mt-1">Confiance en soi estimée (AI Score)</p>
-          </div>
-        </div>
-      </div>
+function Plus(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 12h14" />
+      <path d="M12 5v14" />
+    </svg>
+  );
+}
+    </div>
     </div>
   );
 }
