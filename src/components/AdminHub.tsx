@@ -234,12 +234,143 @@ export function AdminHub() {
             </div>
           )}
 
-          {/* 4. TEMPLATES & 5. BI & 6. MULTISITE (Placeholders for size) */}
-          {(activeTab === "templates" || activeTab === "bi" || activeTab === "multisite") && (
+          {/* 4. BUSINESS INTELLIGENCE (BI) */}
+          {activeTab === "bi" && (
+            <div className="flex flex-col h-full overflow-y-auto">
+              <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Performance & Analytics</h3>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase">Données consolidées en temps réel</p>
+                </div>
+                <div className="flex gap-2">
+                  <select className="bg-white border border-slate-200 rounded px-3 py-1.5 text-[10px] font-bold uppercase outline-none">
+                    <option>Les 30 derniers jours</option>
+                    <option>Trimestre en cours</option>
+                    <option>Année 2026</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="p-6 space-y-8">
+                {/* Key Metrics Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {[
+                    { label: "Chiffre d'Affaires", value: "8,450,000 F", trend: "+12.5%", color: "text-blue-600" },
+                    { label: "Nouveaux Patients", value: "124", trend: "+8.2%", color: "text-emerald-600" },
+                    { label: "Taux d'Acceptation Devis", value: "68%", trend: "-2.1%", color: "text-amber-600" },
+                    { label: "Annulations RDV", value: "4.2%", trend: "-0.5%", color: "text-rose-600" },
+                  ].map((m, i) => (
+                    <div key={i} className="bg-white border border-slate-100 rounded p-4 shadow-sm">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{m.label}</p>
+                      <div className="flex items-end justify-between">
+                        <p className={cn("text-xl font-black tracking-tighter", m.color)}>{m.value}</p>
+                        <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", m.trend.startsWith('+') ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
+                          {m.trend}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Charts Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Revenue Chart (CSS-based) */}
+                  <div className="bg-white border border-slate-200 rounded p-5 space-y-6 shadow-sm">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">Flux de Trésorerie (M-1)</h4>
+                      <div className="flex gap-3">
+                        <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-blue-600" /><span className="text-[9px] font-bold text-slate-500 uppercase">Encaissements</span></div>
+                        <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-slate-200" /><span className="text-[9px] font-bold text-slate-500 uppercase">Prévisions</span></div>
+                      </div>
+                    </div>
+                    <div className="h-48 flex items-end justify-between gap-2 px-2">
+                      {[40, 65, 45, 80, 55, 90, 75, 85, 60, 95, 70, 100].map((h, i) => (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer">
+                          <div className="w-full bg-slate-50 rounded-t-sm relative overflow-hidden h-full flex flex-col justify-end">
+                            <motion.div 
+                              initial={{ height: 0 }}
+                              animate={{ height: `${h}%` }}
+                              transition={{ delay: i * 0.05, duration: 0.8 }}
+                              className="bg-blue-600 w-full rounded-t-sm group-hover:bg-blue-500 transition-colors"
+                            />
+                          </div>
+                          <span className="text-[8px] font-black text-slate-400 group-hover:text-blue-600">J{i+1}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Procedure Breakdown */}
+                  <div className="bg-white border border-slate-200 rounded p-5 space-y-6 shadow-sm">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">Répartition par Acte</h4>
+                    <div className="space-y-4">
+                      {[
+                        { label: "Soins Conservateurs", value: 45, color: "bg-blue-600" },
+                        { label: "Prothèses Fixes", value: 30, color: "bg-emerald-500" },
+                        { label: "Chirurgie & Implants", value: 15, color: "bg-purple-600" },
+                        { label: "Orthodontie / ODF", value: 10, color: "bg-amber-500" },
+                      ].map((p, i) => (
+                        <div key={i} className="space-y-1.5">
+                          <div className="flex justify-between text-[10px] font-bold uppercase tracking-tight">
+                            <span className="text-slate-600">{p.label}</span>
+                            <span className="text-slate-900">{p.value}%</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${p.value}%` }}
+                              transition={{ delay: 0.5 + i * 0.1, duration: 1 }}
+                              className={cn("h-full rounded-full", p.color)}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Practitioner Performance Table */}
+                <div className="bg-white border border-slate-200 rounded overflow-hidden shadow-sm">
+                  <div className="p-4 bg-slate-800 text-white flex justify-between items-center">
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em]">Performance Praticiens</h4>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Source: Analytics Engine</span>
+                  </div>
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 border-b border-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                      <tr>
+                        <th className="p-3">Praticien</th>
+                        <th className="p-3">Actes</th>
+                        <th className="p-3">Volume Horaire</th>
+                        <th className="p-3">Revenue (F)</th>
+                        <th className="p-3 text-right">Efficacité</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {[
+                        { name: "Dr. Mamadou Fall", acts: 142, hours: "156h", revenue: "3,850,000", efficiency: "94%" },
+                        { name: "Dr. Aïssatou Sow", acts: 98, hours: "124h", revenue: "2,920,000", efficiency: "88%" },
+                        { name: "Dr. Cheikh Tidiane", acts: 45, hours: "62h", revenue: "1,680,000", efficiency: "91%" },
+                      ].map((dr, i) => (
+                        <tr key={i} className="text-xs font-bold text-slate-700 hover:bg-slate-50/80 transition-colors">
+                          <td className="p-3 text-slate-900">{dr.name}</td>
+                          <td className="p-3">{dr.acts}</td>
+                          <td className="p-3">{dr.hours}</td>
+                          <td className="p-3">{dr.revenue}</td>
+                          <td className="p-3 text-right text-emerald-600">{dr.efficiency}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 5. TEMPLATES & 6. MULTISITE (Placeholders for size) */}
+          {(activeTab === "templates" || activeTab === "multisite") && (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-10 bg-slate-50/50">
               <div className="h-20 w-20 bg-white rounded-full shadow-sm flex items-center justify-center border border-slate-200 mb-6">
                 {activeTab === "templates" && <FileText className="h-10 w-10 text-amber-500" />}
-                {activeTab === "bi" && <BarChart3 className="h-10 w-10 text-purple-500" />}
                 {activeTab === "multisite" && <Building className="h-10 w-10 text-blue-500" />}
               </div>
               <h3 className="text-xl font-black uppercase tracking-widest text-slate-900 mb-2">Module en cours d'intégration</h3>

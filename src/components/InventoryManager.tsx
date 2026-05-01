@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Package, ShoppingCart, AlertTriangle, TrendingDown, Plus, Search, Filter, Box, AlertCircle, CheckCircle2, ChevronRight, Activity } from "lucide-react";
+import { Package, ShoppingCart, AlertTriangle, TrendingDown, Plus, Search, Filter, Box, AlertCircle, CheckCircle2, ChevronRight, Activity, TrendingUp } from "lucide-react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export function InventoryManager() {
@@ -156,19 +157,45 @@ export function InventoryManager() {
           <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
              <div className="bg-slate-50 border-b border-slate-100 p-4">
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-700 flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-blue-500" /> Scanner Code-Barres
+                  <Activity className="h-4 w-4 text-blue-500" /> Tendance Stock
                 </h3>
              </div>
-             <div className="p-6 flex flex-col items-center justify-center text-center space-y-4">
-                <div className="h-16 w-16 bg-blue-50 rounded-full flex items-center justify-center animate-pulse">
-                  <ScanBarcodeIcon className="h-8 w-8 text-blue-500" />
+             <div className="p-4 space-y-4">
+                <div className="h-24 flex items-end justify-between gap-1 px-1">
+                   {[30, 45, 35, 60, 50, 75, 40].map((h, i) => (
+                      <div key={i} className="flex-1 bg-slate-100 rounded-t-sm relative overflow-hidden h-full flex flex-col justify-end group">
+                         <motion.div 
+                            initial={{ height: 0 }}
+                            animate={{ height: `${h}%` }}
+                            className="bg-fuchsia-500 w-full rounded-t-sm opacity-60 group-hover:opacity-100 transition-opacity"
+                         />
+                      </div>
+                   ))}
                 </div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  En attente de scan...
-                </p>
-                <button className="w-full bg-slate-900 hover:bg-black text-white px-4 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors mt-2">
-                  Saisie Manuelle
-                </button>
+                <div className="flex justify-between text-[8px] font-bold text-slate-400 uppercase">
+                   <span>Lun</span>
+                   <span>Dim</span>
+                </div>
+             </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
+             <div className="bg-slate-50 border-b border-slate-100 p-4">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-700">Fournisseurs Clés</h3>
+             </div>
+             <div className="p-4 space-y-3">
+                {[
+                  { name: "Dento-Tech Dakar", contact: "77 123 45 67", rating: "★★★★★" },
+                  { name: "Pro-Médical International", contact: "33 821 00 11", rating: "★★★★☆" }
+                ].map((f, i) => (
+                  <div key={i} className="flex flex-col border-b border-slate-50 pb-2 last:border-0">
+                    <span className="text-xs font-black text-slate-900">{f.name}</span>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-[10px] font-bold text-slate-400">{f.contact}</span>
+                      <span className="text-[10px] text-amber-500">{f.rating}</span>
+                    </div>
+                  </div>
+                ))}
              </div>
           </div>
           
@@ -179,7 +206,7 @@ export function InventoryManager() {
              <p className="text-xs text-amber-900 font-medium leading-relaxed">
                3 articles sont en dessous de leur seuil d'alerte. Une commande fournisseur est recommandée.
              </p>
-             <button className="w-full bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors shadow-md shadow-amber-900/20">
+             <button className="w-full bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors shadow-md shadow-amber-900/20 active:scale-95 transition-transform">
                Générer Bon de Commande
              </button>
           </div>

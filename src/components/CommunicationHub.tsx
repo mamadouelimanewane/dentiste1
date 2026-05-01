@@ -129,13 +129,23 @@ export function CommunicationHub() {
             <div className="space-y-3">
               <div className="flex justify-between items-end">
                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Message</label>
-                 <button className="text-[9px] font-bold uppercase text-blue-600 hover:underline">Modèles</button>
+                 <div className="flex gap-2">
+                   <select 
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="text-[9px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded outline-none cursor-pointer"
+                   >
+                     <option value="">Sélectionner un modèle</option>
+                     <option value="Bonjour {patient}, nous vous confirmons votre RDV du {date} à {heure}. À demain !">Confirmation RDV</option>
+                     <option value="Bonjour {patient}, comment vous sentez-vous après votre intervention ? N'hésitez pas à nous contacter.">Suivi Post-Op</option>
+                     <option value="Bonjour {patient}, votre devis est prêt. Vous pouvez le consulter sur votre espace patient.">Devis disponible</option>
+                   </select>
+                 </div>
               </div>
               <textarea 
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Tapez votre message ici... Utilisez {patient}, {date}, {heure} pour personnaliser"
-                className="w-full bg-slate-50 border border-slate-200 rounded-sm p-4 text-sm font-medium text-slate-800 outline-none focus:border-blue-400 min-h-[150px] resize-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-sm p-4 text-sm font-medium text-slate-800 outline-none focus:border-blue-400 min-h-[150px] resize-none focus:bg-white transition-all"
               />
               <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
                 <span>{message.length} caractères</span>
@@ -192,15 +202,29 @@ export function CommunicationHub() {
                   </div>
                   <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-0.5 rounded">8</span>
                 </button>
-                <button className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors group text-left">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 bg-emerald-50 rounded flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
-                      <Users className="h-4 w-4 text-emerald-600" />
+             </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
+             <div className="bg-slate-50 border-b border-slate-100 p-4">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-700">Flux d'Envoi Direct</h3>
+             </div>
+             <div className="p-4 space-y-4">
+                {[
+                  { name: "M. Diallo", status: "Délivré", time: "10:42", channel: "WA" },
+                  { name: "Mme. Sow", status: "Envoi...", time: "10:55", channel: "SMS" },
+                ].map((s, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                       <div className={cn("h-6 w-6 rounded flex items-center justify-center text-[8px] font-black", s.channel === "WA" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700")}>{s.channel}</div>
+                       <div>
+                          <p className="text-[10px] font-black text-slate-900">{s.name}</p>
+                          <p className="text-[8px] font-bold text-slate-400">{s.time}</p>
+                       </div>
                     </div>
-                    <span className="text-xs font-bold text-slate-700">Suivis Post-Op</span>
+                    <span className={cn("text-[8px] font-black uppercase px-1.5 py-0.5 rounded", s.status === "Délivré" ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400 animate-pulse")}>{s.status}</span>
                   </div>
-                  <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-0.5 rounded">5</span>
-                </button>
+                ))}
              </div>
           </div>
         </div>

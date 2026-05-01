@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, AlertCircle } from "lucide-react";
+import { Check, AlertCircle, QrCode, Smartphone, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,21 @@ export function MedicalQuestionnaire() {
 
   return (
     <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="p-6 bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-emerald-400" />
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Enregistrement Rapide</h3>
+          </div>
+          <h4 className="text-xl font-black tracking-tight">Check-in via QR Code</h4>
+          <p className="text-xs text-slate-400 max-w-sm">Scannez pour synchroniser vos antécédents médicaux depuis votre application mobile.</p>
+        </div>
+        <div className="bg-white p-3 rounded shadow-xl flex flex-col items-center gap-2">
+          <QrCode className="h-20 w-20 text-slate-900" />
+          <span className="text-[8px] font-black uppercase text-slate-400">Scan Me - Sync Pro</span>
+        </div>
+      </div>
+
       <div className="p-5 border-b border-slate-100 bg-rose-50/30 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <AlertCircle className="h-4 w-4 text-blue-600" />

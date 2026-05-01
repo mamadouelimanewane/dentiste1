@@ -20,9 +20,10 @@ import { ProstheticsLab } from "@/components/ProstheticsLab";
 import { PrescriptionEditor } from "@/components/PrescriptionEditor";
 import { CommunicationHub } from "@/components/CommunicationHub";
 import { InventoryManager } from "@/components/InventoryManager";
-import { PatientDirectory } from "@/components/PatientDirectory";
 import { ClinicSettings } from "@/components/ClinicSettings";
 import { AdminHub } from "@/components/AdminHub";
+import { InsuranceManager } from "@/components/InsuranceManager";
+import { NewDossier } from "@/components/NewDossier";
 import { 
   Activity, 
   User, 
@@ -52,7 +53,8 @@ import {
   Package,
   FolderOpen,
   Settings,
-  ShieldAlert
+  ShieldAlert,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -60,24 +62,26 @@ import { motion, AnimatePresence } from "framer-motion";
 const steps = [
   { id: 1, title: "Accueil", fullTitle: "Accueil & Prise en charge", desc: "Enregistrement et vérification des droits.", icon: UserPlus },
   { id: 2, title: "Arrivée", fullTitle: "Arrivée au Cabinet", desc: "Pointage et questionnaire médical.", icon: LogIn },
-  { id: 3, title: "Consultation", fullTitle: "Consultation Clinique", desc: "Diagnostic et plan de traitement.", icon: Stethoscope },
-  { id: 4, title: "Réalisation", fullTitle: "Réalisation des Actes", desc: "Soins et interventions techniques.", icon: Activity },
-  { id: 5, title: "Administration", fullTitle: "Gestion Administrative", desc: "Facturation et règlements.", icon: FileText },
-  { id: 6, title: "Suivi", fullTitle: "Suivi & Archivage", desc: "Clôture et planification futurs RDV.", icon: History },
-  { id: 7, title: "Comptabilité", fullTitle: "Comptabilité & Finances", desc: "Registre, factures et destinataires.", icon: Calculator },
-  { id: 8, title: "Utilisateurs", fullTitle: "Gestion des Utilisateurs", desc: "Rôles, privilèges et comptes.", icon: Users },
-  { id: 9, title: "Téléconsult", fullTitle: "Médecine à Distance", desc: "Consultations vidéo et suivi à distance.", icon: Video },
-  { id: 10, title: "Dictée IA", fullTitle: "Neural Dictation Suite", desc: "Dictée vocale intelligente et structuration IA.", icon: Brain },
-  { id: 11, title: "Agenda", fullTitle: "Elite Planner Pro", desc: "Gestion des rendez-vous et ressources.", icon: Calendar },
-  { id: 12, title: "Radio IA", fullTitle: "Advanced Neural Imaging", desc: "Diagnostic assisté par ordinateur.", icon: Scan },
-  { id: 13, title: "Smile Design", fullTitle: "Smile Design Studio Pro", desc: "Simulation esthétique par IA.", icon: Smile },
-  { id: 14, title: "Labo & CFAO", fullTitle: "Prosthetics Lab Center", desc: "Gestion des flux numériques et travaux prothétiques.", icon: Layers },
-  { id: 15, title: "Ordonnances", fullTitle: "Éditeur d'Ordonnance", desc: "Création et impression d'ordonnances.", icon: Pill },
-  { id: 16, title: "Communication", fullTitle: "WhatsApp & SMS Hub", desc: "Gestion automatisée des rendez-vous et rappels.", icon: MessageSquare },
-  { id: 17, title: "Stocks", fullTitle: "Inventory Manager Pro", desc: "Gestion des consommables et commandes.", icon: Package },
-  { id: 18, title: "Recherche", fullTitle: "Base de Données Centralisée", desc: "Recherche et indexation des dossiers patients.", icon: FolderOpen },
-  { id: 19, title: "Configuration", fullTitle: "Paramètres du Cabinet", desc: "Configuration du profil, logo et infos légales.", icon: Settings },
-  { id: 20, title: "Super Admin", fullTitle: "Centre d'Administration Sécurisé", desc: "Utilisateurs, Logs, Catalogue et BI.", icon: ShieldAlert },
+  { id: 3, title: "Nouv. Dossier", fullTitle: "Initialisation Dossier", desc: "Réinitialisation et nouveau cycle patient.", icon: RotateCcw },
+  { id: 4, title: "Consultation", fullTitle: "Consultation Clinique", desc: "Diagnostic et plan de traitement.", icon: Stethoscope },
+  { id: 5, title: "Réalisation", fullTitle: "Réalisation des Actes", desc: "Soins et interventions techniques.", icon: Activity },
+  { id: 6, title: "Administration", fullTitle: "Gestion Administrative", desc: "Facturation et règlements.", icon: FileText },
+  { id: 7, title: "Suivi", fullTitle: "Suivi & Archivage", desc: "Clôture et planification futurs RDV.", icon: History },
+  { id: 8, title: "Comptabilité", fullTitle: "Comptabilité & Finances", desc: "Registre, factures et destinataires.", icon: Calculator },
+  { id: 9, title: "Mutuelles", fullTitle: "Gestion des Mutuelles", desc: "Prises en charge, IPM et Assurances.", icon: ShieldCheck },
+  { id: 10, title: "Utilisateurs", fullTitle: "Gestion des Utilisateurs", desc: "Rôles, privilèges et comptes.", icon: Users },
+  { id: 11, title: "Téléconsult", fullTitle: "Médecine à Distance", desc: "Consultations vidéo et suivi à distance.", icon: Video },
+  { id: 12, title: "Dictée IA", fullTitle: "Neural Dictation Suite", desc: "Dictée vocale intelligente et structuration IA.", icon: Brain },
+  { id: 13, title: "Agenda", fullTitle: "Elite Planner Pro", desc: "Gestion des rendez-vous et ressources.", icon: Calendar },
+  { id: 14, title: "Radio IA", fullTitle: "Advanced Neural Imaging", desc: "Diagnostic assisté par ordinateur.", icon: Scan },
+  { id: 15, title: "Smile Design", fullTitle: "Smile Design Studio Pro", desc: "Simulation esthétique par IA.", icon: Smile },
+  { id: 16, title: "Labo & CFAO", fullTitle: "Prosthetics Lab Center", desc: "Gestion des flux numériques et travaux prothétiques.", icon: Layers },
+  { id: 17, title: "Ordonnances", fullTitle: "Éditeur d'Ordonnance", desc: "Création et impression d'ordonnances.", icon: Pill },
+  { id: 18, title: "Communication", fullTitle: "WhatsApp & SMS Hub", desc: "Gestion automatisée des rendez-vous et rappels.", icon: MessageSquare },
+  { id: 19, title: "Stocks", fullTitle: "Inventory Manager Pro", desc: "Gestion des consommables et commandes.", icon: Package },
+  { id: 20, title: "Recherche", fullTitle: "Base de Données Centralisée", desc: "Recherche et indexation des dossiers patients.", icon: FolderOpen },
+  { id: 21, title: "Configuration", fullTitle: "Paramètres du Cabinet", desc: "Configuration du profil, logo et infos légales.", icon: Settings },
+  { id: 22, title: "Super Admin", fullTitle: "Centre d'Administration Sécurisé", desc: "Utilisateurs, Logs, Catalogue et BI.", icon: ShieldAlert },
 ];
 
 type Role = 'admin' | 'praticien' | 'accueil' | 'comptable';
@@ -140,9 +144,9 @@ export default function Home() {
     // Adjust current step if it's no longer accessible
     const newVisible = steps.filter(s => {
       if (newRole === 'admin') return true;
-      if (newRole === 'accueil') return [1, 2, 5, 6, 7, 11, 16, 17, 18].includes(s.id);
-      if (newRole === 'praticien') return [2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(s.id);
-      if (newRole === 'comptable') return [5, 7].includes(s.id);
+      if (newRole === 'accueil') return [1, 2, 3, 6, 7, 8, 9, 13, 18, 19, 20].includes(s.id);
+      if (newRole === 'praticien') return [2, 3, 4, 5, 7, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(s.id);
+      if (newRole === 'comptable') return [6, 8, 9].includes(s.id);
       return true;
     });
     if (!newVisible.find(s => s.id === currentStep)) {
@@ -150,13 +154,24 @@ export default function Home() {
     }
   };
   const reset = () => {
+    // Clear all storage before reload
+    const keysToRemove = [
+      "dentiste_lite_step",
+      "dentiste_lite_notes",
+      "dentiste_lite_executed",
+      "dentiste_lite_patient",
+      "dentiste_lite_dictations"
+    ];
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+    
+    // Reset local state for immediate feedback before reload
     setCurrentStep(1);
-    localStorage.removeItem("dentiste_lite_step");
-    localStorage.removeItem("dentiste_lite_notes");
-    localStorage.removeItem("dentiste_lite_executed");
     setShowResetModal(false);
-    // Reloading ensures all nested component states are fully flushed
-    window.location.reload();
+    
+    // Delay slightly to allow state to settle, then hard reload
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 100);
   };
 
   if (!isMounted) return null;
@@ -228,29 +243,52 @@ export default function Home() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="flex items-center gap-2 text-slate-600">
-              <User className="h-4 w-4" />
-              <span className="text-xs font-semibold">Patient : <span className="text-slate-900">{currentPatient ? currentPatient.name : "Aucun"}</span></span>
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "flex items-center gap-2 px-3 py-1 rounded-full transition-all border",
+                currentPatient 
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700" 
+                  : "bg-slate-50 border-slate-200 text-slate-400"
+              )}>
+                {currentPatient ? (
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" 
+                  />
+                ) : (
+                  <User className="h-3.5 w-3.5" />
+                )}
+                <span className="text-[10px] font-black uppercase tracking-wider">
+                  {currentPatient ? `Patient Actif : ${currentPatient.name}` : "Aucun Patient Sélectionné"}
+                </span>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <select 
-              value={role}
-              onChange={(e) => handleRoleChange(e.target.value as Role)}
-              className="bg-slate-100 border-none text-[10px] font-bold text-slate-600 uppercase tracking-widest rounded px-2 py-1 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="admin">👑 Administrateur</option>
-              <option value="praticien">🩺 Praticien</option>
-              <option value="accueil">👋 Accueil</option>
-              <option value="comptable">📊 Comptable</option>
-            </select>
+            <div className="flex items-center bg-slate-100 rounded-lg p-1 gap-1">
+              {(['admin', 'praticien', 'accueil', 'comptable'] as Role[]).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => handleRoleChange(r)}
+                  className={cn(
+                    "px-2 py-1 text-[9px] font-black uppercase tracking-tight rounded transition-all",
+                    role === r 
+                      ? "bg-white text-blue-600 shadow-sm" 
+                      : "text-slate-400 hover:text-slate-600"
+                  )}
+                >
+                  {r === 'admin' ? "👑" : r === 'praticien' ? "🩺" : r === 'accueil' ? "👋" : "📊"}
+                </button>
+              ))}
+            </div>
 
             <div className="hidden md:flex flex-col text-right mr-2 border-l border-slate-200 pl-4">
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Bienvenue</span>
+              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Session</span>
               <span className="text-xs font-black text-slate-900 tracking-tight">{getUserInfo(role)}</span>
             </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-1 rounded">v1.3 STABLE</span>
+            <span className="text-[10px] font-bold text-slate-300 uppercase bg-slate-50 px-2 py-1 border border-slate-100 rounded">v1.3.1</span>
           </div>
         </header>
 
@@ -278,31 +316,33 @@ export default function Home() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
+                    transition={{ duration: 0.1 }}
                   >
                     {currentStep === 1 && <PatientRegistration />}
                     {currentStep === 2 && <MedicalQuestionnaire />}
-                    {currentStep === 3 && <QuoteBuilder />}
+                    {currentStep === 3 && <NewDossier />}
+                    {currentStep === 4 && <QuoteBuilder />}
                     
-                    {currentStep === 4 && <ProcedureExecution />}
-                    {currentStep === 5 && <BillingManager />}
-                    {currentStep === 6 && <PatientFollowUp />}
-                    {currentStep === 7 && <AccountingDashboard />}
-                    {currentStep === 8 && <UserManagement />}
-                    {currentStep === 9 && <Teleconsultation />}
-                    {currentStep === 10 && <VoiceDictation />}
-                    {currentStep === 11 && <AgendaModule />}
-                    {currentStep === 12 && <AiRadioLab />}
-                    {currentStep === 13 && <SmileDesignStudio />}
-                    {currentStep === 14 && <ProstheticsLab />}
-                    {currentStep === 15 && <PrescriptionEditor />}
-                    {currentStep === 16 && <CommunicationHub />}
-                    {currentStep === 17 && <InventoryManager />}
-                    {currentStep === 18 && <PatientDirectory />}
-                    {currentStep === 19 && <ClinicSettings />}
-                    {currentStep === 20 && <AdminHub />}
+                    {currentStep === 5 && <ProcedureExecution />}
+                    {currentStep === 6 && <BillingManager />}
+                    {currentStep === 7 && <PatientFollowUp />}
+                    {currentStep === 8 && <AccountingDashboard />}
+                    {currentStep === 9 && <InsuranceManager />}
+                    {currentStep === 10 && <UserManagement />}
+                    {currentStep === 11 && <Teleconsultation />}
+                    {currentStep === 12 && <VoiceDictation />}
+                    {currentStep === 13 && <AgendaModule />}
+                    {currentStep === 14 && <AiRadioLab />}
+                    {currentStep === 15 && <SmileDesignStudio />}
+                    {currentStep === 16 && <ProstheticsLab />}
+                    {currentStep === 17 && <PrescriptionEditor />}
+                    {currentStep === 18 && <CommunicationHub />}
+                    {currentStep === 19 && <InventoryManager />}
+                    {currentStep === 20 && <PatientDirectory />}
+                    {currentStep === 21 && <ClinicSettings />}
+                    {currentStep === 22 && <AdminHub />}
                     
-                    {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(currentStep) && (
+                    {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22].includes(currentStep) && (
                       <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
                         <Activity className="h-10 w-10 text-slate-200" />
                         <div className="space-y-1">

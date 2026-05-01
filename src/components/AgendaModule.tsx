@@ -3,8 +3,10 @@
 import React, { useState } from "react";
 import { Calendar as CalendarIcon, Clock, MapPin, Users, Plus, Search, ChevronLeft, ChevronRight, CheckCircle2, UserPlus, ListTodo, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePatient } from "@/lib/context";
 
 export function AgendaModule() {
+  const { setCurrentPatient } = usePatient();
   const [activeTab, setActiveTab] = useState<"Agenda" | "Attente" | "Staff">("Agenda");
 
   const quickPatients = [
@@ -76,7 +78,18 @@ export function AgendaModule() {
               {quickPatients.map((patient, idx) => (
                 <div key={idx} className="flex items-center justify-between p-4 border-b border-slate-50 hover:bg-slate-50 group transition-colors">
                   <span className="text-xs font-bold text-slate-700">{patient}</span>
-                  <button className="h-6 w-6 rounded bg-slate-100 text-slate-400 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors group-hover:scale-110">
+                  <button 
+                    onClick={() => {
+                      setCurrentPatient({
+                        name: patient,
+                        birthDate: "1990-01-01",
+                        phone: "+221 77 123 45 67",
+                        idNumber: `SN-${Math.floor(10000 + Math.random() * 90000)}-X`,
+                        address: "Dakar, Sénégal"
+                      });
+                    }}
+                    className="h-6 w-6 rounded bg-slate-100 text-slate-400 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors group-hover:scale-110"
+                  >
                     <Plus className="h-4 w-4" />
                   </button>
                 </div>

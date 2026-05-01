@@ -6,12 +6,19 @@ import { cn } from "@/lib/utils";
 
 export function Teleconsultation() {
   const [activeTab, setActiveTab] = useState<'avenir' | 'historique'>('avenir');
+  const [isCalling, setIsCalling] = useState(false);
+  const [activePatient, setActivePatient] = useState<string | null>(null);
 
   const upcomingAppointments = [
     { initials: "AD", name: "Amadou Diallo", type: "Consultation", duration: "30 min", time: "14:00", color: "bg-blue-100 text-blue-700" },
     { initials: "FM", name: "Fatou Mbaye", type: "Suivi Post-Op", duration: "20 min", time: "14:45", color: "bg-purple-100 text-purple-700" },
     { initials: "IS", name: "Ibrahima Sow", type: "Urgence", duration: "45 min", time: "15:30", color: "bg-rose-100 text-rose-700" },
   ];
+
+  const handleJoin = (name: string) => {
+    setActivePatient(name);
+    setIsCalling(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -59,24 +66,68 @@ export function Teleconsultation() {
         {/* Main Teleconsult Area */}
         <div className="lg:col-span-2 space-y-6">
           {/* Video Screen */}
-          <div className="bg-slate-900 aspect-video rounded-sm flex items-center justify-center relative overflow-hidden border border-slate-800 shadow-lg">
-            <div className="absolute top-4 left-4 flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
-              <span className="text-xs font-bold text-white uppercase tracking-widest">Live Connect</span>
-            </div>
-            
-            <div className="text-center space-y-4">
-              <div className="h-16 w-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto">
-                <Video className="h-6 w-6 text-slate-400" />
+          <div className="bg-slate-900 aspect-video rounded-sm flex items-center justify-center relative overflow-hidden border border-slate-800 shadow-lg group">
+            {isCalling ? (
+              <div className="absolute inset-0 flex flex-col">
+                {/* Simulated Patient Camera View */}
+                <div className="flex-1 bg-slate-800 relative">
+                   <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center space-y-4">
+                        <div className="h-24 w-24 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto border-2 border-blue-500 animate-pulse">
+                          <Users className="h-10 w-10 text-blue-400" />
+                        </div>
+                        <p className="text-white font-black text-lg uppercase tracking-widest">{activePatient}</p>
+                        <div className="flex items-center gap-2 justify-center">
+                          <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-widest">Connexion chiffrée de bout en bout</span>
+                        </div>
+                      </div>
+                   </div>
+                   
+                   {/* Doctor PiP */}
+                   <div className="absolute bottom-4 right-4 w-40 aspect-video bg-slate-700 border border-slate-600 rounded shadow-2xl flex items-center justify-center overflow-hidden">
+                      <div className="h-full w-full bg-gradient-to-br from-blue-900 to-slate-900 flex items-center justify-center">
+                        <span className="text-[10px] font-bold text-blue-300 uppercase">Dr. Diallo (Vous)</span>
+                      </div>
+                   </div>
+                </div>
+
+                {/* Call Controls */}
+                <div className="h-20 bg-slate-950 border-t border-slate-800 flex items-center justify-center gap-6">
+                   <button className="h-10 w-10 rounded-full bg-slate-800 text-white flex items-center justify-center hover:bg-slate-700 transition-all"><Activity className="h-5 w-5" /></button>
+                   <button 
+                    onClick={() => setIsCalling(false)}
+                    className="h-12 w-24 rounded-full bg-rose-600 text-white flex items-center justify-center hover:bg-rose-500 transition-all shadow-lg shadow-rose-900/40 text-[10px] font-black uppercase tracking-widest"
+                   >
+                    Quitter
+                   </button>
+                   <button className="h-10 w-10 rounded-full bg-slate-800 text-white flex items-center justify-center hover:bg-slate-700 transition-all"><Video className="h-5 w-5" /></button>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-black text-white tracking-tight">Aucune session active</h3>
-                <p className="text-xs text-slate-400 mt-1">Démarrez une session ou rejoignez un patient en attente</p>
-              </div>
-              <button className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-sm text-xs font-bold tracking-widest uppercase transition-all shadow-md shadow-blue-900/50">
-                Démarrer maintenant
-              </button>
-            </div>
+            ) : (
+              <>
+                <div className="absolute top-4 left-4 flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                  <span className="text-xs font-bold text-white uppercase tracking-widest">Live Connect</span>
+                </div>
+                
+                <div className="text-center space-y-4">
+                  <div className="h-16 w-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto">
+                    <Video className="h-6 w-6 text-slate-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-white tracking-tight">Aucune session active</h3>
+                    <p className="text-xs text-slate-400 mt-1">Démarrez une session ou rejoignez un patient en attente</p>
+                  </div>
+                  <button 
+                    onClick={() => handleJoin("Patient en Attente")}
+                    className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-sm text-xs font-bold tracking-widest uppercase transition-all shadow-md shadow-blue-900/50"
+                  >
+                    Démarrer maintenant
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Notes & Actions */}
@@ -146,7 +197,10 @@ export function Teleconsultation() {
                         <p className="text-lg font-black text-blue-900 tracking-tighter">{apt.time}</p>
                       </div>
                     </div>
-                    <button className="w-full mt-4 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-100 hover:border-blue-600 py-2 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all">
+                    <button 
+                      onClick={() => handleJoin(apt.name)}
+                      className="w-full mt-4 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-100 hover:border-blue-600 py-2 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all"
+                    >
                       <PhoneCall className="h-3 w-3" /> Rejoindre
                     </button>
                   </div>
