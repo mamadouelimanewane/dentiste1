@@ -25,6 +25,7 @@ import { AdminHub } from "@/components/AdminHub";
 import { InsuranceManager } from "@/components/InsuranceManager";
 import { NewDossier } from "@/components/NewDossier";
 import { StatsDashboard } from "@/components/StatsDashboard";
+import { PatientDirectory } from "@/components/PatientDirectory";
 import { 
   Activity, 
   User, 

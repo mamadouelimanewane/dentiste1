@@ -7,6 +7,7 @@ import {
   AlertCircle, Lock, Download, Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 // Mock Data
 const MOCK_USERS = [

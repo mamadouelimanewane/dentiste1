@@ -18,7 +18,8 @@ import {
   Maximize2,
   CheckCircle2,
   Zap,
-  RotateCcw
+  RotateCcw,
+  ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -247,9 +248,5 @@ function Plus(props: any) {
       <path d="M5 12h14" />
       <path d="M12 5v14" />
     </svg>
-  );
-}
-    </div>
-    </div>
   );
 }
