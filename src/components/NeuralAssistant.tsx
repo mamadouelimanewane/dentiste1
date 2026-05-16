@@ -168,7 +168,7 @@ export function NeuralAssistant() {
       // ═══════════════════════════════════════════════════════════
       // 🚨 URGENCES & DOULEURS AIGUËS
       // ═══════════════════════════════════════════════════════════
-      if (/urgence|j'ai très mal|douleur intense|insupportable|dent cassée|traumatisme|choc|dent qui saigne beaucoup|abcès|abces|gonfle|enflé|enflure|tuméfaction|fièvre dentaire|fievre dentaire/.test(L)) {
+      if (/urgence|j'ai très mal|douleur intense|insupportable|dent cassée|traumatisme|choc|dent qui saigne beaucoup|abcès|abces|gonfle|enflé|enflure|tuméfaction|fièvre dentaire|fievre dentaire|visage enflé|ça me lance|rage de dent|hémorragie|yalla na la wax/.test(L)) {
         botResponse = "🚨 URGENCE détectée. Patient prioritaire — fiche créée, praticien alerté. Prise en charge immédiate recommandée.";
         setChatHistory((p) => [...p, { role: "bot", text: "URGENCE : Évaluer ABC (Anesthésie, Drainage, Antibiotiques). Documenter heure d'arrivée + constantes.", type: "insight" }]);
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "PATIENT", content: cleanText, suggestion: "Ouvrir fiche urgence & alerter praticien", status: "pending", meta: { priority: "URGENT" } }, ...p]);
@@ -181,16 +181,16 @@ export function NeuralAssistant() {
         setChatHistory((p) => [...p, { role: "bot", text: "BILAN NUIT : Radio rétro-alvéolaire → Test vitalité pulpaire → Si bruxisme : gouttière sur mesure 35 000 FCFA", type: "insight" }]);
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RADIO", content: cleanText, suggestion: "Lancer bilan pulpaire + radio urgente", status: "pending", meta: { priority: "High" } }, ...p]);
 
-      } else if (/douleur|j'ai mal|ça fait mal|je souffre|mal aux dents|sensibilité|dent sensible|chaud|froid|sucré|sensitive/.test(L)) {
+      } else if (/douleur|j'ai mal|ça fait mal|je souffre|mal aux dents|sensibilité|dent sensible|chaud|froid|sucré|sensitive|café touba|cafe touba/.test(L)) {
         botResponse = "Douleur dentaire notée. Sensibilité au chaud/froid → suspicion pulpite. Sensibilité au sucré → carie. Je prépare le bilan diagnostique.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "PATIENT", content: cleanText, suggestion: "Ouvrir bilan douleur + test vitalité", status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
-      // 🦷 CARIES & PATHOLOGIES
+      // 🦷 CARIES & PATHOLOGIES LOCALES
       // ═══════════════════════════════════════════════════════════
-      } else if (/carie|caries|cavité|cavite|trou dans la dent|dent abîm|dent noire|dent pourrie|cariée|decalcif|déminéralisation|tache blanche|tache noire/.test(L)) {
-        botResponse = "Carie identifiée. Protocole selon profondeur : Obturation composite (superficielle) · Dévitalisation (atteinte pulpaire) · Couronne (dent délabrée).";
-        setChatHistory((p) => [...p, { role: "bot", text: "PROTOCOLE CARIE : Radio rétro → Fraisage → Obturation composite / Dévitalisation si pulpe atteinte → Couronne si nécessaire", type: "insight" }]);
+      } else if (/carie|caries|cavité|cavite|trou dans la dent|dent abîm|dent noire|dent pourrie|cariée|decalcif|déminéralisation|tache|bissap|tômbouctou|tombouctou|soda|bonbons|casse noix|os de bœuf|glaçon|dent qui bouge/.test(L)) {
+        botResponse = "Pathologie dentaire (carie ou fracture) identifiée. Le mode de consommation (sucre, éléments durs) a été noté.";
+        setChatHistory((p) => [...p, { role: "bot", text: "PROTOCOLE CARIE/FRACTURE : Radio rétro → Évaluation profondeur → Obturation composite / Dévitalisation / Couronne", type: "insight" }]);
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RADIO", content: cleanText, suggestion: "Lancer analyse radio IA + devis", status: "pending", meta: { priority: "High" } }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
@@ -255,8 +255,8 @@ export function NeuralAssistant() {
       // ═══════════════════════════════════════════════════════════
       // 💉 ANESTHÉSIE & CONFORT
       // ═══════════════════════════════════════════════════════════
-      } else if (/anesthésie|anesthesie|piqûre|piqure|endormir|j'ai peur|anxieux|anxiété|phobie dentaire|stress dentaire|sédation|protoxyde/.test(L)) {
-        botResponse = "Gestion anxiété/douleur notée. Options : Anesthésie locale Xylocaïne 2% · MEOPA (gaz hilarant) 25 000 FCFA · Sédation consciente sur RDV spécialisé.";
+      } else if (/anesthésie|anesthesie|piqûre|piqure|endormir|j'ai peur|anxieux|anxiété|phobie dentaire|stress dentaire|sédation|protoxyde|mal anesthésié/.test(L)) {
+        botResponse = "Gestion anxiété/douleur notée. Options : Anesthésie locale Xylocaïne 2% · MEOPA (gaz hilarant) 25 000 FCFA · Sédation consciente. Allergie à vérifier.";
 
       // ═══════════════════════════════════════════════════════════
       // 💊 ORDONNANCES & MÉDICAMENTS
@@ -268,8 +268,8 @@ export function NeuralAssistant() {
       // ═══════════════════════════════════════════════════════════
       // 💰 FINANCES & PAIEMENTS
       // ═══════════════════════════════════════════════════════════
-      } else if (/payer|paiement|règlement|reglement|facture|reçu|recu|note d'honoraires|note honoraires/.test(L)) {
-        botResponse = "Paiement noté. Modes acceptés : Espèces · Orange Money · Wave · Carte bancaire (Visa/MasterCard) · Chèque · Virement bancaire. Souhaitez-vous une facture pro-forma ?";
+      } else if (/payer|paiement|règlement|reglement|facture|reçu|recu|note d'honoraires|note honoraires|espèce|espece/.test(L)) {
+        botResponse = "Paiement noté. Modes acceptés : Espèces · Orange Money · Wave · Carte bancaire (Visa/MasterCard) · Chèque · Virement. Souhaitez-vous une facture pro-forma ?";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "BILLING", content: cleanText, suggestion: "Ouvrir caisse & générer reçu", status: "pending" }, ...p]);
 
       } else if (/wave|orange money|free money|mobile money|paiement mobile|m-pesa|wizall|wari/.test(L)) {
@@ -279,20 +279,30 @@ export function NeuralAssistant() {
       } else if (/virement|banque|chèque|cheque|carte bancaire|visa|mastercard|crédit|credit|débit|debit/.test(L)) {
         botResponse = "Paiement bancaire noté. RIB : SGBS — IBAN SN XX XXXX XXXX XXXX. Chèque à l'ordre du Cabinet Dentaire Elite. Délai d'encaissement : 48h ouvrés.";
 
-      } else if (/devis|estimation|coût du traitement|cout|combien coûte|combien ça coûte|tarification|grille tarifaire/.test(L)) {
+      } else if (/devis|estimation|coût du traitement|cout|combien coûte|combien ça coûte|tarification|grille tarifaire|prix/.test(L)) {
         botResponse = "Grille tarifaire du cabinet : Consultation 15k · Détartrage 25k · Obturation 30k · Extraction 40k · Dévitalisation 80–150k · Couronne 120k · Implant 350k · Blanchiment 75k FCFA. Devis personnalisé sur demande.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "BILLING", content: cleanText, suggestion: "Générer devis personnalisé", status: "pending" }, ...p]);
 
-      } else if (/assurance|mutuelle|ipm|ipres|css|ram|sante|prise en charge|remboursement|tiers payant/.test(L)) {
-        botResponse = "Assurances acceptées : IPM · IPRES · CSS · RAM · Assurances privées (Allianz, NSIA, AXA). Documents requis : Attestation + Bon de prise en charge. Tiers payant possible.";
+      } else if (/assurance|mutuelle|ipm|ipres|css|ram|sante|prise en charge|remboursement|tiers payant|ticket modérateur|assurance scolaire/.test(L)) {
+        botResponse = "Assurances acceptées : IPM, IPRES, CSS, RAM, mutuelles de santé et scolaires. Le ticket modérateur est applicable selon la couverture. Tiers payant possible.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "BILLING", content: cleanText, suggestion: "Ouvrir module Mutuelles", status: "pending" }, ...p]);
 
-      } else if (/échelonner|echelonner|paiement en plusieurs fois|mensualité|mensualite|facilité de paiement|facilite de paiement|crédit dentaire|credit dentaire/.test(L)) {
-        botResponse = "Paiement échelonné disponible pour les montants supérieurs à 100 000 FCFA. Plans : 2×, 3× ou 6× sans frais. Signature d'un accord de paiement requis.";
+      } else if (/échelonner|echelonner|paiement en plusieurs fois|en deux fois|en trois fois|mensualité|mensualite|facilité de paiement|crédit dentaire/.test(L)) {
+        botResponse = "Paiement échelonné disponible pour les montants > 100 000 FCFA. Plans : 2×, 3× ou 6× sans frais avec Wave ou chèque. Accord de paiement requis.";
 
       } else if (/solde|reste à payer|reste a payer|avance|acompte|règlement partiel|reglement partiel|situation compte|bilan financier/.test(L)) {
         botResponse = "Consultation du compte patient en cours. Solde actuel : 0 FCFA. Dernier règlement : — FCFA. Souhaitez-vous un relevé de compte ?";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "BILLING", content: cleanText, suggestion: "Afficher relevé financier patient", status: "pending" }, ...p]);
+
+      // ═══════════════════════════════════════════════════════════
+      // 🌍 CULTURE LOCALE, WOLOF & LOCALITÉS SÉNÉGAL
+      // ═══════════════════════════════════════════════════════════
+      } else if (/dakar|guédiawaye|guediawaye|pikine|rufisque|thiès|thies|mbour|saint-louis|ziguinchor|diourbel|kaolack|tambacounda|kolda|bargny|touba|tivaouane|yeumbeul|parcelles assainies|grand yoff|ouakam|ngor|almadies|castors|mermoz|sacré-cœur|sacre-coeur|colobane|sandaga|plateau|médina|medina/.test(L)) {
+        botResponse = "Localité enregistrée. Nous accueillons les patients de tout le Sénégal. Voulez-vous planifier un RDV adapté à votre temps de trajet ?";
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RDV", content: cleanText, suggestion: "Ouvrir Agenda (Patient éloigné)", status: "pending" }, ...p]);
+        
+      } else if (/naka waa ker|djarama|niokobok|jerejef|na nga def|waaw|dedet|yow|mane/.test(L)) {
+        botResponse = "Ñio ko bokk ! Je comprends le wolof. Comment puis-je vous aider au cabinet aujourd'hui ?";
 
       // ═══════════════════════════════════════════════════════════
       // 📷 RADIO / IMAGERIE
@@ -333,14 +343,20 @@ export function NeuralAssistant() {
           { r: /adresse|situé|lieu|où|localisation|itinéraire|plan/, a: "Cabinet au Plateau, Rue de Thiong, Dakar. GPS : 14.6937° N, 17.4441° W. Bus 26, arrêt Plateau." },
           { r: /tarif|prix|coût|combien/, a: "Consultation 15k · Détartrage 25k · Obturation 30k · Extraction 40k · Dévitalisation 80–150k · Couronne 120k · Implant 350k FCFA." },
           { r: /bonjour|salut|bonsoir|hello|bonne journée|bonne matinée/, a: "Bonjour Docteur ! Neural Core v3.2 actif. Comment puis-je vous assister ?" },
-          { r: /merci|parfait|ok|super|bien|excellent|génial/, a: "Avec plaisir Docteur. Autre commande ?" },
+          { r: /merci|parfait|ok|super|bien|excellent|génial/, a: "Avec plaisir. Autre commande ?" },
           { r: /agenda|planning|calendrier|programme|emploi du temps/, a: "Planning du jour : 8 patients · 3 urgences · 2 chirurgies. Prochain RDV libre : 15h30." },
           { r: /stock|matériel|materiel|commande|consommable|gants|masque|résine|amalgame/, a: "Stocks : Gants L (8 boîtes) ⚠️ · Résine composite (3 seringues) ⚠️ · Anesthésiques (12 carpules). Commande urgente suggérée." },
           { r: /chiffre d'affaires|ca|recettes|revenus|bilan|statistiques|performance/, a: "CA du mois : 2 450 000 FCFA. Objectif : 3 000 000 FCFA (82%). Voir tableau de bord statistiques." },
           { r: /personnel|assistante|secretaire|infirmière|aide-soignant|equipe/, a: "Équipe active : Dr. Ndiaye (praticien) · Aïssatou (assistante) · M. Fall (comptable). Planning disponible dans la section Utilisateurs." },
-          { r: /nutrition|alimentation|regime|sucre|acide|erosion|reflux/, a: "Conseils nutritionnels : Réduire les sucres raffinés + boissons acides. Brosser 30 min après les repas acides. Fluor 1450 ppm recommandé." },
+          { r: /nutrition|alimentation|regime|sucre|acide|erosion|reflux/, a: "Conseils nutritionnels : Réduire les sucres raffinés (bissap, sodas) + boissons acides. Brosser 30 min après. Fluor 1450 ppm recommandé." },
           { r: /hygiène|brossage|dentifrice|fil dentaire|bain de bouche|brosse/, a: "Conseils hygiène : Brossage 2× /j · Fil dentaire 1× /j · Bain de bouche antibactérien. Brosse à dents changée tous les 3 mois." },
           { r: /téléconsultation|teleconsultation|en ligne|video|zoom|à distance/, a: "Téléconsultation disponible. Tarif : 10 000 FCFA. RDV vidéo via la section Téléconsult du logiciel." },
+          { r: /chicha|tabac|fumer/, a: "La chicha et le tabac jaunissent les dents et augmentent les risques de maladie parodontale. Un blanchiment et un détartrage régulier sont conseillés." },
+          { r: /beurre de karité|karite|médecine traditionnelle|traditionnel|clou de girofle/, a: "Les remèdes traditionnels comme le beurre de karité ou le clou de girofle peuvent soulager temporairement la douleur, mais une consultation est indispensable pour traiter la cause médicale." },
+          { r: /eau du robinet|eau dakar/, a: "L'eau du robinet à Dakar est généralement fluorée, ce qui est bénéfique pour l'émail dentaire. Cependant, un brossage régulier avec dentifrice fluoré reste indispensable." },
+          { r: /magal|tabaski|hivernage|ramadan|korite/, a: "Nous adaptons nos horaires d'ouverture pendant les périodes de Magal, Tabaski ou Ramadan. Contactez l'accueil pour connaître les permanences d'urgence ces jours-là." },
+          { r: /femme enceinte|grossesse/, a: "Pendant la grossesse, les soins dentaires (détartrage, soins simples) sont sûrs et recommandés, surtout au 2e trimestre. Signalez toujours votre grossesse au praticien." },
+          { r: /attendre 2h|attente|retard|mal accueilli/, a: "Nous sommes navrés pour l'attente exceptionnelle. Une urgence dentaire non prévue a décalé notre planning. Nous faisons le maximum pour vous recevoir." }
         ];
         const m = kb.find(i => i.r.test(L));
         if (m) botResponse = m.a;
