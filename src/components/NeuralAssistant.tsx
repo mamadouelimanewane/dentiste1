@@ -326,9 +326,57 @@ export function NeuralAssistant() {
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RDV", content: cleanText, suggestion: `Créer RDV ${day} à ${time} + rappel auto`, status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
+      // 🏥 SUIVI POST-OPÉRATOIRE & COMPLICATIONS
+      // ═══════════════════════════════════════════════════════════
+      } else if (/saigne encore|le fil me pique|joue bleue|hématome|mauvaise haleine|alvéolite|caillot de sang|perdu le caillot|gonflé après extraction/.test(L)) {
+        botResponse = "Suivi post-opératoire : Un léger saignement ou gonflement est normal les premières 48h. Une mauvaise haleine ou douleur intense (alvéolite) nécessite une consultation de contrôle.";
+        setChatHistory((p) => [...p, { role: "bot", text: "ALERTE POST-OP : Si saignement actif persistant, demander au patient de mordre sur une compresse stérile pendant 30 min.", type: "insight" }]);
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "PATIENT", content: cleanText, suggestion: "Programmer consultation de contrôle", status: "pending", meta: { priority: "High" } }, ...p]);
+
+      // ═══════════════════════════════════════════════════════════
+      // ⚙️ PROBLÈMES MÉCANIQUES (PROTHÈSES & ORTHO)
+      // ═══════════════════════════════════════════════════════════
+      } else if (/couronne est tombée|couronne tombée|avalé ma dent|dentier bouge|prothèse me blesse|appareil me blesse|fil cassé|bagues cassées|perdu ma gouttière|perdu mon aligneur/.test(L)) {
+        botResponse = "Urgence mécanique notée. Ne tentez pas de recoller vous-même. Conservez la pièce. Nous programmons une courte séance de réparation/cimentation.";
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RDV", content: cleanText, suggestion: "Créer créneau court (Réparation/Recellement)", status: "pending" }, ...p]);
+
+      // ═══════════════════════════════════════════════════════════
+      // 🚗 LOGISTIQUE, ACCÈS & CONFORT
+      // ═══════════════════════════════════════════════════════════
+      } else if (/embouteillage|bouchon|vdn|retard|taxi|ne trouve pas|parking|se garer|wifi|code wifi|en bas|ascenseur|fauteuil roulant/.test(L)) {
+        botResponse = "Message logistique reçu. Le secrétariat est prévenu de votre situation. Nous adaptons l'agenda en conséquence. Lien GPS ou code Wi-Fi disponible à l'accueil.";
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "WHATSAPP", content: cleanText, suggestion: "Envoyer localisation GPS / Instructions d'accès", status: "pending" }, ...p]);
+
+      // ═══════════════════════════════════════════════════════════
+      // 👶 PÉDIATRIE PRATIQUE (GESTION PARENTS)
+      // ═══════════════════════════════════════════════════════════
+      } else if (/il pleure|elle pleure|ne veut pas ouvrir la bouche|dent pousse de travers|tétine|pouce|suce son pouce|dent tombée à l'école|avalé du dentifrice/.test(L)) {
+        botResponse = "Pédodontie : Approche bienveillante recommandée. Pour la tétine/pouce, un arrêt progressif est conseillé. En cas de traumatisme à l'école, consulter rapidement avec le certificat scolaire.";
+        setChatHistory((p) => [...p, { role: "bot", text: "PROTOCOLE ENFANT : Envoyer vidéo rassurante aux parents. Prévoir une séance d'habituation (Tell-Show-Do) sans soins si enfant non coopérant.", type: "insight" }]);
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "WHATSAPP", content: cleanText, suggestion: "Envoyer kit de préparation (vidéo ludique enfant)", status: "pending" }, ...p]);
+
+      // ═══════════════════════════════════════════════════════════
+      // ⚠️ SITUATIONS MÉDICALES SPÉCIALES (ANAMNÈSE)
+      // ═══════════════════════════════════════════════════════════
+      } else if (/enceinte|j'allaite|grossesse|diabète|diabétique|diabetique|hypertension|anticoagulant|aspegic|sintrom|cardiaque|asthme|asthmatique/.test(L)) {
+        botResponse = "Anamnèse médicale critique mise à jour. Les protocoles de soins (anesthésie, radios, prescriptions) seront adaptés à ce contexte médical spécifique.";
+        setChatHistory((p) => [...p, { role: "bot", text: "ALERTE MÉDICALE : Vérifier l'INR (si anticoagulants), l'HbA1c (si diabète), éviter les AINS (si grossesse/asthme). Adapter l'anesthésie (sans adrénaline si besoin).", type: "insight" }]);
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "PATIENT", content: cleanText, suggestion: "Mettre à jour le dossier médical (ALERTE ROUGE)", status: "pending", meta: { priority: "URGENT" } }, ...p]);
+
+      // ═══════════════════════════════════════════════════════════
+      // ⭐ GESTION DE L'EXPÉRIENCE (AVIS & PLAINTES)
+      // ═══════════════════════════════════════════════════════════
+      } else if (/c'était parfait|c'etait parfait|rien senti|très bien|recommande|trop cher|mal parlé|attendu trop longtemps|longue attente|déçu|decu/.test(L)) {
+        const isPositive = /parfait|rien senti|très bien|recommande/.test(L);
+        botResponse = isPositive 
+          ? "Retour positif enregistré. Merci pour votre confiance ! Souhaitez-vous recevoir un lien pour laisser un avis sur Google ?"
+          : "Plainte enregistrée. Nous sommes navrés pour cette expérience. La direction va être alertée immédiatement pour trouver une solution.";
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "WHATSAPP", content: cleanText, suggestion: isPositive ? "Envoyer demande d'avis Google" : "Alerter la direction (Rattrapage commercial)", status: "pending", meta: { priority: isPositive ? "Normal" : "High" } }, ...p]);
+
+      // ═══════════════════════════════════════════════════════════
       // 👤 DOSSIER PATIENT
       // ═══════════════════════════════════════════════════════════
-      } else if (/dossier|patient|fiche|historique|antécédent|antecedent|medical|allergie|diabétique|diabetique|hypertendu|cardiaque/.test(L)) {
+      } else if (/dossier|patient|fiche|historique|antécédent|antecedent|medical|allergie/.test(L)) {
         botResponse = `Dossier ${currentPatient.name} — ID: ${currentPatient.id}. Dernière radio : ${currentPatient.lastRadio}. Antécédents médicaux à vérifier avant tout acte.`;
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "PATIENT", content: cleanText, suggestion: "Ouvrir Fiche Complète + Questionnaire médical", status: "pending" }, ...p]);
 
@@ -359,9 +407,7 @@ export function NeuralAssistant() {
           { r: /chicha|tabac|fumer/, a: "La chicha et le tabac jaunissent les dents et augmentent les risques de maladie parodontale. Un blanchiment et un détartrage régulier sont conseillés." },
           { r: /beurre de karité|karite|médecine traditionnelle|traditionnel|clou de girofle/, a: "Les remèdes traditionnels comme le beurre de karité ou le clou de girofle peuvent soulager temporairement la douleur, mais une consultation est indispensable pour traiter la cause médicale." },
           { r: /eau du robinet|eau dakar/, a: "L'eau du robinet à Dakar est généralement fluorée, ce qui est bénéfique pour l'émail dentaire. Cependant, un brossage régulier avec dentifrice fluoré reste indispensable." },
-          { r: /magal|tabaski|hivernage|ramadan|korite/, a: "Nous adaptons nos horaires d'ouverture pendant les périodes de Magal, Tabaski ou Ramadan. Contactez l'accueil pour connaître les permanences d'urgence ces jours-là." },
-          { r: /femme enceinte|grossesse/, a: "Pendant la grossesse, les soins dentaires (détartrage, soins simples) sont sûrs et recommandés, surtout au 2e trimestre. Signalez toujours votre grossesse au praticien." },
-          { r: /attendre 2h|attente|retard|mal accueilli/, a: "Nous sommes navrés pour l'attente exceptionnelle. Une urgence dentaire non prévue a décalé notre planning. Nous faisons le maximum pour vous recevoir." }
+          { r: /magal|tabaski|hivernage|ramadan|korite/, a: "Nous adaptons nos horaires d'ouverture pendant les périodes de Magal, Tabaski ou Ramadan. Contactez l'accueil pour connaître les permanences d'urgence ces jours-là." }
         ];
         const m = kb.find(i => i.r.test(L));
         if (m) botResponse = m.a;
