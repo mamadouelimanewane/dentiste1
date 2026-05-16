@@ -41,11 +41,11 @@ export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
       {/* Header - Card Style */}
       <div className="bg-[#1E3A8A] p-5 text-white flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <StickyNote className="h-4 w-4 text-blue-400" />
-          <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Notes de Séance</h3>
+          <StickyNote className="h-5 w-5 text-blue-400" />
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em]">Notes de Séance</h3>
         </div>
-        <div className="h-6 w-6 border border-slate-700 rounded flex items-center justify-center">
-          <span className="text-[9px] font-bold text-slate-500">{phaseId}</span>
+        <div className="h-8 w-8 border border-slate-700 rounded flex items-center justify-center">
+          <span className="text-xs font-bold text-slate-500">{phaseId}</span>
         </div>
       </div>
 
@@ -55,7 +55,7 @@ export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
             value={currentNote}
             onChange={(e) => setCurrentNote(e.target.value)}
             placeholder="Observations cliniques..."
-            className="w-full h-full bg-slate-50 border-none rounded-none p-4 text-xs font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none resize-none leading-relaxed italic"
+            className="w-full h-full bg-slate-50 border-none rounded-none p-4 text-sm font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none resize-none leading-relaxed italic"
           />
           {/* Subtle watermark style lines */}
           <div className="absolute inset-0 pointer-events-none opacity-[0.03] flex flex-col gap-[24px] p-4 pt-10">
@@ -65,21 +65,21 @@ export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
         
         <div className="flex justify-between items-center pt-2">
           <div className="flex items-center gap-1.5">
-            <Zap className="h-3 w-3 text-emerald-500" />
-            <span className="text-[9px] font-bold text-blue-700 uppercase tracking-widest">Auto-Archive</span>
+            <Zap className="h-4 w-4 text-emerald-500" />
+            <span className="text-xs font-bold text-blue-700 uppercase tracking-widest">Auto-Archive</span>
           </div>
           <button 
             onClick={saveNote}
             disabled={isSaving}
             className={cn(
-              "h-8 px-5 rounded-sm font-bold text-[9px] uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm",
+              "h-10 px-6 rounded-sm font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm",
               status === 'success' 
                 ? "bg-emerald-600 text-white" 
                 : "bg-slate-900 text-white hover:bg-black disabled:opacity-50"
             )}
           >
             {isSaving ? "Sync..." : status === 'success' ? "Archivé" : "Sauvegarder"}
-            {status === 'success' ? <Check className="h-3 w-3" /> : !isSaving && <Save className="h-3 w-3" />}
+            {status === 'success' ? <Check className="h-4 w-4" /> : !isSaving && <Save className="h-4 w-4" />}
           </button>
         </div>
       </div>

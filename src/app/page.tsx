@@ -19,6 +19,7 @@ import { SmileDesignStudio } from "@/components/SmileDesignStudio";
 import { ProstheticsLab } from "@/components/ProstheticsLab";
 import { PrescriptionEditor } from "@/components/PrescriptionEditor";
 import { CommunicationHub } from "@/components/CommunicationHub";
+import { WhatsAppIntelligentHub } from "@/components/WhatsAppIntelligentHub";
 import { InventoryManager } from "@/components/InventoryManager";
 import { ClinicSettings } from "@/components/ClinicSettings";
 import { AdminHub } from "@/components/AdminHub";
@@ -26,6 +27,7 @@ import { InsuranceManager } from "@/components/InsuranceManager";
 import { NewDossier } from "@/components/NewDossier";
 import { StatsDashboard } from "@/components/StatsDashboard";
 import { PatientDirectory } from "@/components/PatientDirectory";
+import { NeuralAssistant } from "@/components/NeuralAssistant";
 import { 
   Activity, 
   User, 
@@ -180,6 +182,7 @@ export default function Home() {
   if (!isMounted) return null;
 
   return (
+    <>
     <div className="min-h-screen bg-[#F1F5F9] flex overflow-hidden font-sans">
       {/* PROFESSIONAL SIDEBAR (NAVY BLUE) */}
       <aside 
@@ -199,7 +202,7 @@ export default function Home() {
           </div>
 
           <nav className="space-y-1">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 mb-4">Navigation</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest px-2 mb-4">Navigation</p>
             {visibleSteps.map((step) => {
               const Icon = step.icon;
               const isActive = currentStep === step.id;
@@ -216,9 +219,9 @@ export default function Home() {
                       : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
                   )}
                 >
-                  <Icon className={cn("h-4 w-4", isActive ? "text-blue-400" : isCompleted ? "text-emerald-500" : "text-slate-500")} />
-                  <span>{step.title}</span>
-                  {isCompleted && <CheckCircle2 className="h-3 w-3 ml-auto text-emerald-500" />}
+                  <Icon className={cn("h-5 w-5", isActive ? "text-blue-400" : isCompleted ? "text-emerald-500" : "text-slate-500")} />
+                  <span className="text-sm">{step.title}</span>
+                  {isCompleted && <CheckCircle2 className="h-4 w-4 ml-auto text-emerald-500" />}
                 </button>
               );
             })}
@@ -228,9 +231,9 @@ export default function Home() {
         <div className="p-4 border-t border-slate-800">
           <button 
             onClick={() => setShowResetModal(true)}
-            className="w-full h-10 rounded bg-blue-600 hover:bg-blue-500 transition-all flex items-center justify-center gap-2 text-xs font-bold text-white shadow-lg shadow-blue-900/20"
+            className="w-full h-12 rounded bg-blue-600 hover:bg-blue-500 transition-all flex items-center justify-center gap-2 text-sm font-bold text-white shadow-lg shadow-blue-900/20"
           >
-            <RotateCcw className="h-3.5 w-3.5" /> Nouveau Dossier
+            <RotateCcw className="h-4 w-4" /> Nouveau Dossier
           </button>
         </div>
       </aside>
@@ -262,7 +265,7 @@ export default function Home() {
                 ) : (
                   <User className="h-3.5 w-3.5" />
                 )}
-                <span className="text-[10px] font-black uppercase tracking-wider">
+                <span className="text-xs font-black uppercase tracking-wider">
                   {currentPatient ? `Patient Actif : ${currentPatient.name}` : "Aucun Patient Sélectionné"}
                 </span>
               </div>
@@ -276,7 +279,7 @@ export default function Home() {
                   key={r}
                   onClick={() => handleRoleChange(r)}
                   className={cn(
-                    "px-2 py-1 text-[9px] font-black uppercase tracking-tight rounded transition-all",
+                    "px-3 py-1.5 text-xs font-black uppercase tracking-tight rounded transition-all",
                     role === r 
                       ? "bg-white text-blue-600 shadow-sm" 
                       : "text-slate-400 hover:text-slate-600"
@@ -288,10 +291,10 @@ export default function Home() {
             </div>
 
             <div className="hidden md:flex flex-col text-right mr-2 border-l border-slate-200 pl-4">
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Session</span>
-              <span className="text-xs font-black text-slate-900 tracking-tight">{getUserInfo(role)}</span>
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Session</span>
+              <span className="text-sm font-black text-slate-900 tracking-tight">{getUserInfo(role)}</span>
             </div>
-            <span className="text-[10px] font-bold text-slate-300 uppercase bg-slate-50 px-2 py-1 border border-slate-100 rounded">v1.3.1</span>
+            <span className="text-xs font-bold text-slate-300 uppercase bg-slate-50 px-2 py-1 border border-slate-100 rounded">v1.3.1</span>
           </div>
         </header>
 
@@ -301,9 +304,9 @@ export default function Home() {
             {/* Phase Header */}
             <div className="border-b border-slate-200 pb-6">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Étape {currentStep}</span>
-                <div className="h-1 w-1 rounded-full bg-slate-300" />
-                <span className="text-[10px] font-medium text-slate-400 uppercase">{steps[currentStep-1].desc}</span>
+                <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Étape {currentStep}</span>
+                <div className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                <span className="text-xs font-medium text-slate-400 uppercase">{steps[currentStep-1].desc}</span>
               </div>
               <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
                 {steps[currentStep-1].fullTitle}
@@ -339,7 +342,7 @@ export default function Home() {
                     {currentStep === 15 && <SmileDesignStudio />}
                     {currentStep === 16 && <ProstheticsLab />}
                     {currentStep === 17 && <PrescriptionEditor />}
-                    {currentStep === 18 && <CommunicationHub />}
+                    {currentStep === 18 && <WhatsAppIntelligentHub />}
                     {currentStep === 19 && <InventoryManager />}
                     {currentStep === 20 && <PatientDirectory />}
                     {currentStep === 21 && <ClinicSettings />}
@@ -437,6 +440,8 @@ export default function Home() {
         )}
       </AnimatePresence>
     </div>
+    <NeuralAssistant />
+    </>
   );
 }
 
