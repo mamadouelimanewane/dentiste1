@@ -19,13 +19,16 @@ import {
   FileSearch,
   MessageCircle,
   ExternalLink,
+  Stethoscope,
+  Microscope,
+  Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface CommandAction {
   id: string;
-  type: "RDV" | "PATIENT" | "NOTE" | "BILLING" | "RADIO" | "WHATSAPP";
+  type: "RDV" | "PATIENT" | "NOTE" | "BILLING" | "RADIO" | "WHATSAPP" | "LABO" | "CHARTING";
   content: string;
   suggestion?: string;
   status: "pending" | "confirmed" | "executing" | "done";
@@ -326,6 +329,29 @@ export function NeuralAssistant() {
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RDV", content: cleanText, suggestion: `Créer RDV ${day} à ${time} + rappel auto`, status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
+      // 🔬 LABORATOIRE CFAO & FOURNISSEURS (FLUX NUMÉRIQUE)
+      // ═══════════════════════════════════════════════════════════
+      } else if (/empreinte numérique|empreinte optique|laboratoire|labo|prothésiste|prothesiste|couronne en zircone|teinte a2|teinte a3|envoyer au labo|relancer le labo|guide chirurgical|fournisseur/.test(L)) {
+        botResponse = "Flux numérique CFAO activé. Ordre de fabrication prêt à être envoyé au laboratoire partenaire. Les fichiers STL/PLY peuvent être joints automatiquement.";
+        setChatHistory((p) => [...p, { role: "bot", text: "LABO CFAO : N'oubliez pas de préciser la teinte exacte et le type de matériau (Zircone, E-max, Céramo-métallique) sur le bon de commande.", type: "insight" }]);
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "LABO", content: cleanText, suggestion: "Générer Bon de Commande Labo CFAO", status: "pending", meta: { priority: "High" } }, ...p]);
+
+      // ═══════════════════════════════════════════════════════════
+      // 🦷 DICTÉE CLINIQUE & ODONTOGRAMME 3D (CHARTING)
+      // ═══════════════════════════════════════════════════════════
+      } else if (/carie mésio|carie occlusale|carie distale|face vestibulaire|face palatine|face linguale|poche parodontale|sur la dent|sur la 1|sur la 2|sur la 3|sur la 4|mobilité de grade|indice de plaque|saignement au sondage/.test(L)) {
+        botResponse = "Dictée clinique active. J'enregistre ces données directement sur l'odontogramme 3D et le charting parodontal du patient.";
+        setChatHistory((p) => [...p, { role: "bot", text: "CHARTING IA : Les faces Mésiale, Occlusale, Distale ont été mises à jour. Le schéma dentaire se synchronise en temps réel.", type: "insight" }]);
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "CHARTING", content: cleanText, suggestion: "Mettre à jour l'Odontogramme 3D", status: "pending" }, ...p]);
+
+      // ═══════════════════════════════════════════════════════════
+      // 🧘 GESTION DU STRESS & BIEN-ÊTRE PRATICIEN
+      // ═══════════════════════════════════════════════════════════
+      } else if (/je suis fatigué|fatigué|journée difficile|burnout|besoin d'une pause|trop de patients|stresser/.test(L)) {
+        botResponse = "Docteur, votre santé mentale est la priorité. Je bloque les prochains créneaux d'urgence et j'active le mode 'Consultation Zen' (musique d'ambiance et lumières douces).";
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RDV", content: cleanText, suggestion: "Bloquer un créneau de pause (30min)", status: "pending", meta: { priority: "URGENT" } }, ...p]);
+
+      // ═══════════════════════════════════════════════════════════
       // 🏥 SUIVI POST-OPÉRATOIRE & COMPLICATIONS
       // ═══════════════════════════════════════════════════════════
       } else if (/saigne encore|le fil me pique|joue bleue|hématome|mauvaise haleine|alvéolite|caillot de sang|perdu le caillot|gonflé après extraction/.test(L)) {
@@ -587,6 +613,12 @@ export function NeuralAssistant() {
                             )}
                             {cmd.type === "RDV" && (
                               <Calendar className="h-4 w-4 text-blue-600" />
+                            )}
+                            {cmd.type === "LABO" && (
+                              <Truck className="h-4 w-4 text-blue-600" />
+                            )}
+                            {cmd.type === "CHARTING" && (
+                              <Stethoscope className="h-4 w-4 text-blue-600" />
                             )}
                           </div>
                           <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">
