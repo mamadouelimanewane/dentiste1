@@ -250,7 +250,12 @@ export function AiRadioLab() {
              {/* DIAGNOSTIC SUMMARY */}
              <div className="bg-[#0F172A] text-white rounded-sm shadow-xl p-5 relative overflow-hidden flex flex-col justify-between">
                 <div className="relative z-10 space-y-4">
-                   <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Conclusion Automatique</h4>
+                   <div className="flex items-center justify-between">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Conclusion Automatique</h4>
+                      <button className="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all">
+                         <Zap className="h-3 w-3 fill-current" /> Synthèse Vocale Neural
+                      </button>
+                   </div>
                    <p className="text-sm font-medium text-slate-300 leading-relaxed italic">
                      "L'analyse neurale indique un besoin prioritaire d'intervention sur le secteur 4. Suspicion de pathologie apicale sur 36 nécessitant une confirmation clinique."
                    </p>
