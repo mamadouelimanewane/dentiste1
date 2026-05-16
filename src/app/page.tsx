@@ -28,6 +28,7 @@ import { NewDossier } from "@/components/NewDossier";
 import { StatsDashboard } from "@/components/StatsDashboard";
 import { PatientDirectory } from "@/components/PatientDirectory";
 import { NeuralAssistant } from "@/components/NeuralAssistant";
+import { NeuralLogsDashboard } from "@/components/NeuralLogsDashboard";
 import { 
   Activity, 
   User, 
@@ -58,7 +59,8 @@ import {
   FolderOpen,
   Settings,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  Database
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -87,6 +89,7 @@ const steps = [
   { id: 21, title: "Configuration", fullTitle: "Paramètres du Cabinet", desc: "Configuration du profil, logo et infos légales.", icon: Settings },
   { id: 22, title: "Super Admin", fullTitle: "Centre d'Administration Sécurisé", desc: "Utilisateurs, Logs, Catalogue et BI.", icon: ShieldAlert },
   { id: 23, title: "Statistiques", fullTitle: "Tableau de Bord Stratégique", desc: "Analyse de performance et pilotage confidentiel.", icon: Calculator },
+  { id: 24, title: "Neural Center", fullTitle: "Data Brain Monitoring", desc: "Logs IA et activité asynchrone en temps réel.", icon: Database },
 ];
 
 type Role = 'admin' | 'praticien' | 'accueil' | 'comptable';
@@ -348,8 +351,9 @@ export default function Home() {
                     {currentStep === 21 && <ClinicSettings />}
                     {currentStep === 22 && <AdminHub />}
                     {currentStep === 23 && <StatsDashboard />}
+                    {currentStep === 24 && <NeuralLogsDashboard />}
                     
-                    {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].includes(currentStep) && (
+                    {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].includes(currentStep) && (
                       <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
                         <Activity className="h-10 w-10 text-slate-200" />
                         <div className="space-y-1">
