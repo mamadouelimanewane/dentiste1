@@ -259,10 +259,15 @@ export function NeuralAssistant() {
         botResponse = "Gestion anxiété/douleur notée. Options : Anesthésie locale Xylocaïne 2% · MEOPA (gaz hilarant) 25 000 FCFA · Sédation consciente. Allergie à vérifier.";
 
       // ═══════════════════════════════════════════════════════════
-      // 💊 ORDONNANCES & MÉDICAMENTS
+      // 💊 ORDONNANCES, MÉDICAMENTS & POSOLOGIE
       // ═══════════════════════════════════════════════════════════
-      } else if (/ordonnance|médicament|medicament|antibiotique|antidouleur|amoxicilline|ibuprofène|paracétamol|prescrire|prescription|metronidazole|spiramycine|tramadol/.test(L)) {
-        botResponse = "Ordonnance préparée. Protocole post-op : Amoxicilline 1g × 2/j × 7j + Ibuprofène 400mg × 3/j × 5j + Paracétamol 1g si douleur. Allergie pénicilline → Azithromycine 500mg/j.";
+      } else if (/posologie|comment prendre|avant le repas|après le repas|apres le repas|le matin|le soir|à jeun|a jeun|fréquence|frequence|toutes les|combien de fois|cuillère|comprimé|gélule|sirop|bain de bouche/.test(L)) {
+        botResponse = "Posologie : Prendre au milieu des repas pour protéger l'estomac (Ibuprofène). Ne pas dépasser 3g/jour pour le Paracétamol. Bains de bouche à débuter 24h APRÈS l'extraction.";
+        setChatHistory((p) => [...p, { role: "bot", text: "RAPPEL PATIENT : Éviter l'automédication (AINS si infection sans antibio). Respecter les horaires fixes (ex: 8h-20h pour antibio 2x/j).", type: "insight" }]);
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "NOTE", content: cleanText, suggestion: "Générer fiche conseil posologie", status: "pending" }, ...p]);
+
+      } else if (/ordonnance|médicament|medicament|antibiotique|antidouleur|amoxicilline|ibuprofène|paracétamol|prescrire|prescription|metronidazole|spiramycine|tramadol|clamoxyl|efferalgan|doliprane|birodogyl/.test(L)) {
+        botResponse = "Ordonnance type : Amoxicilline 1g (1 matin, 1 soir pdt 7j) + Ibuprofène 400mg (si douleur, max 3/j) + Paracétamol 1g. Si allergie pénicilline → Azithromycine 500mg/j (pdt 3j).";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "NOTE", content: cleanText, suggestion: "Ouvrir éditeur d'ordonnance", status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
