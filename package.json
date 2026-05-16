@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@react-pdf/renderer": "^3.3.8",
+    "@supabase/supabase-js": "^2.105.4",
     "clsx": "^2.1.0",
     "framer-motion": "^11.0.8",
     "lucide-react": "^0.330.0",

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
 
 interface CommandAction {
   id: string;
@@ -58,6 +59,31 @@ export function NeuralAssistant() {
   const scrollRef = useRef<HTMLDivElement>(null);
   // Track how many bot messages have been spoken to avoid re-reading on re-render
   const spokenCountRef = useRef(1); // start at 1 to skip welcome message
+
+  // Track which commands have been synced to Supabase
+  const syncedCommands = useRef<Set<string>>(new Set());
+
+  // Automatically sync new commands to Supabase 'neural_logs' table
+  useEffect(() => {
+    const unsynced = commandQueue.filter(cmd => !syncedCommands.current.has(cmd.id));
+    if (unsynced.length === 0) return;
+    
+    unsynced.forEach(cmd => {
+      syncedCommands.current.add(cmd.id);
+      
+      supabase.from('neural_logs').insert([{
+        command_id: cmd.id,
+        command_type: cmd.type,
+        content: cmd.content,
+        suggestion: cmd.suggestion,
+        status: cmd.status,
+        meta_data: cmd.meta
+      }]).then(({ error }) => {
+        if (error) console.error("Supabase sync error:", error);
+        else console.log(`[Supabase] Action ${cmd.id} synced successfully.`);
+      });
+    });
+  }, [commandQueue]);
   // Use a ref to always read the latest transcript inside async callbacks
   const transcriptRef = useRef("");
 
