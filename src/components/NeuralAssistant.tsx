@@ -89,45 +89,44 @@ export function NeuralAssistant() {
     }
   }, [chatHistory]);
 
-  // --- Speech Recognition setup ---
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false; // stops automatically after a pause
-    recognition.interimResults = true;
-    recognition.lang = "fr-FR";
-    recognition.maxAlternatives = 1;
-
-    recognition.onresult = (event: any) => {
-      let fullText = "";
+  // --- Speech Recognition: create fresh instance each start to avoid stale state ---
+  const buildRecognition = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return null;
+    const r = new SR();
+    r.continuous = false;
+    r.interimResults = true;
+    r.lang = "fr-FR";
+    r.maxAlternatives = 3;
+    r.onresult = (event: any) => {
+      let final = ""; let interim = "";
       for (let i = 0; i < event.results.length; i++) {
-        fullText += event.results[i][0].transcript;
+        event.results[i].isFinal
+          ? (final += event.results[i][0].transcript)
+          : (interim += event.results[i][0].transcript);
       }
-      setTranscript(fullText);
-      transcriptRef.current = fullText; // keep ref in sync
+      const text = final || interim;
+      setTranscript(text);
+      transcriptRef.current = text;
     };
-
-    recognition.onend = () => {
+    r.onend = () => {
       setIsRecording(false);
-      // Use the ref to always get the latest value
-      const captured = transcriptRef.current.trim();
-      if (captured) {
-        processCommand(captured);
-        transcriptRef.current = "";
-      }
+      // Wait 150ms so final onresult fires before we read the ref
+      setTimeout(() => {
+        const captured = transcriptRef.current.trim();
+        if (captured) {
+          processCommand(captured);
+          transcriptRef.current = "";
+          setTranscript("");
+        }
+      }, 150);
     };
-
-    recognition.onerror = (event: any) => {
-      console.error("SpeechRecognition error:", event.error);
+    r.onerror = (ev: any) => {
+      if (ev.error !== "no-speech") console.error("Voice error:", ev.error);
       setIsRecording(false);
     };
-
-    recognitionRef.current = recognition;
+    return r;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -135,147 +134,126 @@ export function NeuralAssistant() {
   const toggleRecording = useCallback(() => {
     if (isRecording) {
       recognitionRef.current?.stop();
-      // onend will fire and call processCommand via ref
     } else {
       transcriptRef.current = "";
       setTranscript("");
+      const rec = buildRecognition();
+      if (!rec) return;
+      recognitionRef.current = rec;
       try {
-        recognitionRef.current?.start();
+        rec.start();
         setIsRecording(true);
       } catch (e) {
         console.error("Could not start recognition:", e);
         setIsRecording(false);
       }
     }
-  }, [isRecording]);
+  }, [isRecording, buildRecognition]);
 
-  // --- Core NLP + response logic ---
+  // --- Medical NLP Engine ---
   const processCommand = useCallback(async (text: string) => {
     const cleanText = text.trim();
     if (!cleanText) return;
 
-    // Clear transcript display
     setTranscript("");
     transcriptRef.current = "";
     setIsProcessing(true);
-
-    // Add the user message immediately
     setChatHistory((prev) => [...prev, { role: "user", text: cleanText }]);
 
     try {
-      await new Promise((r) => setTimeout(r, 900));
+      await new Promise((r) => setTimeout(r, 800));
+      const L = cleanText.toLowerCase();
+      let botResponse = `Je n'ai pas identifié : "${cleanText}". Exemples : "j'ai une carie", "prendre rendez-vous", "quel est le tarif d'une extraction", "analyse radio".`;
 
-      const lowText = cleanText.toLowerCase();
-      let botResponse =
-        "Je n'ai pas identifié l'intention. Essayez : horaires, tarifs, rendez-vous, dossier patient, ou analyse radio.";
+      // URGENCES & DOULEURS
+      if (/douleur|j'ai mal|ça fait mal|je souffre|urgence|abcès|abces|gonfle|gonflement|saigne|cassée|cassee|traumatisme/.test(L)) {
+        botResponse = "Situation urgente détectée. Fiche d'urgence créée et praticien notifié. Le patient doit être pris en charge immédiatement.";
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "PATIENT", content: cleanText, suggestion: "Ouvrir fiche urgence & alerter praticien", status: "pending", meta: { priority: "URGENT" } }, ...p]);
 
-      if (
-        lowText.includes("analyse") &&
-        (lowText.includes("radio") || lowText.includes("dent"))
-      ) {
-        botResponse = `Analyse neurale terminée pour ${currentPatient.name}. Carie profonde détectée sur la 46 (98% de certitude). Souhaitez-vous préparer le plan de traitement ?`;
+      // CARIES & PATHOLOGIES
+      } else if (/carie|caries|cavité|cavite|trou dans la dent|dent abîm|dent noire|dent pourrie|cariée|decalcif|déminéralisation/.test(L)) {
+        botResponse = "Carie dentaire identifiée. Protocole : Radio diagnostique → Évaluation profondeur → Obturation composite ou dévitalisation si atteinte pulpaire.";
+        setChatHistory((p) => [...p, { role: "bot", text: "PROTOCOLE CARIE : Radio rétro-alvéolaire → Fraisage → Obturation composite / Dévitalisation si pulpe atteinte → Couronne si nécessaire", type: "insight" }]);
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RADIO", content: cleanText, suggestion: "Lancer analyse radio IA + devis traitement", status: "pending", meta: { priority: "High" } }, ...p]);
 
-        // First add the insight card
-        setChatHistory((prev) => [
-          ...prev,
-          {
-            role: "bot",
-            text: "SYNTHÈSE DIAGNOSTIQUE : Dent 46 — Carie profonde. Dent 36 — Lésion apicale suspectée.",
-            type: "insight",
-          },
-        ]);
+      // EXTRACTION
+      } else if (/extraction|arracher|enlever la dent|dent de sagesse|sagesse|avulsion|dent à extraire/.test(L)) {
+        botResponse = "Extraction notée. Protocole : Anesthésie locale → Avulsion → Sutures si nécessaire → Antibiotiques post-op. Devis : 40 000 FCFA.";
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "NOTE", content: cleanText, suggestion: "Générer devis + consentement extraction", status: "pending" }, ...p]);
 
-        setCommandQueue((prev) => [
-          {
-            id: Math.random().toString(36).substr(2, 9),
-            type: "RADIO",
-            content: "Plan de traitement 46",
-            suggestion: "Générer Devis & Protocole",
-            status: "pending",
-            meta: { tooth: "46", priority: "High" },
-          },
-          ...prev,
-        ]);
-      } else if (lowText.includes("whatsapp") || lowText.includes("message")) {
-        botResponse =
-          "Hub WhatsApp ouvert. Mamadou Dia attend une confirmation pour mardi à 10h. Dois-je valider ?";
-        setCommandQueue((prev) => [
-          {
-            id: Math.random().toString(36).substr(2, 9),
-            type: "WHATSAPP",
-            content: "Confirmation Mamadou Dia",
-            suggestion: "Confirmer RDV via WhatsApp",
-            status: "pending",
-          },
-          ...prev,
-        ]);
-      } else if (
-        lowText.includes("dossier") ||
-        lowText.includes("patient") ||
-        lowText.includes("fiche")
-      ) {
-        botResponse = `Dossier de ${currentPatient.name} — ID: ${currentPatient.id}. Dernière radio : ${currentPatient.lastRadio}.`;
-        setCommandQueue((prev) => [
-          {
-            id: Math.random().toString(36).substr(2, 9),
-            type: "PATIENT",
-            content: cleanText,
-            suggestion: "Ouvrir Fiche Complète",
-            status: "pending",
-          },
-          ...prev,
-        ]);
-      } else if (
-        lowText.includes("rendez-vous") ||
-        lowText.includes("rdv") ||
-        lowText.includes("appointment")
-      ) {
-        const timeMatch = lowText.match(/(\d{1,2})\s*h/);
-        const time = timeMatch ? `${timeMatch[1]}h00` : "10h00";
-        const day = lowText.includes("demain") ? "demain" : "prochainement";
-        botResponse = `Parfait. Je prépare un rendez-vous pour ${day} à ${time}. Confirmez-vous ?`;
-        setCommandQueue((prev) => [
-          {
-            id: Math.random().toString(36).substr(2, 9),
-            type: "RDV",
-            content: cleanText,
-            suggestion: `Créer RDV ${day} à ${time}`,
-            status: "pending",
-          },
-          ...prev,
-        ]);
+      // DETARTRAGE / NETTOYAGE
+      } else if (/détartrage|detartrage|nettoyage|tartre|polissage|hygiène dentaire|hygiene dentaire/.test(L)) {
+        botResponse = "Détartrage programmé. Prophylaxie complète avec polissage incluse. Tarif : 25 000 FCFA. Durée estimée : 45 min.";
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RDV", content: cleanText, suggestion: "Programmer séance détartrage", status: "pending" }, ...p]);
+
+      // DEVITALISATION / ENDODONTIE
+      } else if (/dévitalisation|devitalisation|traitement de canal|endodontie|canal radiculaire|pulpite|nécrose|necrose/.test(L)) {
+        botResponse = "Traitement endodontique (dévitalisation) requis. Protocole en 2 à 3 séances. Tarif : 80 000 à 150 000 FCFA selon le nombre de canaux.";
+        setChatHistory((p) => [...p, { role: "bot", text: "PROTOCOLE ENDODONTIE : Anesthésie → Accès caméral → Mise en forme → Irrigation NaOCl → Obturation Gutta → Couronne de recouvrement", type: "insight" }]);
+
+      // IMPLANT
+      } else if (/implant|implants|vis dentaire|ostéo-intégration|pose d'implant/.test(L)) {
+        botResponse = "Implant dentaire noté. Tarif : 350 000 à 500 000 FCFA selon marque. Délai osseux : 3 à 6 mois. Souhaitez-vous une simulation ?";
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "NOTE", content: cleanText, suggestion: "Générer devis implant + simulation 3D", status: "pending" }, ...p]);
+
+      // PROTHESE / COURONNE / BRIDGE
+      } else if (/couronne|bridge|prothèse|prothese|dentier|appareil dentaire|facette|onlay|inlay/.test(L)) {
+        botResponse = "Restauration prothétique notée. Je prépare la consultation avec prise d'empreinte. Souhaitez-vous une simulation Smile Design ?";
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "NOTE", content: cleanText, suggestion: "Préparer consultation prothétique", status: "pending" }, ...p]);
+
+      // BLANCHIMENT
+      } else if (/blanchiment|blanchir|éclaircissement|eclaircissement|dents jaunes|dents blanches/.test(L)) {
+        botResponse = "Blanchiment disponible : Cabinet (résultat immédiat, 75 000 FCFA) ou gouttières domicile (45 000 FCFA). Contre-indications à vérifier.";
+
+      // ORTHODONTIE
+      } else if (/orthodontie|appareil|bagues|gouttières orthodontiques|gouttiere|aligneur|malposition|dents croches/.test(L)) {
+        botResponse = "Traitement orthodontique noté. Bagues fixes : à partir de 250 000 FCFA. Aligneurs transparents : à partir de 350 000 FCFA. Bilan initial requis.";
+
+      // ANESTHESIE
+      } else if (/anesthésie|anesthesie|piqûre|piqure|endormir|j'ai peur/.test(L)) {
+        botResponse = "Anesthésie locale (Xylocaïne 2% adrénalinée) notée au dossier. Vérification allergie avant injection. Technique : infiltration ou tronculaire selon zone.";
+
+      // ORDONNANCE / MEDICAMENTS
+      } else if (/ordonnance|médicament|medicament|antibiotique|antidouleur|amoxicilline|ibuprofène|paracétamol|prescrire|prescription/.test(L)) {
+        botResponse = "Ordonnance préparée. Post-op standard : Amoxicilline 1g × 2/j × 7j + Ibuprofène 400mg × 3/j × 5j. Allergie aux pénicillines ? Prévoir Azithromycine.";
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "NOTE", content: cleanText, suggestion: "Ouvrir éditeur d'ordonnance", status: "pending" }, ...p]);
+
+      // RADIO / IMAGERIE
+      } else if (/radio|radiographie|panoramique|pano|cbct|scanner|rx|rétro-alvéolaire|retroalveolaire|imagerie/.test(L)) {
+        botResponse = "Analyse radiographique IA lancée. Modèle Neural Imaging v4.2 actif. Résultats dans quelques secondes.";
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RADIO", content: cleanText, suggestion: "Ouvrir Radio IA Lab", status: "pending" }, ...p]);
+
+      // RDV
+      } else if (/rendez-vous|rdv|consulter|consultation|prendre rdv|appointment/.test(L)) {
+        const t = L.match(/(\d{1,2})\s*h/); const time = t ? `${t[1]}h00` : "10h00";
+        const day = /demain/.test(L) ? "demain" : /lundi/.test(L) ? "lundi" : /mardi/.test(L) ? "mardi" : /mercredi/.test(L) ? "mercredi" : /jeudi/.test(L) ? "jeudi" : /vendredi/.test(L) ? "vendredi" : "prochainement";
+        botResponse = `RDV enregistré pour ${day} à ${time}. Confirmation WhatsApp envoyée.`;
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RDV", content: cleanText, suggestion: `Créer RDV ${day} à ${time}`, status: "pending" }, ...p]);
+
+      // DOSSIER PATIENT
+      } else if (/dossier|patient|fiche|historique|antécédent|antecedent/.test(L)) {
+        botResponse = `Dossier ${currentPatient.name} — ID: ${currentPatient.id}. Dernière radio : ${currentPatient.lastRadio}.`;
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "PATIENT", content: cleanText, suggestion: "Ouvrir Fiche Complète", status: "pending" }, ...p]);
+
+      // WHATSAPP
+      } else if (/whatsapp|message|sms|envoyer|notifier|rappel/.test(L)) {
+        botResponse = "Hub Communication ouvert. Mamadou Dia attend une confirmation pour mardi. Validation ?";
+        setCommandQueue((p) => [{ id: Date.now().toString(36), type: "WHATSAPP", content: cleanText, suggestion: "Envoyer confirmation WhatsApp", status: "pending" }, ...p]);
+
+      // BASE GÉNÉRALE
       } else {
-        // Knowledge base fallback
         const kb = [
-          {
-            keys: ["horaire", "heure", "ouvert", "ferme", "disponible"],
-            res: "Le cabinet est ouvert du lundi au vendredi de 8h à 19h, et le samedi de 9h à 13h.",
-          },
-          {
-            keys: ["adresse", "situé", "situe", "lieu", "où", "localisation"],
-            res: "Nous sommes situés au Plateau, Rue de Thiong, Dakar.",
-          },
-          {
-            keys: ["tarif", "prix", "coût", "combien", "facture"],
-            res: "Consultation : 15 000 FCFA. Détartrage : 25 000 FCFA. Extraction : 40 000 FCFA. Implant : sur devis.",
-          },
-          {
-            keys: ["bonjour", "salut", "bonsoir", "hello"],
-            res: "Bonjour Docteur ! Je suis prêt. Que puis-je faire pour vous ?",
-          },
-          {
-            keys: ["urgence", "douleur", "mal", "urgent"],
-            res: "Pour une urgence, le cabinet accepte les consultations immédiates. Souhaitez-vous que je prépare une fiche d'urgence ?",
-          },
-          {
-            keys: ["merci", "parfait", "ok", "super"],
-            res: "Avec plaisir, Docteur. Autre chose ?",
-          },
+          { r: /horaire|heure|ouvert|ferme|disponible|quand/, a: "Le cabinet est ouvert lundi–vendredi 8h–19h et samedi 9h–13h." },
+          { r: /adresse|situé|lieu|où|localisation/, a: "Cabinet situé au Plateau, Rue de Thiong, Dakar." },
+          { r: /tarif|prix|coût|combien/, a: "Consultation 15k · Détartrage 25k · Extraction 40k · Implant 350k FCFA." },
+          { r: /bonjour|salut|bonsoir|hello/, a: "Bonjour Docteur ! Neural Core actif. Quelle est votre commande ?" },
+          { r: /merci|parfait|ok|super|bien/, a: "Avec plaisir Docteur. Y a-t-il autre chose ?" },
+          { r: /agenda|planning|calendrier/, a: "Planning du jour : 3 patients confirmés, 1 urgence en attente." },
+          { r: /stock|matériel|commande|consommable/, a: "Stocks faibles : gants L (8 boîtes restantes). Commande suggérée." },
+          { r: /parodontite|paro|gencive|gingivite|saignement gencive/, a: "Pathologie parodontale détectée. Bilan parodontal + détartrage profond recommandés." },
         ];
-        const match = kb.find((item) =>
-          item.keys.some((k) => lowText.includes(k))
-        );
-        if (match) botResponse = match.res;
+        const m = kb.find(i => i.r.test(L));
+        if (m) botResponse = m.a;
       }
 
       // Add final bot response
