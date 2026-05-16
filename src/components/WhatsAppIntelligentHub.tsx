@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
 
 interface WhatsAppMessage {
   id: string;
@@ -32,6 +33,7 @@ interface WhatsAppMessage {
     type: "RDV" | "INFO" | "FOLLOWUP";
     text: string;
     action: string;
+    meta?: any;
   };
 }
 
@@ -79,6 +81,63 @@ export function WhatsAppIntelligentHub() {
 
   const [activeChat, setActiveChat] = useState<string | null>("1");
   const [inputText, setInputText] = useState("");
+
+  useEffect(() => {
+    const fetchWhatsAppLogs = async () => {
+      const { data } = await supabase
+        .from("neural_logs")
+        .select("*")
+        .eq("command_type", "WHATSAPP")
+        .order("created_at", { ascending: false });
+
+      if (data && data.length > 0) {
+        const aiMessages: WhatsAppMessage[] = data.map((log) => ({
+          id: log.id.toString(),
+          sender: "Assistant Neural (IA)",
+          text: log.content,
+          time: new Date(log.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+          isAIProcessed: true,
+          suggestion: {
+            type: "INFO",
+            text: log.suggestion || "Action WhatsApp requise",
+            action: "Envoyer Message",
+            meta: log.meta_data,
+          }
+        }));
+        setMessages(prev => [...aiMessages, ...prev]);
+      }
+    };
+    fetchWhatsAppLogs();
+
+    const channel = supabase
+      .channel("whatsapp_changes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "neural_logs", filter: "command_type=eq.WHATSAPP" },
+        (payload) => {
+          const log = payload.new as any;
+          const newMsg: WhatsAppMessage = {
+            id: log.id.toString(),
+            sender: "Assistant Neural (IA)",
+            text: log.content,
+            time: new Date(log.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+            isAIProcessed: true,
+            suggestion: {
+              type: "INFO",
+              text: log.suggestion || "Action WhatsApp requise",
+              action: "Envoyer Message",
+              meta: log.meta_data,
+            }
+          };
+          setMessages(prev => [newMsg, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const handleSendMessage = () => {
     if (!inputText) return;
@@ -251,7 +310,9 @@ export function WhatsAppIntelligentHub() {
                                 <p className="text-sm font-bold text-slate-700 italic">
                                   "{m.suggestion.text}"
                                 </p>
-                                <button className="w-full bg-emerald-600 text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10">
+                                <button 
+                                   onClick={() => window.open(`https://api.whatsapp.com/send?phone=221770000000&text=${encodeURIComponent("Bonjour ! Nous faisons suite à votre demande concernant : " + m.suggestion?.text)}`, "_blank")}
+                                   className="w-full bg-emerald-600 text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10">
                                    <CheckCircle2 className="h-4 w-4" />
                                    {m.suggestion.action}
                                 </button>
