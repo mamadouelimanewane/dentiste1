@@ -18,8 +18,7 @@ import { AiRadioLab } from "@/components/AiRadioLab";
 import { SmileDesignStudio } from "@/components/SmileDesignStudio";
 import { ProstheticsLab } from "@/components/ProstheticsLab";
 import { PrescriptionEditor } from "@/components/PrescriptionEditor";
-import { CommunicationHub } from "@/components/CommunicationHub";
-import { WhatsAppIntelligentHub } from "@/components/WhatsAppIntelligentHub";
+import { CommunicationCenter } from "@/components/CommunicationCenter";
 import { InventoryManager } from "@/components/InventoryManager";
 import { ClinicSettings } from "@/components/ClinicSettings";
 import { AdminHub } from "@/components/AdminHub";
@@ -323,7 +322,7 @@ export default function Home() {
                     {currentStep === 15 && <SmileDesignStudio />}
                     {currentStep === 16 && <ProstheticsLab />}
                     {currentStep === 17 && <PrescriptionEditor />}
-                    {currentStep === 18 && <WhatsAppIntelligentHub />}
+                    {currentStep === 18 && <CommunicationCenter />}
                     {currentStep === 19 && <InventoryManager />}
                     {currentStep === 20 && <PatientDirectory />}
                     {currentStep === 21 && <ClinicSettings />}

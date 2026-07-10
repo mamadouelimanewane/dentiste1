@@ -15,28 +15,90 @@ import {
   Users, 
   CheckCircle, 
   Clock, 
-  Activity, 
+  Activity,
   SendHorizontal,
   Bell,
   Smartphone,
   ChevronRight,
-  MoreVertical,
   Calendar,
   UserCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { DemoModeBadge } from "@/components/DemoModeBadge";
 
 export function CommunicationHub() {
   const [activeTab, setActiveTab] = useState<"Envoyer" | "Historique" | "Automatisation" | "Analytique">("Envoyer");
   const [channel, setChannel] = useState<"WhatsApp" | "SMS" | "Email">("WhatsApp");
   const [message, setMessage] = useState("");
+  const [recipientPhone, setRecipientPhone] = useState("");
+  const [scheduleAt, setScheduleAt] = useState("");
+  const [showScheduler, setShowScheduler] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   const calculateCost = () => {
     if (message.length === 0) return 0;
     if (channel === "WhatsApp") return 15;
     if (channel === "SMS") return Math.ceil(message.length / 160) * 25;
     return 0;
+  };
+
+  const resetFeedbackSoon = () => setTimeout(() => setFeedback(null), 4000);
+
+  const handleSendNow = async () => {
+    if (!recipientPhone || !message || channel === "Email") return;
+    setSending(true);
+    setFeedback(null);
+    try {
+      const res = await fetch("/api/messages/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: recipientPhone,
+          message,
+          channel: channel === "WhatsApp" ? "whatsapp" : "sms",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de l'envoi.");
+      setFeedback(data.simulated ? "Envoyé (mode démo — non transmis réellement)." : "Message envoyé.");
+      setMessage("");
+    } catch (e) {
+      setFeedback(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setSending(false);
+      resetFeedbackSoon();
+    }
+  };
+
+  const handleSchedule = async () => {
+    if (!recipientPhone || !message || !scheduleAt || channel === "Email") return;
+    setSending(true);
+    setFeedback(null);
+    try {
+      const res = await fetch("/api/messages/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: recipientPhone,
+          message,
+          channel: channel === "WhatsApp" ? "whatsapp" : "sms",
+          sendAt: new Date(scheduleAt).toISOString(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de la programmation.");
+      setFeedback("Message programmé.");
+      setMessage("");
+      setShowScheduler(false);
+      setScheduleAt("");
+    } catch (e) {
+      setFeedback(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setSending(false);
+      resetFeedbackSoon();
+    }
   };
 
   return (
@@ -57,15 +119,13 @@ export function CommunicationHub() {
         </div>
         
         <div className="flex items-center gap-3">
+          <DemoModeBadge feature={channel === "SMS" ? "sms" : "whatsapp"} />
           <div className="hidden lg:flex flex-col text-right mr-4 border-r border-slate-100 pr-4">
             <span className="text-[10px] font-black text-slate-400 uppercase">Statut API Gateway</span>
             <span className="text-[10px] font-bold text-emerald-600 uppercase flex items-center gap-1 justify-end">
               <div className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-pulse" /> Connecté
             </span>
           </div>
-          <button className="flex items-center gap-2 bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-slate-900/20">
-            <Plus className="h-4 w-4 text-emerald-400" /> Nouvelle Campagne
-          </button>
         </div>
       </div>
 
@@ -122,11 +182,18 @@ export function CommunicationHub() {
                <div className="space-y-4">
                   <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-sm">
                     <Users className="h-4 w-4 text-slate-400" />
-                    <input type="text" placeholder="Rechercher des patients..." className="bg-transparent border-none text-[10px] font-bold outline-none w-full uppercase" />
+                    <input
+                      type="tel"
+                      value={recipientPhone}
+                      onChange={(e) => setRecipientPhone(e.target.value)}
+                      placeholder="Numéro du destinataire (ex: 221770000000)"
+                      disabled={channel === "Email"}
+                      className="bg-transparent border-none text-[10px] font-bold outline-none w-full uppercase disabled:opacity-40"
+                    />
                   </div>
 
                   <div className="relative">
-                    <textarea 
+                    <textarea
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Tapez votre message ici..."
@@ -138,12 +205,46 @@ export function CommunicationHub() {
                     </div>
                   </div>
 
+                  {channel === "Email" && (
+                    <p className="text-[10px] font-bold text-amber-600 uppercase">Canal Email non disponible pour l'instant — choisissez WhatsApp ou SMS.</p>
+                  )}
+
+                  {feedback && (
+                    <p className="text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded px-3 py-2">{feedback}</p>
+                  )}
+
+                  {showScheduler && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="datetime-local"
+                        value={scheduleAt}
+                        onChange={(e) => setScheduleAt(e.target.value)}
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-sm px-3 py-2 text-xs font-bold outline-none"
+                      />
+                      <button
+                        onClick={handleSchedule}
+                        disabled={sending || !recipientPhone || !message || !scheduleAt}
+                        className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all"
+                      >
+                        Confirmer
+                      </button>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-3">
-                     <button className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all">
+                     <button
+                       onClick={() => setShowScheduler((s) => !s)}
+                       disabled={channel === "Email"}
+                       className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-600 py-3 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all"
+                     >
                        <Calendar className="h-4 w-4" /> Programmer
                      </button>
-                     <button className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-200">
-                       <SendHorizontal className="h-4 w-4" /> Envoyer Immédiat
+                     <button
+                       onClick={handleSendNow}
+                       disabled={sending || !recipientPhone || !message || channel === "Email"}
+                       className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white py-3 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-200"
+                     >
+                       <SendHorizontal className="h-4 w-4" /> {sending ? "Envoi…" : "Envoyer Immédiat"}
                      </button>
                   </div>
                </div>

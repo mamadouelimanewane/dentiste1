@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "@/lib/supabase";
 
 interface CommandAction {
   id: string;
@@ -63,25 +62,27 @@ export function NeuralAssistant() {
   // Track which commands have been synced to Supabase
   const syncedCommands = useRef<Set<string>>(new Set());
 
-  // Automatically sync new commands to Supabase 'neural_logs' table
+  // Automatically sync new commands to the neural_logs table (via API route
+  // — le client Neon serverless ne s'utilise que côté serveur).
   useEffect(() => {
     const unsynced = commandQueue.filter(cmd => !syncedCommands.current.has(cmd.id));
     if (unsynced.length === 0) return;
-    
+
     unsynced.forEach(cmd => {
       syncedCommands.current.add(cmd.id);
-      
-      supabase.from('neural_logs').insert([{
-        command_id: cmd.id,
-        command_type: cmd.type,
-        content: cmd.content,
-        suggestion: cmd.suggestion,
-        status: cmd.status,
-        meta_data: cmd.meta
-      }]).then(({ error }) => {
-        if (error) console.error("Supabase sync error:", error);
-        else console.log(`[Supabase] Action ${cmd.id} synced successfully.`);
-      });
+
+      fetch('/api/neural-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commandId: cmd.id,
+          commandType: cmd.type,
+          content: cmd.content,
+          suggestion: cmd.suggestion,
+          statusValue: cmd.status,
+          meta: cmd.meta,
+        }),
+      }).catch((err) => console.error("Neural log sync error:", err));
     });
   }, [commandQueue]);
   // Use a ref to always read the latest transcript inside async callbacks

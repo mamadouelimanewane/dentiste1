@@ -36,6 +36,7 @@ export function UserManagement() {
   const [showInvite, setShowInvite] = useState(false);
   const [inviteForm, setInviteForm] = useState({ email: "", fullName: "", role: "accueil" as Role });
   const [inviting, setInviting] = useState(false);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -69,6 +70,7 @@ export function UserManagement() {
       if (!res.ok) throw new Error(data.error || "Erreur d'invitation.");
       setShowInvite(false);
       setInviteForm({ email: "", fullName: "", role: "accueil" });
+      setTempPassword(data.tempPassword);
       loadUsers();
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : "Erreur inconnue.");
@@ -246,12 +248,29 @@ export function UserManagement() {
                 disabled={inviting}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-bold py-2 rounded transition-colors"
               >
-                {inviting ? "Envoi de l'invitation…" : "Inviter"}
+                {inviting ? "Création…" : "Créer le compte"}
               </button>
               <p className="text-[10px] text-slate-400 text-center">
-                Un email d'invitation Supabase sera envoyé pour définir le mot de passe.
+                Un mot de passe temporaire sera généré — communiquez-le au collaborateur, il pourra le changer ensuite.
               </p>
             </form>
+          </div>
+        </div>
+      )}
+
+      {tempPassword && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 text-center space-y-4">
+            <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto" />
+            <h3 className="text-sm font-black text-slate-900 uppercase">Compte créé</h3>
+            <p className="text-xs text-slate-500">Communiquez ce mot de passe temporaire au collaborateur :</p>
+            <p className="text-lg font-black tracking-widest bg-slate-100 rounded py-3 text-slate-900">{tempPassword}</p>
+            <button
+              onClick={() => setTempPassword(null)}
+              className="w-full bg-slate-900 text-white text-xs font-bold uppercase py-2 rounded"
+            >
+              J'ai noté le mot de passe
+            </button>
           </div>
         </div>
       )}

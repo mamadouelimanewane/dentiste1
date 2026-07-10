@@ -21,11 +21,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "@/lib/supabase";
+import { DemoModeBadge } from "@/components/DemoModeBadge";
 
 interface WhatsAppMessage {
   id: string;
   sender: string;
+  phone: string;
   text: string;
   time: string;
   isAIProcessed: boolean;
@@ -42,6 +43,7 @@ export function WhatsAppIntelligentHub() {
     {
       id: "1",
       sender: "Mamadou Dia",
+      phone: "221770000001",
       text: "Bonjour, je voudrais un rendez-vous mardi prochain pour un détartrage s'il vous plaît.",
       time: "14:20",
       isAIProcessed: true,
@@ -54,6 +56,7 @@ export function WhatsAppIntelligentHub() {
     {
       id: "2",
       sender: "Aïssatou Sow",
+      phone: "221770000002",
       text: "Est-ce que je peux avoir mon ordonnance par WhatsApp ?",
       time: "13:45",
       isAIProcessed: true,
@@ -66,6 +69,7 @@ export function WhatsAppIntelligentHub() {
     {
       id: "3",
       sender: "Fatou Diop",
+      phone: "221770000003",
       text: "Merci pour les soins d'hier, je n'ai plus mal !",
       time: "10:12",
       isAIProcessed: false
@@ -73,6 +77,7 @@ export function WhatsAppIntelligentHub() {
     {
       id: "4",
       sender: "Dr. Neural Bot",
+      phone: "",
       text: "👋 Bonjour ! Je suis l'assistant automatique du cabinet. Comment puis-je vous aider ? (Horaires, Adresse, RDV...)",
       time: "10:00",
       isAIProcessed: false
@@ -81,71 +86,55 @@ export function WhatsAppIntelligentHub() {
 
   const [activeChat, setActiveChat] = useState<string | null>("1");
   const [inputText, setInputText] = useState("");
+  const seenLogIds = React.useRef(new Set<string>());
 
   useEffect(() => {
-    const fetchWhatsAppLogs = async () => {
-      const { data } = await supabase
-        .from("neural_logs")
-        .select("*")
-        .eq("command_type", "WHATSAPP")
-        .order("created_at", { ascending: false });
+    const mapLog = (log: any): WhatsAppMessage => ({
+      id: log.id.toString(),
+      sender: "Assistant Neural (IA)",
+      phone: "",
+      text: log.content,
+      time: new Date(log.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+      isAIProcessed: true,
+      suggestion: {
+        type: "INFO",
+        text: log.suggestion || "Action WhatsApp requise",
+        action: "Envoyer Message",
+        meta: log.meta_data,
+      }
+    });
 
-      if (data && data.length > 0) {
-        const aiMessages: WhatsAppMessage[] = data.map((log) => ({
-          id: log.id.toString(),
-          sender: "Assistant Neural (IA)",
-          text: log.content,
-          time: new Date(log.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
-          isAIProcessed: true,
-          suggestion: {
-            type: "INFO",
-            text: log.suggestion || "Action WhatsApp requise",
-            action: "Envoyer Message",
-            meta: log.meta_data,
-          }
-        }));
-        setMessages(prev => [...aiMessages, ...prev]);
+    const fetchWhatsAppLogs = async (isInitial: boolean) => {
+      const res = await fetch("/api/neural-logs?command_type=WHATSAPP&limit=50");
+      const data = await res.json();
+      if (!res.ok || !data.logs) return;
+
+      const newLogs = data.logs.filter((log: any) => !seenLogIds.current.has(log.id.toString()));
+      newLogs.forEach((log: any) => seenLogIds.current.add(log.id.toString()));
+
+      if (isInitial) {
+        setMessages(prev => [...data.logs.map(mapLog), ...prev]);
+      } else if (newLogs.length > 0) {
+        setMessages(prev => [...newLogs.map(mapLog), ...prev]);
       }
     };
-    fetchWhatsAppLogs();
 
-    const channel = supabase
-      .channel("whatsapp_changes")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "neural_logs", filter: "command_type=eq.WHATSAPP" },
-        (payload) => {
-          const log = payload.new as any;
-          const newMsg: WhatsAppMessage = {
-            id: log.id.toString(),
-            sender: "Assistant Neural (IA)",
-            text: log.content,
-            time: new Date(log.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
-            isAIProcessed: true,
-            suggestion: {
-              type: "INFO",
-              text: log.suggestion || "Action WhatsApp requise",
-              action: "Envoyer Message",
-              meta: log.meta_data,
-            }
-          };
-          setMessages(prev => [newMsg, ...prev]);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    fetchWhatsAppLogs(true);
+    // Pas de push temps réel sur Neon : on rafraîchit par polling toutes les 5s.
+    const interval = setInterval(() => fetchWhatsAppLogs(false), 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputText) return;
-    
+    const text = inputText;
+    const targetPhone = selectedChat?.phone || "221770000000";
+
     const newMessage: WhatsAppMessage = {
       id: Date.now().toString(),
       sender: "Cabinet (Moi)",
-      text: inputText,
+      phone: targetPhone,
+      text,
       time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       isAIProcessed: false
     };
@@ -153,24 +142,48 @@ export function WhatsAppIntelligentHub() {
     setMessages(prev => [...prev, newMessage]);
     setInputText("");
 
+    try {
+      await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: targetPhone, message: text }),
+      });
+    } catch {
+      // Le message reste visible localement même si l'envoi réseau échoue ;
+      // /api/whatsapp/send journalise déjà l'échec côté serveur.
+    }
+
     // Automated Bot Logic
-    const lowText = inputText.toLowerCase();
+    const lowText = text.toLowerCase();
     setTimeout(() => {
        let botReply = "";
        if (lowText.includes("horaire")) botReply = "Nous sommes ouverts de 8h à 19h en semaine.";
        else if (lowText.includes("adresse")) botReply = "Nous sommes au Plateau, Rue de Thiong, Dakar.";
        else if (lowText.includes("tarif")) botReply = "Nos tarifs débutent à 25.000 FCFA pour un détartrage.";
-       
+
        if (botReply) {
          setMessages(prev => [...prev, {
            id: (Date.now() + 1).toString(),
            sender: "Dr. Neural Bot",
+           phone: "",
            text: botReply,
            time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
            isAIProcessed: true
          }]);
        }
     }, 1000);
+  };
+
+  const handleExecuteSuggestion = async (msg: WhatsAppMessage) => {
+    if (!msg.suggestion) return;
+    await fetch("/api/whatsapp/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone: msg.phone || "221770000000",
+        message: "Bonjour ! Nous faisons suite à votre demande concernant : " + msg.suggestion.text,
+      }),
+    });
   };
 
   const selectedChat = messages.find(m => m.id === activeChat);
@@ -193,6 +206,7 @@ export function WhatsAppIntelligentHub() {
         </div>
         
         <div className="flex items-center gap-4">
+           <DemoModeBadge feature="whatsapp" />
            <div className="flex flex-col text-right">
               <span className="text-xs font-black text-slate-400 uppercase">Synchronisation Agenda</span>
               <span className="text-xs font-bold text-emerald-600 uppercase flex items-center gap-1 justify-end">
@@ -310,8 +324,8 @@ export function WhatsAppIntelligentHub() {
                                 <p className="text-sm font-bold text-slate-700 italic">
                                   "{m.suggestion.text}"
                                 </p>
-                                <button 
-                                   onClick={() => window.open(`https://api.whatsapp.com/send?phone=221770000000&text=${encodeURIComponent("Bonjour ! Nous faisons suite à votre demande concernant : " + m.suggestion?.text)}`, "_blank")}
+                                <button
+                                   onClick={() => handleExecuteSuggestion(m)}
                                    className="w-full bg-emerald-600 text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10">
                                    <CheckCircle2 className="h-4 w-4" />
                                    {m.suggestion.action}

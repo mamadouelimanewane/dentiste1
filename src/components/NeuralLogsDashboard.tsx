@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Brain, Activity, Clock, ShieldAlert, MessageCircle, RefreshCcw, Truck, Stethoscope, Calendar, CheckCircle } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 interface NeuralLog {
@@ -20,34 +19,21 @@ export function NeuralLogsDashboard() {
 
   const fetchLogs = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("neural_logs")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(50);
-    
-    if (data) setLogs(data);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/neural-logs?limit=50");
+      const data = await res.json();
+      if (res.ok) setLogs(data.logs);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchLogs();
-
-    // Set up realtime subscription
-    const channel = supabase
-      .channel("neural_logs_changes")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "neural_logs" },
-        (payload) => {
-          setLogs((currentLogs) => [payload.new as NeuralLog, ...currentLogs].slice(0, 50));
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Pas de push temps réel sur Neon (pas de service Realtime dédié) :
+    // on rafraîchit par polling toutes les 5s.
+    const interval = setInterval(fetchLogs, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const getIconForType = (type: string) => {

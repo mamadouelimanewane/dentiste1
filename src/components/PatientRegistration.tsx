@@ -1,36 +1,60 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { User, Calendar, Shield, MapPin, Phone, Save, CheckCircle2, CreditCard } from "lucide-react";
-import { motion } from "framer-motion";
+import { User, Save, CheckCircle2, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { usePatient } from "@/lib/context";
+import { usePatient, mapDbPatientToContext } from "@/lib/context";
 
 export function PatientRegistration() {
   const { currentPatient, setCurrentPatient } = usePatient();
   const [isSaved, setIsSaved] = useState(false);
-  
-  const generateId = () => `SN-${Math.floor(10000 + Math.random() * 90000)}-X`;
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
     birthDate: "",
     phone: "",
-    idNumber: generateId(),
     address: ""
   });
 
   useEffect(() => {
     if (currentPatient) {
-      setFormData(currentPatient);
+      setFormData({
+        name: currentPatient.name,
+        birthDate: currentPatient.birthDate,
+        phone: currentPatient.phone,
+        address: currentPatient.address,
+      });
     }
   }, [currentPatient]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrentPatient(formData);
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    if (currentPatient) return; // dossier déjà créé pour cette session
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/patients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: formData.name,
+          birthDate: formData.birthDate || null,
+          phone: formData.phone,
+          address: formData.address,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de la création du dossier.");
+      setCurrentPatient(mapDbPatientToContext(data.patient));
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,17 +78,21 @@ export function PatientRegistration() {
       </div>
 
       <form onSubmit={handleSubmit} className="p-8">
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm rounded-sm p-3">{error}</div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
           {/* Nom & Prénom */}
           <div className="space-y-2 border-b-2 border-blue-100 pb-3">
             <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Nom & Prénom</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               name="name"
               value={formData.name}
               onChange={handleChange}
               placeholder="Mamadou Diallo"
-              className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none"
+              disabled={!!currentPatient}
+              className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none disabled:opacity-60"
               required
             />
           </div>
@@ -72,53 +100,50 @@ export function PatientRegistration() {
           {/* Date de Naissance */}
           <div className="space-y-2 border-b-2 border-blue-100 pb-3">
             <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Né(e) le</label>
-            <input 
-              type="date" 
+            <input
+              type="date"
               name="birthDate"
               value={formData.birthDate}
               onChange={handleChange}
-              className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 focus:ring-0 outline-none"
-              required
+              disabled={!!currentPatient}
+              className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 focus:ring-0 outline-none disabled:opacity-60"
             />
           </div>
 
           {/* Téléphone */}
           <div className="space-y-2 border-b-2 border-blue-100 pb-3">
             <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Contact / Téléphone</label>
-            <input 
-              type="tel" 
+            <input
+              type="tel"
               name="phone"
               value={formData.phone}
               onChange={handleChange}
               placeholder="+221 77 000 00 00"
-              className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none"
+              disabled={!!currentPatient}
+              className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none disabled:opacity-60"
             />
           </div>
 
-          {/* N° Assuré / ID */}
+          {/* N° Dossier (généré côté serveur) */}
           <div className="space-y-2 border-b-2 border-blue-100 pb-3">
             <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Référence ID / Dossier</label>
-            <input 
-              type="text" 
-              name="idNumber"
-              value={formData.idNumber}
-              onChange={handleChange}
-              placeholder="SN-12345-X"
-              className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none"
-            />
+            <p className="text-base font-bold text-slate-400">
+              {currentPatient?.idNumber || "Généré automatiquement à l'enregistrement"}
+            </p>
           </div>
         </div>
 
         {/* Adresse */}
         <div className="mt-8 space-y-2 border-b-2 border-blue-100 pb-3">
           <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Adresse de Résidence</label>
-          <input 
+          <input
             type="text"
             name="address"
             value={formData.address}
             onChange={handleChange}
             placeholder="Dakar, Plateau, Rue 12..."
-            className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none"
+            disabled={!!currentPatient}
+            className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none disabled:opacity-60"
           />
         </div>
 
@@ -127,22 +152,21 @@ export function PatientRegistration() {
             <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Certifié Elite Pro</span>
           </div>
-          <button 
+          <button
             type="submit"
+            disabled={saving || !!currentPatient}
             className={cn(
-              "h-9 px-6 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2",
-              isSaved 
-                ? "bg-emerald-600 text-white" 
+              "h-9 px-6 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 disabled:opacity-60",
+              isSaved || currentPatient
+                ? "bg-emerald-600 text-white"
                 : "bg-slate-900 text-white hover:bg-black"
             )}
           >
-            {isSaved ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
-            {isSaved ? "Dossier Créé" : "Enregistrer la Fiche"}
+            {isSaved || currentPatient ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+            {saving ? "Enregistrement…" : isSaved || currentPatient ? "Dossier Créé" : "Enregistrer la Fiche"}
           </button>
         </div>
       </form>
     </div>
   );
 }
-
-

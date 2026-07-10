@@ -1,19 +1,18 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { AuthProvider, type Role } from "@/lib/auth-context";
+import { getStaffSession } from "@/lib/session";
+import { AuthProvider } from "@/lib/auth-context";
 
-const isSupabaseConfigured =
-  !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const isDbConfigured = !!process.env.DATABASE_URL && !!process.env.SESSION_SECRET;
 
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  if (!isSupabaseConfigured) {
-    // Pas de projet Supabase branché (dev/preview sans .env.local) : on
-    // laisse passer avec une identité de démonstration plutôt que de
-    // bloquer tout le monde derrière un login impossible à satisfaire.
+  if (!isDbConfigured) {
+    // Pas de base Neon branchée (dev/preview sans .env.local) : on laisse
+    // passer avec une identité de démonstration plutôt que de bloquer tout
+    // le monde derrière un login impossible à satisfaire.
     return (
       <AuthProvider user={{ id: "demo", fullName: "Mode démo", role: "admin" }}>
         {children}
@@ -21,29 +20,14 @@ export default async function AppLayout({
     );
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await getStaffSession();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) {
+  if (!session) {
     redirect("/login");
   }
 
   return (
-    <AuthProvider
-      user={{ id: user.id, fullName: profile.full_name, role: profile.role as Role }}
-    >
+    <AuthProvider user={{ id: session.userId, fullName: session.fullName, role: session.role }}>
       {children}
     </AuthProvider>
   );

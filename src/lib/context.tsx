@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface Patient {
+  id: string;
   name: string;
   birthDate: string;
   phone: string;
@@ -17,23 +18,46 @@ interface PatientContextType {
 
 const PatientContext = createContext<PatientContextType | undefined>(undefined);
 
+export function mapDbPatientToContext(row: {
+  id: string;
+  full_name: string;
+  birth_date: string | null;
+  phone: string | null;
+  dossier_number: string;
+  address: string | null;
+}): Patient {
+  return {
+    id: row.id,
+    name: row.full_name,
+    birthDate: row.birth_date || "",
+    phone: row.phone || "",
+    idNumber: row.dossier_number,
+    address: row.address || "",
+  };
+}
+
 export function PatientProvider({ children }: { children: React.ReactNode }) {
-  const [currentPatient, setCurrentPatient] = useState<Patient | null>(null);
+  const [currentPatient, setCurrentPatientState] = useState<Patient | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("dentiste_lite_patient");
-    if (saved) {
-      setCurrentPatient(JSON.parse(saved));
-    }
+    const savedId = localStorage.getItem("dentiste_lite_patient_id");
+    if (!savedId) return;
+    fetch(`/api/patients/${savedId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.patient) setCurrentPatientState(mapDbPatientToContext(data.patient));
+      })
+      .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (currentPatient) {
-      localStorage.setItem("dentiste_lite_patient", JSON.stringify(currentPatient));
+  const setCurrentPatient = (patient: Patient | null) => {
+    setCurrentPatientState(patient);
+    if (patient) {
+      localStorage.setItem("dentiste_lite_patient_id", patient.id);
     } else {
-      localStorage.removeItem("dentiste_lite_patient");
+      localStorage.removeItem("dentiste_lite_patient_id");
     }
-  }, [currentPatient]);
+  };
 
   return (
     <PatientContext.Provider value={{ currentPatient, setCurrentPatient }}>
