@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Calendar as CalendarIcon, Clock, Users, Plus, Search,
   ChevronLeft, ChevronRight, CheckCircle2, ListTodo,
-  Building2, X, MessageCircle, Smartphone, Send,
-  AlertTriangle, Bell, Check, User
+  X, MessageCircle, Smartphone, Send,
+  AlertTriangle, Bell, Check, User, LogIn, XCircle, UserX, CalendarClock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
@@ -15,14 +15,28 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface Appointment {
   id: string;
-  patientName: string;
-  phone: string;
-  type: string;
-  date: string; // ISO
-  hour: number;
-  day: number; // index 0-6 in week
-  color: string;
-  notified: boolean;
+  patient_id: string;
+  patient_name: string;
+  patient_phone: string | null;
+  practitioner_id: string | null;
+  practitioner_name: string | null;
+  scheduled_at: string;
+  duration_minutes: number;
+  type: string | null;
+  status: "scheduled" | "completed" | "cancelled" | "no_show";
+  checked_in_at: string | null;
+}
+
+interface Practitioner {
+  id: string;
+  full_name: string;
+}
+
+interface PatientHit {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  dossier_number: string;
 }
 
 interface NotifyResult {
@@ -40,9 +54,9 @@ const APPOINTMENT_TYPES = [
   "Radiographie", "Prothèse", "Implant", "Urgence"
 ];
 
-const COLORS = [
+const PRACTITIONER_COLORS = [
   "bg-blue-500", "bg-emerald-500", "bg-violet-500", "bg-orange-500",
-  "bg-rose-500", "bg-cyan-500"
+  "bg-rose-500", "bg-cyan-500", "bg-amber-500", "bg-indigo-500"
 ];
 
 const WEEK_DAYS = [
@@ -69,34 +83,41 @@ function getWeekStart(offset = 0): Date {
   return d;
 }
 
-function formatIso(weekStart: Date, dayIdx: number, hour: number): string {
-  const d = new Date(weekStart);
-  d.setDate(d.getDate() + dayIdx);
-  d.setHours(hour, 0, 0, 0);
-  return d.toISOString();
-}
-
 function formatLabel(iso: string): string {
   return new Date(iso).toLocaleString("fr-FR", {
     weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit"
   });
 }
 
+function practitionerColor(id: string | null, practitioners: Practitioner[]): string {
+  if (!id) return "bg-slate-400";
+  const idx = practitioners.findIndex(p => p.id === id);
+  return PRACTITIONER_COLORS[idx % PRACTITIONER_COLORS.length] || "bg-slate-400";
+}
+
 // ── Composant principal ───────────────────────────────────────────────────────
 
 export function AgendaModule() {
   const { currentPatient } = usePatient();
-  const [activeTab, setActiveTab] = useState<"Agenda" | "Attente" | "Staff">("Agenda");
+  const [activeTab, setActiveTab] = useState<"Agenda" | "Attente">("Agenda");
   const [weekOffset, setWeekOffset] = useState(0);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
+  const [selectedPractitioner, setSelectedPractitioner] = useState<string>("all");
+  const [loading, setLoading] = useState(true);
 
   // Modal création RDV
   const [showModal, setShowModal] = useState(false);
   const [prefilledDay, setPrefilledDay] = useState(0);
   const [prefilledHour, setPrefilledHour] = useState(9);
 
-  // Résultat notification
+  // Résultat notification / erreurs
   const [notifyResult, setNotifyResult] = useState<NotifyResult | null>(null);
+  const [conflictSkipped, setConflictSkipped] = useState<{ scheduledAt: string; conflictWith?: string }[]>([]);
+
+  // Action sur un RDV existant
+  const [activeAppt, setActiveAppt] = useState<Appointment | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
 
   const weekStart = getWeekStart(weekOffset);
 
@@ -113,23 +134,82 @@ export function AgendaModule() {
 
   const monthLabel = weekStart.toLocaleString("fr-FR", { month: "long", year: "numeric" });
 
+  const loadAppointments = useCallback(async () => {
+    setLoading(true);
+    const from = new Date(weekStart);
+    const to = new Date(weekStart);
+    to.setDate(to.getDate() + 7);
+    try {
+      const params = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
+      if (selectedPractitioner !== "all") params.set("practitionerId", selectedPractitioner);
+      const res = await fetch(`/api/appointments?${params}`);
+      const data = await res.json();
+      if (res.ok) setAppointments(data.appointments);
+    } finally {
+      setLoading(false);
+    }
+  }, [weekOffset, selectedPractitioner]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    fetch("/api/practitioners")
+      .then(res => res.json())
+      .then(data => setPractitioners(data.practitioners || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
+
   const openModal = (dayIdx = 0, hour = 9) => {
     setPrefilledDay(dayIdx);
     setPrefilledHour(hour);
     setNotifyResult(null);
+    setConflictSkipped([]);
     setShowModal(true);
   };
 
-  const handleAppointmentAdded = (appt: Appointment, notify: NotifyResult | null) => {
-    setAppointments(prev => [...prev, appt]);
+  const handleAppointmentAdded = (notify: NotifyResult | null, skipped: typeof conflictSkipped) => {
     setNotifyResult(notify);
+    setConflictSkipped(skipped);
     setShowModal(false);
+    loadAppointments();
   };
+
+  const runAction = async (appt: Appointment, action: "check-in" | "complete" | "cancel" | "no-show") => {
+    await fetch(`/api/appointments/${appt.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    setActiveAppt(null);
+    loadAppointments();
+  };
+
+  const submitReschedule = async () => {
+    if (!activeAppt || !rescheduleDate) return;
+    const res = await fetch(`/api/appointments/${activeAppt.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "reschedule", scheduledAt: new Date(rescheduleDate).toISOString() }),
+    });
+    if (res.ok) {
+      setActiveAppt(null);
+      setRescheduleDate("");
+      loadAppointments();
+    }
+  };
+
+  const todaysAppointments = appointments.filter(a => {
+    const d = new Date(a.scheduled_at);
+    const now = new Date();
+    return d.toDateString() === now.toDateString() && a.status === "scheduled";
+  }).sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* HEADER */}
-      <div className="bg-white border border-slate-200 rounded-sm p-4 flex items-center justify-between shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-sm p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="h-10 w-10 bg-[#1E3A8A] text-white rounded flex items-center justify-center shadow-lg shadow-blue-200">
             <CalendarIcon className="h-6 w-6" />
@@ -142,11 +222,33 @@ export function AgendaModule() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full">
-            <Search className="h-3.5 w-3.5 text-slate-400" />
-            <input type="text" placeholder="Rechercher un patient..." className="bg-transparent border-none text-[10px] font-bold uppercase outline-none w-40" />
-          </div>
+
+        {/* Filtre praticien */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            onClick={() => setSelectedPractitioner("all")}
+            className={cn(
+              "px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full border transition-all",
+              selectedPractitioner === "all" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
+            )}
+          >
+            Tous
+          </button>
+          {practitioners.map((p, idx) => (
+            <button
+              key={p.id}
+              onClick={() => setSelectedPractitioner(p.id)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full border transition-all",
+                selectedPractitioner === p.id
+                  ? cn(PRACTITIONER_COLORS[idx % PRACTITIONER_COLORS.length], "text-white border-transparent")
+                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", selectedPractitioner === p.id ? "bg-white/70" : PRACTITIONER_COLORS[idx % PRACTITIONER_COLORS.length])} />
+              {p.full_name}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -187,10 +289,10 @@ export function AgendaModule() {
                   )}
                 </div>
               )}
-              {notifyResult.messageBody && (
-                <pre className="mt-2 text-[10px] bg-white/60 p-2 rounded border border-current/10 whitespace-pre-wrap font-mono max-h-28 overflow-y-auto">
-                  {notifyResult.messageBody}
-                </pre>
+              {conflictSkipped.length > 0 && (
+                <p className="mt-2 text-[10px] font-bold">
+                  ⚠️ {conflictSkipped.length} occurrence(s) récurrente(s) ignorée(s) pour conflit de créneau.
+                </p>
               )}
             </div>
             <button onClick={() => setNotifyResult(null)} className="flex-shrink-0 p-1 hover:opacity-60 transition-opacity">
@@ -203,7 +305,6 @@ export function AgendaModule() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* SIDEBAR */}
         <div className="lg:col-span-1 space-y-4">
-          {/* Stats */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-4 text-center">
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cette semaine</p>
@@ -213,14 +314,13 @@ export function AgendaModule() {
               </div>
             </div>
             <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-4 text-center">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Notifiés</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Aujourd&apos;hui</p>
               <div className="flex items-end gap-1 justify-center text-emerald-600">
-                <span className="text-2xl font-black">{appointments.filter(a => a.notified).length}</span>
+                <span className="text-2xl font-black">{todaysAppointments.length}</span>
               </div>
             </div>
           </div>
 
-          {/* Patient actif */}
           {currentPatient && (
             <div className="bg-blue-50 border border-blue-100 rounded-sm p-4">
               <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest mb-2">Patient actif</p>
@@ -242,33 +342,36 @@ export function AgendaModule() {
             </div>
           )}
 
-          {/* Liste RDV */}
           <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
             <div className="p-3 border-b border-slate-100 bg-[#0F172A] text-white flex items-center gap-2">
               <ListTodo className="h-4 w-4 text-blue-400" />
-              <h4 className="text-[10px] font-bold uppercase tracking-widest">RDV à venir</h4>
+              <h4 className="text-[10px] font-bold uppercase tracking-widest">RDV de la semaine</h4>
             </div>
             <div className="divide-y divide-slate-50 max-h-48 overflow-y-auto">
-              {appointments.length === 0 && (
+              {!loading && appointments.length === 0 && (
                 <p className="p-4 text-[10px] text-slate-400 text-center uppercase tracking-widest">Aucun RDV</p>
               )}
               {appointments.map(appt => (
-                <div key={appt.id} className="p-3 flex items-center gap-3">
-                  <div className={cn("h-2 w-2 rounded-full flex-shrink-0", appt.color)} />
+                <button
+                  key={appt.id}
+                  onClick={() => setActiveAppt(appt)}
+                  className="w-full p-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <div className={cn("h-2 w-2 rounded-full flex-shrink-0", practitionerColor(appt.practitioner_id, practitioners))} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black text-slate-900 truncate">{appt.patientName}</p>
-                    <p className="text-[9px] text-slate-400">{appt.type} · {new Date(appt.date).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                    <p className="text-[10px] font-black text-slate-900 truncate">{appt.patient_name}</p>
+                    <p className="text-[9px] text-slate-400">{appt.type} · {new Date(appt.scheduled_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
                   </div>
-                  {appt.notified && (
-                    <span title="Notifié"><Bell className="h-3 w-3 text-emerald-500 flex-shrink-0" /></span>
+                  {appt.status !== "scheduled" && (
+                    <span className="text-[8px] font-black uppercase text-slate-400">{appt.status}</span>
                   )}
-                </div>
+                </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* CALENDRIER PRINCIPAL */}
+        {/* ZONE PRINCIPALE */}
         <div className="lg:col-span-3 bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col h-[680px]">
           {/* Toolbar */}
           <div className="p-4 border-b border-slate-200 flex flex-wrap gap-4 items-center justify-between bg-slate-50">
@@ -286,7 +389,7 @@ export function AgendaModule() {
             </div>
 
             <div className="flex gap-2 bg-white border border-slate-200 rounded-sm p-1 shadow-sm">
-              {(["Agenda", "Attente", "Staff"] as const).map(tab => (
+              {(["Agenda", "Attente"] as const).map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)}
                   className={cn("px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded transition-all",
                     activeTab === tab ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50")}>
@@ -303,84 +406,141 @@ export function AgendaModule() {
             </button>
           </div>
 
-          {/* Grille calendrier */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* En-têtes des jours */}
-            <div className="flex border-b border-slate-200 bg-white flex-shrink-0">
-              <div className="w-16 flex-shrink-0 border-r border-slate-200" />
-              {weekDays.map((day, idx) => (
-                <div key={idx} className={cn("flex-1 py-3 text-center border-r border-slate-200 last:border-r-0 flex flex-col items-center gap-1", day.isToday ? "bg-blue-50/50" : "")}>
-                  <span className={cn("text-[10px] font-black uppercase tracking-widest", day.isToday ? "text-blue-600" : "text-slate-400")}>{day.name}</span>
-                  <span className={cn("text-lg font-black", day.isToday ? "text-blue-700" : "text-slate-800")}>{day.date}</span>
-                  {day.isToday && <div className="h-1 w-1 rounded-full bg-blue-600 mt-0.5" />}
-                </div>
-              ))}
-            </div>
-
-            {/* Grille horaire */}
-            <div className="flex-1 overflow-y-auto relative">
-              {/* Lignes de fond */}
-              <div className="absolute inset-0 flex flex-col pointer-events-none">
-                {HOURS.map(h => <div key={h} className="h-20 border-b border-slate-100 w-full" />)}
-              </div>
-
-              <div className="absolute inset-0 flex">
-                {/* Colonne heures */}
-                <div className="w-16 flex-shrink-0 border-r border-slate-200 bg-white relative z-10">
-                  {HOURS.map(h => (
-                    <div key={h} className="h-20 border-b border-slate-100 flex items-start justify-center pt-2">
-                      <span className="text-[10px] font-bold text-slate-400">{h}:00</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Colonnes jours */}
-                {weekDays.map((day, dayIdx) => (
-                  <div key={dayIdx} className={cn("flex-1 border-r border-slate-100 last:border-r-0 relative group", day.isToday ? "bg-blue-50/20" : "")}>
-                    {/* RDV existants */}
-                    {appointments.filter(a => a.day === dayIdx).map(appt => (
-                      <div
-                        key={appt.id}
-                        className={cn("absolute left-1 right-1 rounded text-white text-[9px] font-black px-1.5 py-1 z-10 overflow-hidden shadow-sm", appt.color)}
-                        style={{ top: `${(appt.hour - 8) * 80 + 4}px`, height: "72px" }}
-                      >
-                        <p className="truncate">{appt.patientName}</p>
-                        <p className="opacity-80 truncate">{appt.type}</p>
-                        {appt.notified && <Bell className="h-2.5 w-2.5 mt-0.5 opacity-80" />}
-                      </div>
-                    ))}
-
-                    {/* Zones cliquables pour créer un RDV */}
-                    {HOURS.map(h => (
-                      <button
-                        key={h}
-                        onClick={() => openModal(dayIdx, h)}
-                        className="absolute w-full opacity-0 group-hover:opacity-100 hover:bg-blue-100/40 transition-all flex items-center justify-center z-20"
-                        style={{ top: `${(h - 8) * 80}px`, height: "80px" }}
-                        title={`Créer un RDV le ${day.label} à ${h}:00`}
-                      >
-                        <Plus className="h-5 w-5 text-blue-400" />
-                      </button>
-                    ))}
+          {activeTab === "Agenda" ? (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex border-b border-slate-200 bg-white flex-shrink-0">
+                <div className="w-16 flex-shrink-0 border-r border-slate-200" />
+                {weekDays.map((day, idx) => (
+                  <div key={idx} className={cn("flex-1 py-3 text-center border-r border-slate-200 last:border-r-0 flex flex-col items-center gap-1", day.isToday ? "bg-blue-50/50" : "")}>
+                    <span className={cn("text-[10px] font-black uppercase tracking-widest", day.isToday ? "text-blue-600" : "text-slate-400")}>{day.name}</span>
+                    <span className={cn("text-lg font-black", day.isToday ? "text-blue-700" : "text-slate-800")}>{day.date}</span>
+                    {day.isToday && <div className="h-1 w-1 rounded-full bg-blue-600 mt-0.5" />}
                   </div>
                 ))}
               </div>
 
-              {/* Indicateur heure actuelle */}
-              {weekOffset === 0 && (
-                <>
-                  <div className="absolute left-16 right-0 h-[2px] bg-red-400 z-30 shadow-[0_0_8px_rgba(248,113,113,0.8)]"
-                    style={{ top: `${Math.max(0, (new Date().getHours() - 8) * 80 + (new Date().getMinutes() / 60) * 80)}px` }} />
-                  <div className="absolute w-2 h-2 rounded-full bg-red-500 z-30"
-                    style={{ top: `${Math.max(-4, (new Date().getHours() - 8) * 80 + (new Date().getMinutes() / 60) * 80 - 4)}px`, left: "56px" }} />
-                </>
-              )}
+              <div className="flex-1 overflow-y-auto relative">
+                <div className="absolute inset-0 flex flex-col pointer-events-none">
+                  {HOURS.map(h => <div key={h} className="h-20 border-b border-slate-100 w-full" />)}
+                </div>
+
+                <div className="absolute inset-0 flex">
+                  <div className="w-16 flex-shrink-0 border-r border-slate-200 bg-white relative z-10">
+                    {HOURS.map(h => (
+                      <div key={h} className="h-20 border-b border-slate-100 flex items-start justify-center pt-2">
+                        <span className="text-[10px] font-bold text-slate-400">{h}:00</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {weekDays.map((day, dayIdx) => (
+                    <div key={dayIdx} className={cn("flex-1 border-r border-slate-100 last:border-r-0 relative group", day.isToday ? "bg-blue-50/20" : "")}>
+                      {appointments.filter(a => new Date(a.scheduled_at).toDateString() === day.fullDate.toDateString()).map(appt => {
+                        const apptDate = new Date(appt.scheduled_at);
+                        const hourFloat = apptDate.getHours() + apptDate.getMinutes() / 60;
+                        if (hourFloat < 8 || hourFloat > 20) return null;
+                        return (
+                          <button
+                            key={appt.id}
+                            onClick={() => setActiveAppt(appt)}
+                            className={cn(
+                              "absolute left-1 right-1 rounded text-white text-[9px] font-black px-1.5 py-1 z-10 overflow-hidden shadow-sm text-left transition-transform hover:scale-[1.02]",
+                              practitionerColor(appt.practitioner_id, practitioners),
+                              appt.status !== "scheduled" && "opacity-50"
+                            )}
+                            style={{ top: `${(hourFloat - 8) * 80 + 4}px`, height: "72px" }}
+                          >
+                            <p className="truncate">{appt.patient_name}</p>
+                            <p className="opacity-80 truncate">{appt.type}</p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              {appt.checked_in_at && <LogIn className="h-2.5 w-2.5 opacity-90" />}
+                              {appt.status === "completed" && <CheckCircle2 className="h-2.5 w-2.5 opacity-90" />}
+                              {appt.status === "cancelled" && <XCircle className="h-2.5 w-2.5 opacity-90" />}
+                              {appt.status === "no_show" && <UserX className="h-2.5 w-2.5 opacity-90" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+
+                      {HOURS.map(h => (
+                        <button
+                          key={h}
+                          onClick={() => openModal(dayIdx, h)}
+                          className="absolute w-full opacity-0 group-hover:opacity-100 hover:bg-blue-100/40 transition-all flex items-center justify-center z-0"
+                          style={{ top: `${(h - 8) * 80}px`, height: "80px" }}
+                          title={`Créer un RDV le ${day.label} à ${h}:00`}
+                        >
+                          <Plus className="h-5 w-5 text-blue-400" />
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+
+                {weekOffset === 0 && (
+                  <>
+                    <div className="absolute left-16 right-0 h-[2px] bg-red-400 z-30 shadow-[0_0_8px_rgba(248,113,113,0.8)]"
+                      style={{ top: `${Math.max(0, (new Date().getHours() - 8) * 80 + (new Date().getMinutes() / 60) * 80)}px` }} />
+                    <div className="absolute w-2 h-2 rounded-full bg-red-500 z-30"
+                      style={{ top: `${Math.max(-4, (new Date().getHours() - 8) * 80 + (new Date().getMinutes() / 60) * 80 - 4)}px`, left: "56px" }} />
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            /* SALLE D'ATTENTE */
+            <div className="flex-1 overflow-y-auto p-6 space-y-3">
+              {todaysAppointments.length === 0 && (
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-2 opacity-40 py-20">
+                  <Users className="h-10 w-10" />
+                  <p className="text-xs font-bold uppercase tracking-widest">Aucun rendez-vous aujourd&apos;hui</p>
+                </div>
+              )}
+              {todaysAppointments.map(appt => (
+                <div key={appt.id} className="flex items-center gap-4 p-4 border border-slate-200 rounded-sm bg-white shadow-sm">
+                  <div className={cn("h-10 w-10 rounded-full flex items-center justify-center text-white font-black text-xs flex-shrink-0", practitionerColor(appt.practitioner_id, practitioners))}>
+                    {appt.patient_name[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-slate-900">{appt.patient_name}</p>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase">
+                      {new Date(appt.scheduled_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} · {appt.type} · {appt.practitioner_name || "Non assigné"}
+                    </p>
+                  </div>
+                  {appt.checked_in_at ? (
+                    <span className="flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
+                      <LogIn className="h-3.5 w-3.5" /> Arrivé {new Date(appt.checked_in_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => runAction(appt, "check-in")}
+                      className="flex items-center gap-1.5 bg-slate-900 hover:bg-black text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all"
+                    >
+                      <LogIn className="h-3.5 w-3.5" /> Enregistrer l&apos;arrivée
+                    </button>
+                  )}
+                  <button
+                    onClick={() => runAction(appt, "complete")}
+                    className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                    title="Marquer terminé"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => runAction(appt, "no-show")}
+                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                    title="Absent"
+                  >
+                    <UserX className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── MODAL CRÉATION RDV ─────────────────────────────────────────────── */}
+      {/* MODAL CRÉATION RDV */}
       <AnimatePresence>
         {showModal && (
           <BookingModal
@@ -388,9 +548,84 @@ export function AgendaModule() {
             initialDay={prefilledDay}
             initialHour={prefilledHour}
             currentPatient={currentPatient}
+            practitioners={practitioners}
             onClose={() => setShowModal(false)}
             onConfirm={handleAppointmentAdded}
           />
+        )}
+      </AnimatePresence>
+
+      {/* PANNEAU ACTIONS SUR UN RDV */}
+      <AnimatePresence>
+        {activeAppt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setActiveAppt(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden"
+            >
+              <div className="bg-gradient-to-r from-[#1E3A8A] to-blue-500 p-5 text-white">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-blue-200">Rendez-vous</p>
+                <h3 className="text-base font-black">{activeAppt.patient_name}</h3>
+                <p className="text-xs text-blue-100 mt-1">{formatLabel(activeAppt.scheduled_at)}</p>
+                <p className="text-[10px] text-blue-200 mt-0.5">{activeAppt.type} · {activeAppt.practitioner_name || "Non assigné"}</p>
+              </div>
+              <div className="p-5 space-y-2">
+                {activeAppt.status === "scheduled" && (
+                  <>
+                    {!activeAppt.checked_in_at && (
+                      <button onClick={() => runAction(activeAppt, "check-in")} className="w-full flex items-center gap-2 px-4 py-2.5 rounded bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold uppercase tracking-widest transition-colors">
+                        <LogIn className="h-4 w-4" /> Enregistrer l&apos;arrivée
+                      </button>
+                    )}
+                    <button onClick={() => runAction(activeAppt, "complete")} className="w-full flex items-center gap-2 px-4 py-2.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold uppercase tracking-widest transition-colors">
+                      <CheckCircle2 className="h-4 w-4" /> Marquer terminé
+                    </button>
+                    <button onClick={() => runAction(activeAppt, "no-show")} className="w-full flex items-center gap-2 px-4 py-2.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold uppercase tracking-widest transition-colors">
+                      <UserX className="h-4 w-4" /> Patient absent
+                    </button>
+                    <div className="pt-2 border-t border-slate-100 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <CalendarClock className="h-4 w-4 text-slate-400" />
+                        <input
+                          type="datetime-local"
+                          value={rescheduleDate}
+                          onChange={e => setRescheduleDate(e.target.value)}
+                          className="flex-1 border border-slate-200 rounded px-2 py-1.5 text-xs"
+                        />
+                      </div>
+                      <button
+                        onClick={submitReschedule}
+                        disabled={!rescheduleDate}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded bg-blue-50 hover:bg-blue-100 disabled:opacity-40 text-blue-700 text-xs font-bold uppercase tracking-widest transition-colors"
+                      >
+                        Replanifier
+                      </button>
+                    </div>
+                    <button onClick={() => runAction(activeAppt, "cancel")} className="w-full flex items-center gap-2 px-4 py-2.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold uppercase tracking-widest transition-colors">
+                      <XCircle className="h-4 w-4" /> Annuler le rendez-vous
+                    </button>
+                  </>
+                )}
+                {activeAppt.status !== "scheduled" && (
+                  <p className="text-center text-xs font-bold text-slate-400 uppercase py-4">
+                    Statut : {activeAppt.status}
+                  </p>
+                )}
+                <button onClick={() => setActiveAppt(null)} className="w-full text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest pt-2">
+                  Fermer
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
@@ -403,20 +638,32 @@ interface BookingModalProps {
   weekDays: Array<{ name: string; label: string; date: number; fullDate: Date; isToday: boolean }>;
   initialDay: number;
   initialHour: number;
-  currentPatient: { name: string; phone: string; idNumber: string } | null;
+  currentPatient: { id: string; name: string; phone: string; idNumber: string } | null;
+  practitioners: Practitioner[];
   onClose: () => void;
-  onConfirm: (appt: Appointment, notify: NotifyResult | null) => void;
+  onConfirm: (notify: NotifyResult | null, skipped: { scheduledAt: string; conflictWith?: string }[]) => void;
 }
 
-function BookingModal({ weekDays, initialDay, initialHour, currentPatient, onClose, onConfirm }: BookingModalProps) {
-  const [patientName, setPatientName] = useState(currentPatient?.name || "");
-  const [phone, setPhone] = useState(currentPatient?.phone || "");
+function BookingModal({ weekDays, initialDay, initialHour, currentPatient, practitioners, onClose, onConfirm }: BookingModalProps) {
+  const [selectedPatient, setSelectedPatient] = useState<PatientHit | null>(
+    currentPatient ? { id: currentPatient.id, full_name: currentPatient.name, phone: currentPatient.phone, dossier_number: currentPatient.idNumber } : null
+  );
+  const [patientQuery, setPatientQuery] = useState(currentPatient?.name || "");
+  const [patientResults, setPatientResults] = useState<PatientHit[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [practitionerId, setPractitionerId] = useState<string>("");
   const [selectedDay, setSelectedDay] = useState(initialDay);
   const [selectedHour, setSelectedHour] = useState(initialHour);
   const [selectedType, setSelectedType] = useState("Consultation");
+  const [duration, setDuration] = useState(30);
+  const [recurrence, setRecurrence] = useState<"none" | "weekly" | "biweekly" | "monthly">("none");
+  const [recurrenceCount, setRecurrenceCount] = useState(4);
   const [channel, setChannel] = useState<"both" | "whatsapp" | "sms" | "none">("both");
   const [sending, setSending] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const appointmentIso = (() => {
     const d = new Date(weekDays[selectedDay].fullDate);
@@ -425,59 +672,97 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, onClo
   })();
 
   const previewMessage =
-    `🦷 Bonjour ${patientName || "…"},\n\n` +
+    `🦷 Bonjour ${selectedPatient?.full_name || "…"},\n\n` +
     `Votre rendez-vous au Cabinet Dentaire du Cap Vert est confirmé :\n\n` +
     `📅 ${formatLabel(appointmentIso)}\n` +
     `🔧 ${selectedType}\n\n` +
     `Pour modifier ou annuler, répondez à ce message ou contactez-nous.\n` +
     `À bientôt !`;
 
-  const handleConfirm = async () => {
-    if (!patientName) return;
-    setSending(true);
-
-    let notifyResult: NotifyResult | null = null;
-
-    // Envoyer la notification si un canal est choisi et qu'un numéro existe
-    if (channel !== "none" && phone) {
-      try {
-        const res = await fetch("/api/appointments/notify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            patientName,
-            phone,
-            appointmentDate: appointmentIso,
-            appointmentType: selectedType,
-            channel,
-          }),
-        });
-        const data = await res.json();
-        notifyResult = {
-          simulated: data.simulated,
-          channels: data.results?.map((r: { channel: string }) => r.channel) || [],
-          messageBody: data.messageBody,
-          error: data.error,
-        };
-      } catch {
-        notifyResult = { simulated: false, channels: [], error: "Erreur réseau." };
-      }
+  const handlePatientQueryChange = (value: string) => {
+    setPatientQuery(value);
+    setSelectedPatient(null);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (value.trim().length < 2) {
+      setPatientResults([]);
+      return;
     }
+    searchTimeout.current = setTimeout(async () => {
+      const res = await fetch(`/api/patients?q=${encodeURIComponent(value)}`);
+      const data = await res.json();
+      if (res.ok) {
+        setPatientResults(data.patients);
+        setShowResults(true);
+      }
+    }, 250);
+  };
 
-    const newAppt: Appointment = {
-      id: `appt_${Date.now()}`,
-      patientName,
-      phone,
-      type: selectedType,
-      date: appointmentIso,
-      hour: selectedHour,
-      day: selectedDay,
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
-      notified: notifyResult !== null && (notifyResult.channels.length > 0),
-    };
+  const pickPatient = (p: PatientHit) => {
+    setSelectedPatient(p);
+    setPatientQuery(p.full_name);
+    setShowResults(false);
+  };
 
-    setSending(false);
-    onConfirm(newAppt, notifyResult);
+  const handleConfirm = async () => {
+    if (!selectedPatient) return;
+    setSending(true);
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch("/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: selectedPatient.id,
+          practitionerId: practitionerId || undefined,
+          scheduledAt: appointmentIso,
+          durationMinutes: duration,
+          type: selectedType,
+          recurrence,
+          recurrenceCount: recurrence === "none" ? 1 : recurrenceCount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.error || "Échec de la création du rendez-vous.");
+        setSending(false);
+        return;
+      }
+
+      let notifyResult: NotifyResult | null = null;
+      const phone = selectedPatient.phone;
+      if (channel !== "none" && phone) {
+        try {
+          const notifyRes = await fetch("/api/appointments/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              patientId: selectedPatient.id,
+              patientName: selectedPatient.full_name,
+              phone,
+              appointmentDate: appointmentIso,
+              appointmentType: selectedType,
+              channel,
+            }),
+          });
+          const notifyData = await notifyRes.json();
+          notifyResult = {
+            simulated: notifyData.simulated,
+            channels: notifyData.results?.map((r: { channel: string }) => r.channel) || [],
+            messageBody: notifyData.messageBody,
+            error: notifyData.error,
+          };
+        } catch {
+          notifyResult = { simulated: false, channels: [], error: "Erreur réseau." };
+        }
+      }
+
+      setSending(false);
+      onConfirm(notifyResult, data.skipped || []);
+    } catch {
+      setErrorMsg("Erreur réseau.");
+      setSending(false);
+    }
   };
 
   return (
@@ -492,10 +777,9 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, onClo
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.92, opacity: 0, y: 16 }}
         transition={{ type: "spring", damping: 20, stiffness: 300 }}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[90vh] flex flex-col"
       >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#1E3A8A] to-blue-500 p-5 text-white flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[#1E3A8A] to-blue-500 p-5 text-white flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-white/20 rounded-lg flex items-center justify-center">
               <CalendarIcon className="h-6 w-6" />
@@ -510,37 +794,58 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, onClo
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
-          {/* Patient */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">
-                Nom du patient <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  value={patientName}
-                  onChange={e => setPatientName(e.target.value)}
-                  placeholder="Mamadou Diallo"
-                  className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                />
-              </div>
+        <div className="p-6 space-y-5 overflow-y-auto">
+          {errorMsg && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded p-3">{errorMsg}</div>
+          )}
+
+          {/* Recherche patient */}
+          <div className="relative">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">
+              Patient <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                value={patientQuery}
+                onChange={e => handlePatientQueryChange(e.target.value)}
+                onFocus={() => patientResults.length > 0 && setShowResults(true)}
+                placeholder="Rechercher un patient par nom, dossier ou téléphone..."
+                className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
             </div>
-            <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">
-                Téléphone
-              </label>
-              <div className="relative">
-                <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  placeholder="+221 77 000 00 00"
-                  className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                />
+            {showResults && patientResults.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded shadow-lg max-h-48 overflow-y-auto">
+                {patientResults.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => pickPatient(p)}
+                    className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-0"
+                  >
+                    <p className="text-xs font-bold text-slate-900">{p.full_name}</p>
+                    <p className="text-[10px] text-slate-400">{p.dossier_number} · {p.phone || "—"}</p>
+                  </button>
+                ))}
               </div>
-            </div>
+            )}
+            {selectedPatient && (
+              <p className="text-[10px] text-emerald-600 font-bold mt-1">✓ {selectedPatient.dossier_number} · {selectedPatient.phone || "Pas de téléphone"}</p>
+            )}
+          </div>
+
+          {/* Praticien */}
+          <div>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Praticien</label>
+            <select
+              value={practitionerId}
+              onChange={e => setPractitionerId(e.target.value)}
+              className="w-full px-3 py-2.5 border border-slate-200 rounded text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white"
+            >
+              <option value="">Non assigné</option>
+              {practitioners.map(p => (
+                <option key={p.id} value={p.id}>{p.full_name}</option>
+              ))}
+            </select>
           </div>
 
           {/* Jour */}
@@ -562,12 +867,10 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, onClo
             </div>
           </div>
 
-          {/* Heure + Type */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Heure + Type + Durée */}
+          <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">
-                Heure
-              </label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Heure</label>
               <div className="relative">
                 <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <select
@@ -582,9 +885,7 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, onClo
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">
-                Type de soin
-              </label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Type de soin</label>
               <select
                 value={selectedType}
                 onChange={e => setSelectedType(e.target.value)}
@@ -592,6 +893,54 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, onClo
               >
                 {APPOINTMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Durée</label>
+              <select
+                value={duration}
+                onChange={e => setDuration(Number(e.target.value))}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white"
+              >
+                {[15, 30, 45, 60, 90].map(m => <option key={m} value={m}>{m} min</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Récurrence */}
+          <div>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Récurrence</label>
+            <div className="flex gap-2 flex-wrap items-center">
+              {[
+                { val: "none", label: "Unique" },
+                { val: "weekly", label: "Hebdomadaire" },
+                { val: "biweekly", label: "Toutes les 2 sem." },
+                { val: "monthly", label: "Mensuelle" },
+              ].map(opt => (
+                <button
+                  key={opt.val}
+                  onClick={() => setRecurrence(opt.val as typeof recurrence)}
+                  className={cn(
+                    "px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest border transition-all",
+                    recurrence === opt.val ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              {recurrence !== "none" && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">× </span>
+                  <input
+                    type="number"
+                    min={2}
+                    max={12}
+                    value={recurrenceCount}
+                    onChange={e => setRecurrenceCount(Number(e.target.value))}
+                    className="w-14 px-2 py-1 border border-slate-200 rounded text-xs font-bold text-center"
+                  />
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">occurrences</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -602,8 +951,8 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, onClo
               <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Notification patient</p>
             </div>
 
-            {!phone && (
-              <p className="text-[10px] text-amber-600 font-bold">⚠️ Renseignez un numéro pour envoyer une notification.</p>
+            {!selectedPatient?.phone && (
+              <p className="text-[10px] text-amber-600 font-bold">⚠️ Ce patient n&apos;a pas de numéro enregistré — aucune notification ne pourra être envoyée.</p>
             )}
 
             <div className="flex gap-2 flex-wrap">
@@ -616,7 +965,7 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, onClo
                 <button
                   key={opt.val}
                   onClick={() => setChannel(opt.val as typeof channel)}
-                  disabled={!phone && opt.val !== "none"}
+                  disabled={!selectedPatient?.phone && opt.val !== "none"}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-2 rounded text-[10px] font-black uppercase tracking-widest border transition-all disabled:opacity-40",
                     channel === opt.val ? opt.cls : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
@@ -629,7 +978,7 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, onClo
               ))}
             </div>
 
-            {channel !== "none" && phone && (
+            {channel !== "none" && selectedPatient?.phone && (
               <button
                 onClick={() => setPreviewVisible(v => !v)}
                 className="text-[10px] font-bold text-blue-600 hover:underline"
@@ -654,7 +1003,7 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, onClo
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
+        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3 flex-shrink-0">
           <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
             {weekDays[selectedDay].label} {weekDays[selectedDay].date} · {selectedHour}:00 · {selectedType}
           </div>
@@ -664,7 +1013,7 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, onClo
             </button>
             <button
               onClick={handleConfirm}
-              disabled={!patientName || sending}
+              disabled={!selectedPatient || sending}
               className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest rounded transition-all shadow-md shadow-blue-900/20 disabled:opacity-50"
             >
               {sending ? (
