@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { CheckCircle2, Circle, Activity, ShieldCheck, Clock, Plus, Trash2, Check } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Activity, ShieldCheck, Clock, Plus, Check } from "lucide-react";
 import { DENTAL_NOMENCLATURE, DentalProcedure } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
+import { usePatient } from "@/lib/context";
 
 // Standard FDI notation teeth
 const UPPER_TEETH = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -11,49 +12,64 @@ const LOWER_TEETH = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37,
 
 interface ExecutedAct {
   id: string;
-  procedureId: string;
+  code: string | null;
   label: string;
-  tooth?: number;
+  tooth: number | null;
   price: number;
-  timestamp: string;
+  performed_at: string;
 }
 
 export function ProcedureExecution() {
+  const { currentPatient } = usePatient();
   const [executedActs, setExecutedActs] = useState<ExecutedAct[]>([]);
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
-  const [showCatalog, setShowCatalog] = useState(false);
+
+  const loadActs = useCallback(async () => {
+    if (!currentPatient) return;
+    const res = await fetch(`/api/executed-acts?patientId=${currentPatient.id}&unbilled=true`);
+    const data = await res.json();
+    if (res.ok) setExecutedActs(data.acts);
+  }, [currentPatient]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("dentiste_lite_executed_acts");
-    if (saved) setExecutedActs(JSON.parse(saved));
-  }, []);
+    loadActs();
+  }, [loadActs]);
 
-  useEffect(() => {
-    localStorage.setItem("dentiste_lite_executed_acts", JSON.stringify(executedActs));
-  }, [executedActs]);
-
-  const addAct = (procedure: DentalProcedure) => {
-    const newAct: ExecutedAct = {
-      id: Math.random().toString(36).substr(2, 9),
-      procedureId: procedure.id,
-      label: procedure.label,
-      tooth: selectedTooth || undefined,
-      price: procedure.price || 0,
-      timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-    };
-    setExecutedActs(prev => [...prev, newAct]);
-    setShowCatalog(false);
+  const addAct = async (procedure: DentalProcedure) => {
+    if (!currentPatient) return;
+    const res = await fetch("/api/executed-acts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        patientId: currentPatient.id,
+        code: procedure.id,
+        label: procedure.label,
+        tooth: selectedTooth || undefined,
+        price: procedure.price || 0,
+      }),
+    });
+    if (res.ok) loadActs();
   };
 
-  const removeAct = (id: string) => {
-    setExecutedActs(prev => prev.filter(a => a.id !== id));
+  const removeAct = async (id: string) => {
+    await fetch(`/api/executed-acts/${id}`, { method: "DELETE" });
+    loadActs();
   };
 
   const toggleTooth = (tooth: number) => {
     setSelectedTooth(selectedTooth === tooth ? null : tooth);
   };
 
-  const total = executedActs.reduce((sum, act) => sum + act.price, 0);
+  const total = executedActs.reduce((sum, act) => sum + Number(act.price), 0);
+
+  if (!currentPatient) {
+    return (
+      <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
+        <Activity className="h-10 w-10 text-slate-200" />
+        <p className="text-sm text-slate-500">Sélectionnez un patient (étape Accueil) pour saisir des actes.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -66,7 +82,7 @@ export function ProcedureExecution() {
           </div>
           <span className="text-[9px] font-bold text-blue-200 uppercase">Cliquez sur une dent pour l'isoler</span>
         </div>
-        
+
         <div className="p-8 flex flex-col items-center gap-8 bg-slate-50/50">
           {/* Upper Jaw */}
           <div className="flex gap-1.5 justify-center flex-wrap max-w-2xl">
@@ -76,8 +92,8 @@ export function ProcedureExecution() {
                 onClick={() => toggleTooth(t)}
                 className={cn(
                   "h-10 w-8 flex flex-col items-center justify-center rounded-t-xl border-x border-t transition-all text-[10px] font-black",
-                  selectedTooth === t 
-                    ? "bg-blue-600 border-blue-700 text-white shadow-lg scale-110 -translate-y-1" 
+                  selectedTooth === t
+                    ? "bg-blue-600 border-blue-700 text-white shadow-lg scale-110 -translate-y-1"
                     : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600"
                 )}
               >
@@ -95,8 +111,8 @@ export function ProcedureExecution() {
                 onClick={() => toggleTooth(t)}
                 className={cn(
                   "h-10 w-8 flex flex-col items-center justify-center rounded-b-xl border-x border-b transition-all text-[10px] font-black",
-                  selectedTooth === t 
-                    ? "bg-blue-600 border-blue-700 text-white shadow-lg scale-110 translate-y-1" 
+                  selectedTooth === t
+                    ? "bg-blue-600 border-blue-700 text-white shadow-lg scale-110 translate-y-1"
                     : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600"
                 )}
               >
@@ -162,11 +178,13 @@ export function ProcedureExecution() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-bold text-slate-900 truncate uppercase">{act.label}</p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase">{act.timestamp}</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase">
+                        {new Date(act.performed_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-black text-slate-900">{act.price.toLocaleString()}</p>
-                      <button 
+                      <p className="text-[10px] font-black text-slate-900">{Number(act.price).toLocaleString()}</p>
+                      <button
                         onClick={() => removeAct(act.id)}
                         className="text-[9px] font-bold text-rose-500 uppercase hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
                       >

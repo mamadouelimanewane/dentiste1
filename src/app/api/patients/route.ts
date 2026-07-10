@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { sql } from '@/lib/db';
 import { requireRole } from '@/lib/session';
+import { sendWhatsAppMessage } from '@/lib/integrations/whatsapp';
+import { sendSms } from '@/lib/integrations/sms';
+import { isDatabaseConfigured } from '@/lib/db';
+
+function getBaseUrl(request: Request) {
+  return process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+}
 
 export async function GET(request: Request) {
   const { error, status } = await requireRole(['admin', 'praticien', 'accueil', 'comptable']);
@@ -51,5 +59,68 @@ export async function POST(request: Request) {
     returning id, dossier_number, full_name, birth_date, phone, address, status, created_at
   `;
 
-  return NextResponse.json({ patient: rows[0] });
+  const patient = rows[0];
+
+  // ── Envoi automatique du message de bienvenue + lien portail ──────────────
+  let welcomeResult: {
+    link: string | null;
+    simulated: boolean;
+    channels: string[];
+    error?: string;
+  } = { link: null, simulated: false, channels: [] };
+
+  if (phone && isDatabaseConfigured()) {
+    try {
+      // Générer un token portail à usage long (7 jours)
+      const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+      const token = crypto.randomBytes(24).toString('hex');
+      const expiresAt = new Date(Date.now() + TOKEN_TTL_MS).toISOString();
+
+      await sql`
+        insert into patient_portal_tokens (patient_id, token, expires_at, created_by)
+        values (${patient.id}, ${token}, ${expiresAt}, ${session!.userId})
+      `;
+
+      const baseUrl = getBaseUrl(request);
+      const link = `${baseUrl}/portal/auth?token=${token}`;
+      const dossier = patient.dossier_number;
+
+      const messageBody =
+        `🦷 Bienvenue au Cabinet Dentaire du Cap Vert, ${patient.full_name} !\n\n` +
+        `Votre dossier N°${dossier} a bien été créé.\n\n` +
+        `Accédez à votre espace patient (rendez-vous, documents, ordonnances) :\n${link}\n\n` +
+        `Lien valable 7 jours. À bientôt !`;
+
+      const [waResult, smsResult] = await Promise.all([
+        sendWhatsAppMessage({ patientId: patient.id, phone, body: messageBody, sentBy: session!.userId }),
+        sendSms({ patientId: patient.id, phone, body: messageBody, sentBy: session!.userId }),
+      ]);
+
+      welcomeResult = {
+        link,
+        simulated: waResult.simulated && smsResult.simulated,
+        channels: ['whatsapp', 'sms'],
+        error: waResult.error || smsResult.error,
+      };
+    } catch (err) {
+      // L'échec du message de bienvenue ne doit pas bloquer la création du dossier
+      welcomeResult = {
+        link: null,
+        simulated: false,
+        channels: [],
+        error: err instanceof Error ? err.message : 'Erreur envoi bienvenue.',
+      };
+    }
+  } else if (phone && !isDatabaseConfigured()) {
+    // Mode démo complet sans DB : simuler le lien portail localement
+    const baseUrl = getBaseUrl(request);
+    welcomeResult = {
+      link: `${baseUrl}/portal/auth?token=DEMO_TOKEN_${patient.id}`,
+      simulated: true,
+      channels: ['whatsapp', 'sms'],
+    };
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  return NextResponse.json({ patient, welcome: welcomeResult });
 }

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { STAFF_COOKIE_NAME, verifyStaffSessionToken } from '@/lib/auth';
 
-const PUBLIC_PATHS = ['/login'];
+const PUBLIC_PATHS = ['/', '/login'];
 const PUBLIC_PREFIXES = ['/api/whatsapp/webhook', '/api/payments/webhook'];
 
 export async function updateSession(request: NextRequest) {
@@ -34,7 +34,7 @@ export async function updateSession(request: NextRequest) {
 
   if (session && path === '/login') {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = '/';
+    redirectUrl.pathname = '/dashboard';
     return NextResponse.redirect(redirectUrl);
   }
 

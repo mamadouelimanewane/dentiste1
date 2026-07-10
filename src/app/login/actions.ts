@@ -41,7 +41,7 @@ export async function signIn(_prevState: { error: string | null }, formData: For
   const cookieStore = await cookies();
   cookieStore.set(STAFF_COOKIE_NAME, token, STAFF_COOKIE_OPTIONS);
 
-  redirect('/');
+  redirect('/dashboard');
 }
 
 export async function signOut() {

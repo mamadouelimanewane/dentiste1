@@ -1,18 +1,88 @@
 "use client";
 
-import React, { useState } from "react";
-import { ShieldCheck, FileText, Landmark, Search, Plus, Filter, CheckCircle, AlertCircle, TrendingUp, Building2 } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { ShieldCheck, FileText, Landmark, Plus, AlertCircle, CheckCircle, TrendingUp, Building2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { usePatient } from "@/lib/context";
+
+interface Claim {
+  id: string;
+  patient_name: string;
+  provider: string;
+  claim_type: string | null;
+  amount: number;
+  status: "pending" | "submitted" | "approved" | "rejected" | "paid";
+  created_at: string;
+}
+
+const STATUS_LABEL: Record<Claim["status"], string> = {
+  pending: "En attente",
+  submitted: "Soumis",
+  approved: "Validé",
+  rejected: "Rejeté",
+  paid: "Réglé",
+};
+
+const STATUS_BADGE: Record<Claim["status"], string> = {
+  pending: "bg-amber-100 text-amber-700",
+  submitted: "bg-blue-100 text-blue-700",
+  approved: "bg-emerald-100 text-emerald-700",
+  rejected: "bg-rose-100 text-rose-700",
+  paid: "bg-emerald-100 text-emerald-700",
+};
 
 export function InsuranceManager() {
-  const [activeTab, setActiveTab] = useState<"Prises en charge" | "Conventions" | "Règlements">("Prises en charge");
+  const { currentPatient } = usePatient();
+  const [claims, setClaims] = useState<Claim[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ provider: "", policyNumber: "", claimType: "IPM", amount: "" });
+  const [submitting, setSubmitting] = useState(false);
 
-  const insuranceClaims = [
-    { id: 1, patient: "Mamadou Diallo", insurance: "AXA Assurances", type: "IPM", status: "Validé", amount: "45,000 F", date: "01/05/2026" },
-    { id: 2, patient: "Fatou Diop", insurance: "Gras Savoye", type: "Mutuelle", status: "En attente", amount: "120,000 F", date: "30/04/2026" },
-    { id: 3, patient: "Ousmane Kane", insurance: "ASCOMA", type: "Assurance", status: "Partiel", amount: "85,000 F", date: "28/04/2026" },
-  ];
+  const loadClaims = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/insurance-claims");
+      const data = await res.json();
+      if (res.ok) setClaims(data.claims);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadClaims();
+  }, [loadClaims]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPatient) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/insurance-claims", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: currentPatient.id,
+          provider: form.provider,
+          policyNumber: form.policyNumber,
+          claimType: form.claimType,
+          amount: Number(form.amount),
+        }),
+      });
+      if (res.ok) {
+        setShowForm(false);
+        setForm({ provider: "", policyNumber: "", claimType: "IPM", amount: "" });
+        loadClaims();
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const pendingCount = claims.filter((c) => c.status === "pending" || c.status === "submitted").length;
+  const paidTotal = claims.filter((c) => c.status === "paid").reduce((sum, c) => sum + Number(c.amount), 0);
+  const rate = claims.length > 0 ? Math.round((claims.filter((c) => c.status === "paid" || c.status === "approved").length / claims.length) * 100) : 0;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -31,7 +101,12 @@ export function InsuranceManager() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded shadow-md flex items-center gap-2">
+          <button
+            onClick={() => setShowForm(true)}
+            disabled={!currentPatient}
+            title={!currentPatient ? "Sélectionnez un patient d'abord" : ""}
+            className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded shadow-md flex items-center gap-2 disabled:opacity-50"
+          >
             <Plus className="h-4 w-4" /> Demande PEC
           </button>
         </div>
@@ -40,9 +115,9 @@ export function InsuranceManager() {
       {/* KPI CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {[
-          { label: "PEC en attente", value: "8", icon: AlertCircle, color: "text-amber-500", bg: "bg-amber-50" },
-          { label: "Règlements reçus (M)", value: "2.4M F", icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-50" },
-          { label: "Taux de Prise en Charge", value: "72%", icon: TrendingUp, color: "text-blue-500", bg: "bg-blue-50" },
+          { label: "PEC en attente", value: loading ? "…" : String(pendingCount), icon: AlertCircle, color: "text-amber-500", bg: "bg-amber-50" },
+          { label: "Règlements reçus", value: loading ? "…" : `${paidTotal.toLocaleString()} F`, icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-50" },
+          { label: "Taux de Validation", value: loading ? "…" : `${rate}%`, icon: TrendingUp, color: "text-blue-500", bg: "bg-blue-50" },
         ].map((kpi, i) => (
           <div key={i} className="bg-white border border-slate-200 p-5 rounded-sm shadow-sm flex flex-col justify-center">
              <div className="flex items-center gap-2 mb-2">
@@ -57,65 +132,44 @@ export function InsuranceManager() {
       </div>
 
       <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
-        <div className="flex border-b border-slate-100 bg-slate-50">
-          {["Prises en charge", "Conventions", "Règlements"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab as any)}
-              className={cn(
-                "px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all",
-                activeTab === tab ? "bg-white text-blue-600 border-t-2 border-blue-600" : "text-slate-500 hover:bg-slate-100"
-              )}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
         <div className="p-4">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
                   <th className="p-3">Patient</th>
-                  <th className="p-3">Assureur / IPM</th>
+                  <th className="p-3">Assureur</th>
                   <th className="p-3">Montant</th>
                   <th className="p-3">Date</th>
                   <th className="p-3 text-center">Statut</th>
-                  <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {insuranceClaims.map((claim) => (
+                {!loading && claims.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-slate-400 text-xs">
+                      Aucune demande de prise en charge pour l'instant.
+                    </td>
+                  </tr>
+                )}
+                {claims.map((claim) => (
                   <tr key={claim.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-3 font-bold text-slate-900 text-xs">{claim.patient}</td>
+                    <td className="p-3 font-bold text-slate-900 text-xs">{claim.patient_name}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         <Building2 className="h-3 w-3 text-slate-400" />
                         <div>
-                          <p className="text-xs font-black text-slate-700">{claim.insurance}</p>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">{claim.type}</p>
+                          <p className="text-xs font-black text-slate-700">{claim.provider}</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">{claim.claim_type || "—"}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="p-3 font-black text-slate-900 text-xs">{claim.amount}</td>
-                    <td className="p-3 text-xs text-slate-500">{claim.date}</td>
+                    <td className="p-3 font-black text-slate-900 text-xs">{Number(claim.amount).toLocaleString()} F</td>
+                    <td className="p-3 text-xs text-slate-500">{new Date(claim.created_at).toLocaleDateString("fr-FR")}</td>
                     <td className="p-3 text-center">
-                      <span className={cn(
-                        "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
-                        claim.status === "Validé" ? "bg-emerald-100 text-emerald-700" :
-                        claim.status === "Partiel" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
-                      )}>
-                        {claim.status}
+                      <span className={cn("px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest", STATUS_BADGE[claim.status])}>
+                        {STATUS_LABEL[claim.status]}
                       </span>
-                    </td>
-                    <td className="p-3 text-right">
-                      <button 
-                        onClick={() => alert(`Détails de la prise en charge pour ${claim.patient}`)}
-                        className="text-slate-400 hover:text-blue-600 font-bold text-[9px] uppercase tracking-widest"
-                      >
-                        Détails
-                      </button>
                     </td>
                   </tr>
                 ))}
@@ -125,22 +179,67 @@ export function InsuranceManager() {
         </div>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 p-5 rounded-sm flex items-center justify-between">
-         <div className="flex items-center gap-4">
-            <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
-               <FileText className="h-6 w-6" />
+      {showForm && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
+                Demande PEC — {currentPatient?.name}
+              </h3>
+              <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-700">
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <div>
-               <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Conventions Nationales</h4>
-               <p className="text-xs text-blue-700 font-medium">Vous avez 12 conventions actives avec les assureurs locaux.</p>
-            </div>
+            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Assureur / Mutuelle</label>
+                <input
+                  required
+                  value={form.provider}
+                  onChange={(e) => setForm((f) => ({ ...f, provider: e.target.value }))}
+                  placeholder="AXA, IPM, Gras Savoye..."
+                  className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">N° Police / Adhérent</label>
+                <input
+                  value={form.policyNumber}
+                  onChange={(e) => setForm((f) => ({ ...f, policyNumber: e.target.value }))}
+                  className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Montant (FCFA)</label>
+                <input
+                  required
+                  type="number"
+                  min="0"
+                  value={form.amount}
+                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                  className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-bold py-2 rounded transition-colors"
+              >
+                {submitting ? "Envoi…" : "Créer la demande"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-blue-50 border border-blue-200 p-5 rounded-sm flex items-center gap-4">
+         <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 flex-shrink-0">
+            <FileText className="h-6 w-6" />
          </div>
-         <button 
-           onClick={() => alert("Ouverture du gestionnaire de conventions...")}
-           className="bg-blue-600 text-white px-4 py-2 rounded text-[10px] font-black uppercase tracking-widest shadow-md hover:bg-blue-700 transition-all"
-         >
-            Gérer les Conventions
-         </button>
+         <div>
+            <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Conventions Nationales</h4>
+            <p className="text-xs text-blue-700 font-medium">Module de gestion des conventions à venir dans une prochaine mise à jour.</p>
+         </div>
       </div>
     </div>
   );

@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { CreditCard, Banknote, Shield, Download, CheckCircle2, Receipt, FileText } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { CreditCard, Banknote, Shield, Smartphone, Download, CheckCircle2, Receipt, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
 import dynamic from "next/dynamic";
+import { DemoModeBadge } from "@/components/DemoModeBadge";
 
 const PDFDownloadLink = dynamic(
   () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
@@ -14,31 +15,93 @@ import { InvoicePDF } from "./InvoicePDF";
 
 interface ExecutedAct {
   id: string;
-  procedureId: string;
   label: string;
-  tooth?: number;
+  tooth: number | null;
   price: number;
-  timestamp: string;
+  performed_at: string;
 }
+
+type PaymentMethod = "cash" | "card" | "insurance" | "mobile_money";
 
 export function BillingManager() {
   const { currentPatient } = usePatient();
   const [executedActs, setExecutedActs] = useState<ExecutedAct[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'insurance'>('cash');
-  const [isPaid, setIsPaid] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [invoice, setInvoice] = useState<{ id: string; invoice_number: string; status: string } | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadActs = useCallback(async () => {
+    if (!currentPatient) return;
+    const res = await fetch(`/api/executed-acts?patientId=${currentPatient.id}&unbilled=true`);
+    const data = await res.json();
+    if (res.ok) setExecutedActs(data.acts);
+  }, [currentPatient]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("dentiste_lite_executed_acts");
-    if (saved) setExecutedActs(JSON.parse(saved));
-  }, []);
+    loadActs();
+  }, [loadActs]);
 
-  const total = executedActs.reduce((sum, item) => sum + (item.price || 0), 0);
+  const total = executedActs.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const isPaid = invoice?.status === "paid";
 
-  const handlePayment = () => {
-    setIsPaid(true);
+  const handlePayment = async () => {
+    if (total === 0 || !currentPatient) return;
+    setProcessing(true);
+    setError(null);
+    try {
+      let currentInvoice = invoice;
+      if (!currentInvoice) {
+        const res = await fetch("/api/invoices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ patientId: currentPatient.id }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Échec de création de la facture.");
+        currentInvoice = data.invoice;
+        setInvoice(currentInvoice);
+      }
+
+      if (paymentMethod === "mobile_money") {
+        const res = await fetch("/api/payments/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoiceId: currentInvoice!.id }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Échec du paiement.");
+        if (data.redirectUrl) {
+          window.open(data.redirectUrl, "_blank");
+        } else {
+          // Mode démo : paiement marqué payé immédiatement côté serveur.
+          setInvoice((prev) => (prev ? { ...prev, status: "paid" } : prev));
+        }
+      } else {
+        const res = await fetch(`/api/invoices/${currentInvoice!.id}/settle`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method: paymentMethod }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Échec du règlement.");
+        setInvoice(data.invoice);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setProcessing(false);
+    }
   };
 
-  const invoiceNumber = `FAC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  if (!currentPatient) {
+    return (
+      <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
+        <FileText className="h-10 w-10 text-slate-200" />
+        <p className="text-sm text-slate-500">Sélectionnez un patient (étape Accueil) pour facturer.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -49,7 +112,7 @@ export function BillingManager() {
             <Receipt className="h-4 w-4 text-blue-400" />
             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Note d'Honoraires</h3>
           </div>
-          <span className="text-[9px] font-bold text-blue-200 uppercase">{invoiceNumber}</span>
+          <span className="text-[9px] font-bold text-blue-200 uppercase">{invoice?.invoice_number || "Brouillon"}</span>
         </div>
 
         <div className="p-6 flex-1 space-y-4">
@@ -70,10 +133,12 @@ export function BillingManager() {
                     )}
                     <div>
                       <p className="text-[10px] font-bold text-slate-900 uppercase">{item.label}</p>
-                      <p className="text-[8px] text-slate-400 font-bold uppercase">{item.timestamp}</p>
+                      <p className="text-[8px] text-slate-400 font-bold uppercase">
+                        {new Date(item.performed_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                      </p>
                     </div>
                   </div>
-                  <p className="text-xs font-bold text-slate-900">{item.price?.toLocaleString()} FCFA</p>
+                  <p className="text-xs font-bold text-slate-900">{Number(item.price).toLocaleString()} FCFA</p>
                 </div>
               ))
             )}
@@ -85,23 +150,23 @@ export function BillingManager() {
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Net à Payer</span>
             <span className="text-2xl font-bold text-slate-900">{total.toLocaleString()} <span className="text-xs text-slate-400 ml-1">FCFA</span></span>
           </div>
-          
+
           {total > 0 && (
             <PDFDownloadLink
               document={
-                <InvoicePDF 
-                  items={executedActs} 
-                  total={total} 
-                  patientName={currentPatient?.name || "Patient Anonyme"} 
+                <InvoicePDF
+                  items={executedActs.map((a) => ({ ...a, timestamp: a.performed_at }))}
+                  total={total}
+                  patientName={currentPatient?.name || "Patient Anonyme"}
                   patientId={currentPatient?.idNumber}
-                  invoiceNumber={invoiceNumber}
+                  invoiceNumber={invoice?.invoice_number || "BROUILLON"}
                 />
               }
-              fileName={`Facture_${currentPatient?.name || "Patient"}_${invoiceNumber}.pdf`}
+              fileName={`Facture_${currentPatient?.name || "Patient"}_${invoice?.invoice_number || "brouillon"}.pdf`}
             >
               {/* @ts-ignore */}
               {({ loading }) => (
-                <button 
+                <button
                   disabled={loading || isPaid}
                   className={cn(
                     "w-full h-10 rounded-sm text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all",
@@ -120,21 +185,30 @@ export function BillingManager() {
       {/* Right: Payment Method */}
       <div className="space-y-6">
         <div className="bg-white border border-slate-200 rounded-sm p-6 space-y-6 shadow-sm">
-          <h3 className="text-sm font-black text-blue-900 uppercase tracking-tight">Mode de Règlement</h3>
-          
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black text-blue-900 uppercase tracking-tight">Mode de Règlement</h3>
+            {paymentMethod === "mobile_money" && <DemoModeBadge feature="payments" />}
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm p-3">{error}</div>
+          )}
+
           <div className="grid grid-cols-1 gap-3">
             {[
-              { id: 'cash', label: 'Espèces', icon: Banknote },
-              { id: 'card', label: 'Carte Bancaire', icon: CreditCard },
-              { id: 'insurance', label: 'Prise en charge', icon: Shield },
+              { id: "cash", label: "Espèces", icon: Banknote },
+              { id: "card", label: "Carte Bancaire", icon: CreditCard },
+              { id: "insurance", label: "Prise en charge", icon: Shield },
+              { id: "mobile_money", label: "Mobile Money (Wave/OM)", icon: Smartphone },
             ].map((method) => (
               <button
                 key={method.id}
-                onClick={() => setPaymentMethod(method.id as any)}
+                onClick={() => setPaymentMethod(method.id as PaymentMethod)}
+                disabled={isPaid}
                 className={cn(
-                  "flex items-center gap-4 p-4 rounded-sm border transition-all",
-                  paymentMethod === method.id 
-                    ? "bg-blue-50 border-blue-200 text-blue-900" 
+                  "flex items-center gap-4 p-4 rounded-sm border transition-all disabled:opacity-50",
+                  paymentMethod === method.id
+                    ? "bg-blue-50 border-blue-200 text-blue-900"
                     : "bg-white border-slate-100 hover:border-slate-200 text-slate-600"
                 )}
               >
@@ -145,12 +219,12 @@ export function BillingManager() {
           </div>
 
           <div className="pt-4 border-t border-slate-100">
-            <button 
+            <button
               onClick={handlePayment}
-              disabled={total === 0 || isPaid}
+              disabled={total === 0 || isPaid || processing}
               className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-sm text-xs font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-200 disabled:opacity-50"
             >
-              {isPaid ? "Paiement Enregistré" : `Régler ${total.toLocaleString()} FCFA`}
+              {isPaid ? "Paiement Enregistré" : processing ? "Traitement…" : `Régler ${total.toLocaleString()} FCFA`}
             </button>
           </div>
         </div>
