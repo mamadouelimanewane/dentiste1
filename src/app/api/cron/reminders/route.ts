@@ -40,10 +40,13 @@ export async function GET(request: Request) {
     else results.scheduled++;
   }
 
-  // 2. Rappels de rendez-vous ~24h avant (fenêtre de 30 min pour tolérer la
-  // fréquence du cron).
-  const windowStart = new Date(now.getTime() + 23.75 * 60 * 60 * 1000).toISOString();
-  const windowEnd = new Date(now.getTime() + 24.25 * 60 * 60 * 1000).toISOString();
+  // 2. Rappels de rendez-vous du lendemain. Le cron ne tourne qu'une fois par
+  // jour (limite du plan Vercel Hobby), donc la fenêtre couvre toute une
+  // journée (12h à 36h à l'avance) plutôt qu'une précision de 30 minutes —
+  // chaque rendez-vous reçoit son rappel une seule fois grâce à
+  // reminder_sent_at, peu importe où il tombe dans cette fenêtre.
+  const windowStart = new Date(now.getTime() + 12 * 60 * 60 * 1000).toISOString();
+  const windowEnd = new Date(now.getTime() + 36 * 60 * 60 * 1000).toISOString();
 
   const upcoming = await sql`
     select a.id, a.patient_id, a.scheduled_at, a.type, p.full_name, p.phone
@@ -72,8 +75,11 @@ export async function GET(request: Request) {
     }
   }
 
-  // 3. Suivi post-opératoire ~2h après un rendez-vous marqué "completed".
+  // 3. Suivi post-opératoire pour les rendez-vous "completed" de la veille
+  // (fenêtre large pour un cron quotidien — reminder envoyé une seule fois
+  // grâce à follow_up_sent_at).
   const followUpBefore = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
+  const followUpAfter = new Date(now.getTime() - 30 * 60 * 60 * 1000).toISOString();
 
   const completed = await sql`
     select a.id, a.patient_id, p.full_name, p.phone
@@ -82,7 +88,7 @@ export async function GET(request: Request) {
     where a.status = 'completed'
       and a.follow_up_sent_at is null
       and a.completed_at is not null
-      and a.completed_at <= ${followUpBefore}
+      and a.completed_at between ${followUpAfter} and ${followUpBefore}
     limit 100
   `;
 
