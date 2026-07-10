@@ -1,10 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase env vars are missing. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env.local file.');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Ré-export pour compatibilité avec les imports existants (`@/lib/supabase`).
+// Nouveau code : préférer src/lib/supabase/client.ts (browser),
+// src/lib/supabase/server.ts (server components/route handlers), ou
+// src/lib/supabase/admin.ts (service role, server-only).
+export { supabase } from './supabase/client';

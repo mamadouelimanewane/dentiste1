@@ -1,22 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
-import { 
-  Users, ShieldAlert, BookOpen, FileText, BarChart3, Building, 
-  Search, Plus, Filter, MoreVertical, Edit3, Trash2, CheckCircle2, 
+import React, { useEffect, useState } from "react";
+import {
+  Users, ShieldAlert, BookOpen, FileText, BarChart3, Building,
+  Search, Plus, Filter, MoreVertical, Edit3, Trash2, CheckCircle2,
   AlertCircle, Lock, Download, Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
-// Mock Data
-const MOCK_USERS = [
-  { id: 1, name: "Dr. Mamadou Fall", role: "praticien", email: "m.fall@dentoprestige.sn", lastActive: "Il y a 5 min", status: "Actif" },
-  { id: 2, name: "Dr. Aïssatou Sow", role: "praticien", email: "a.sow@dentoprestige.sn", lastActive: "Hier, 18:30", status: "Actif" },
-  { id: 3, name: "Fatou Diop", role: "accueil", email: "accueil@dentoprestige.sn", lastActive: "En ligne", status: "Actif" },
-  { id: 4, name: "Ousmane Kane", role: "comptable", email: "compta@dentoprestige.sn", lastActive: "Aujourd'hui, 09:15", status: "Actif" },
-  { id: 5, name: "Admin Sys", role: "admin", email: "admin@dentoprestige.sn", lastActive: "En ligne", status: "Actif" },
-];
+interface AdminProfile {
+  id: string;
+  full_name: string;
+  email: string;
+  role: "admin" | "praticien" | "accueil" | "comptable";
+  is_active: boolean;
+}
 
 const MOCK_LOGS = [
   { id: 1, time: "10:45:22", user: "Fatou Diop", action: "Création Dossier Patient", details: "Patient SN-45892-X (Mamadou Diallo)", module: "Accueil", severity: "info" },
@@ -35,6 +34,15 @@ const MOCK_ACTES = [
 
 export function AdminHub() {
   const [activeTab, setActiveTab] = useState("utilisateurs");
+  const [users, setUsers] = useState<AdminProfile[]>([]);
+
+  useEffect(() => {
+    if (activeTab !== "utilisateurs") return;
+    fetch("/api/admin/users")
+      .then((res) => res.json())
+      .then((data) => setUsers(data.users || []))
+      .catch(() => setUsers([]));
+  }, [activeTab]);
 
   const tabs = [
     { id: "utilisateurs", label: "Utilisateurs & RBAC", icon: Users },
@@ -93,7 +101,10 @@ export function AdminHub() {
                   <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Gestion des Utilisateurs</h3>
                   <p className="text-[10px] font-bold text-slate-500 uppercase">Gérez les accès et les permissions (RBAC)</p>
                 </div>
-                <button className="bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded shadow hover:bg-emerald-700 transition-colors flex items-center gap-2">
+                <button
+                  onClick={() => alert('Ouvrez le module "Utilisateurs" (étape 10) pour inviter un nouveau collaborateur.')}
+                  className="bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded shadow hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                >
                   <Plus className="h-4 w-4" /> Nouvel Utilisateur
                 </button>
               </div>
@@ -109,10 +120,17 @@ export function AdminHub() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 border-x border-b border-slate-200">
-                    {MOCK_USERS.map(user => (
+                    {users.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-xs text-slate-400">
+                          Aucun utilisateur. Gérez les invitations depuis le module "Utilisateurs".
+                        </td>
+                      </tr>
+                    )}
+                    {users.map(user => (
                       <tr key={user.id} className="hover:bg-slate-50">
                         <td className="p-3">
-                          <p className="font-bold text-slate-900 text-xs">{user.name}</p>
+                          <p className="font-bold text-slate-900 text-xs">{user.full_name}</p>
                           <p className="text-[10px] text-slate-500">{user.email}</p>
                         </td>
                         <td className="p-3">
@@ -126,15 +144,20 @@ export function AdminHub() {
                             {user.role}
                           </span>
                         </td>
-                        <td className="p-3 text-xs font-medium text-slate-600">{user.lastActive}</td>
+                        <td className="p-3 text-xs font-medium text-slate-600">—</td>
                         <td className="p-3">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
-                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Actif
-                          </div>
+                          {user.is_active ? (
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+                              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Actif
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                              <div className="h-1.5 w-1.5 rounded-full bg-slate-300" /> Inactif
+                            </div>
+                          )}
                         </td>
                         <td className="p-3 flex justify-end gap-2">
-                          <button className="p-1.5 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 rounded"><Edit3 className="h-4 w-4" /></button>
-                          <button className="p-1.5 text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 rounded"><Settings className="h-4 w-4" /></button>
+                          <span className="text-[9px] text-slate-400 uppercase font-bold">Gérer depuis "Utilisateurs"</span>
                         </td>
                       </tr>
                     ))}

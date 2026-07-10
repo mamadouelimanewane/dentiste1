@@ -29,10 +29,10 @@ import { StatsDashboard } from "@/components/StatsDashboard";
 import { PatientDirectory } from "@/components/PatientDirectory";
 import { NeuralAssistant } from "@/components/NeuralAssistant";
 import { NeuralLogsDashboard } from "@/components/NeuralLogsDashboard";
-import { 
-  Activity, 
-  User, 
-  ChevronRight, 
+import {
+  Activity,
+  User,
+  ChevronRight,
   ChevronLeft,
   Sparkles,
   Zap,
@@ -40,6 +40,7 @@ import {
   RotateCcw,
   UserPlus,
   LogIn,
+  LogOut,
   Stethoscope,
   FileText,
   History,
@@ -64,6 +65,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePatient } from "@/lib/context";
+import { useAuth, type Role } from "@/lib/auth-context";
 
 const steps = [
   { id: 1, title: "Accueil", fullTitle: "Accueil & Prise en charge", desc: "Enregistrement et vérification des droits.", icon: UserPlus },
@@ -92,21 +95,23 @@ const steps = [
   { id: 24, title: "Neural Center", fullTitle: "Data Brain Monitoring", desc: "Logs IA et activité asynchrone en temps réel.", icon: Database },
 ];
 
-type Role = 'admin' | 'praticien' | 'accueil' | 'comptable';
-
-const getUserInfo = (r: Role) => {
-  if (r === 'admin') return "Dr. Ndiaye";
-  if (r === 'praticien') return "Dr. Diallo";
-  if (r === 'accueil') return "Aïssatou";
-  if (r === 'comptable') return "M. Fall";
-  return "";
+// Source de vérité unique pour la visibilité des étapes par rôle (auparavant
+// dupliquée et incohérente entre le filtre d'affichage et la validation lors
+// d'un changement de rôle admin).
+function stepsForRole(role: Role) {
+  return steps.filter(s => {
+    if (role === 'admin') return true;
+    if (role === 'accueil') return [1, 2, 5, 6, 7, 11, 16, 17, 18, 19, 20].includes(s.id);
+    if (role === 'praticien') return [2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(s.id);
+    if (role === 'comptable') return [5, 7, 8].includes(s.id);
+    return true;
+  });
 }
-
-import { usePatient } from "@/lib/context";
 
 export default function Home() {
   const { currentPatient } = usePatient();
-  const [role, setRole] = useState<Role>('admin');
+  const { user, signOut } = useAuth();
+  const role = user.role;
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isMounted, setIsMounted] = useState(false);
@@ -122,22 +127,19 @@ export default function Home() {
   useEffect(() => {
     if (isMounted) {
       localStorage.setItem("dentiste_lite_step", currentStep.toString());
-      localStorage.setItem("dentiste_lite_role", role);
     }
-  }, [currentStep, role, isMounted]);
+  }, [currentStep, isMounted]);
 
+  const visibleSteps = stepsForRole(role);
+
+  // Si le rôle du compte connecté ne donne plus accès à l'étape courante
+  // (ex. un admin a changé le rôle de l'utilisateur pendant la session),
+  // on se replie sur la première étape accessible.
   useEffect(() => {
-    const savedRole = localStorage.getItem("dentiste_lite_role") as Role;
-    if (savedRole) setRole(savedRole);
-  }, []);
-
-  const visibleSteps = steps.filter(s => {
-    if (role === 'admin') return true;
-    if (role === 'accueil') return [1, 2, 5, 6, 7, 11, 16, 17, 18, 19, 20].includes(s.id);
-    if (role === 'praticien') return [2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(s.id);
-    if (role === 'comptable') return [5, 7, 8].includes(s.id);
-    return true;
-  });
+    if (isMounted && !visibleSteps.find(s => s.id === currentStep)) {
+      setCurrentStep(visibleSteps[0]?.id ?? 1);
+    }
+  }, [isMounted, role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentIndex = visibleSteps.findIndex(s => s.id === currentStep);
 
@@ -146,20 +148,6 @@ export default function Home() {
   };
   const prevStep = () => {
     if (currentIndex > 0) setCurrentStep(visibleSteps[currentIndex - 1].id);
-  };
-  const handleRoleChange = (newRole: Role) => {
-    setRole(newRole);
-    // Adjust current step if it's no longer accessible
-    const newVisible = steps.filter(s => {
-      if (newRole === 'admin') return true;
-      if (newRole === 'accueil') return [1, 2, 3, 6, 7, 8, 9, 13, 18, 19, 20].includes(s.id);
-      if (newRole === 'praticien') return [2, 3, 4, 5, 7, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(s.id);
-      if (newRole === 'comptable') return [6, 8, 9].includes(s.id);
-      return true;
-    });
-    if (!newVisible.find(s => s.id === currentStep)) {
-      setCurrentStep(newVisible[0].id);
-    }
   };
   const reset = () => {
     // Clear all storage before reload
@@ -171,11 +159,11 @@ export default function Home() {
       "dentiste_lite_dictations"
     ];
     keysToRemove.forEach(k => localStorage.removeItem(k));
-    
+
     // Reset local state for immediate feedback before reload
     setCurrentStep(1);
     setShowResetModal(false);
-    
+
     // Delay slightly to allow state to settle, then hard reload
     setTimeout(() => {
       window.location.href = '/';
@@ -188,7 +176,7 @@ export default function Home() {
     <>
     <div className="min-h-screen bg-[#F1F5F9] flex overflow-hidden font-sans">
       {/* PROFESSIONAL SIDEBAR (NAVY BLUE) */}
-      <aside 
+      <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 bg-[#0F172A] text-slate-300 transition-transform duration-200 transform lg:relative lg:translate-x-0 flex flex-col border-r border-blue-900/20",
           !isSidebarOpen && "-translate-x-full lg:hidden"
@@ -217,8 +205,8 @@ export default function Home() {
                   onClick={() => setCurrentStep(step.id)}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded transition-all text-sm font-medium",
-                    isActive 
-                      ? "bg-blue-600/20 text-blue-400 border-r-2 border-blue-400" 
+                    isActive
+                      ? "bg-blue-600/20 text-blue-400 border-r-2 border-blue-400"
                       : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
                   )}
                 >
@@ -232,7 +220,7 @@ export default function Home() {
         </div>
 
         <div className="p-4 border-t border-slate-800">
-          <button 
+          <button
             onClick={() => setShowResetModal(true)}
             className="w-full h-12 rounded bg-blue-600 hover:bg-blue-500 transition-all flex items-center justify-center gap-2 text-sm font-bold text-white shadow-lg shadow-blue-900/20"
           >
@@ -246,7 +234,7 @@ export default function Home() {
         {/* Header */}
         <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0 shadow-sm z-10">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="lg:hidden p-1.5 text-slate-500 hover:bg-slate-100 rounded"
             >
@@ -255,15 +243,15 @@ export default function Home() {
             <div className="flex items-center gap-3">
               <div className={cn(
                 "flex items-center gap-2 px-3 py-1 rounded-full transition-all border",
-                currentPatient 
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-700" 
+                currentPatient
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                   : "bg-slate-50 border-slate-200 text-slate-400"
               )}>
                 {currentPatient ? (
-                  <motion.div 
+                  <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" 
+                    className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"
                   />
                 ) : (
                   <User className="h-3.5 w-3.5" />
@@ -276,27 +264,17 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center bg-slate-100 rounded-lg p-1 gap-1">
-              {(['admin', 'praticien', 'accueil', 'comptable'] as Role[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => handleRoleChange(r)}
-                  className={cn(
-                    "px-3 py-1.5 text-xs font-black uppercase tracking-tight rounded transition-all",
-                    role === r 
-                      ? "bg-white text-blue-600 shadow-sm" 
-                      : "text-slate-400 hover:text-slate-600"
-                  )}
-                >
-                  {r === 'admin' ? "👑" : r === 'praticien' ? "🩺" : r === 'accueil' ? "👋" : "📊"}
-                </button>
-              ))}
-            </div>
-
             <div className="hidden md:flex flex-col text-right mr-2 border-l border-slate-200 pl-4">
-              <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Session</span>
-              <span className="text-sm font-black text-slate-900 tracking-tight">{getUserInfo(role)}</span>
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">{role}</span>
+              <span className="text-sm font-black text-slate-900 tracking-tight">{user.fullName}</span>
             </div>
+            <button
+              onClick={signOut}
+              title="Déconnexion"
+              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
             <span className="text-xs font-bold text-slate-300 uppercase bg-slate-50 px-2 py-1 border border-slate-100 rounded">v1.3.1</span>
           </div>
         </header>
@@ -331,7 +309,7 @@ export default function Home() {
                     {currentStep === 2 && <MedicalQuestionnaire />}
                     {currentStep === 3 && <NewDossier />}
                     {currentStep === 4 && <QuoteBuilder />}
-                    
+
                     {currentStep === 5 && <ProcedureExecution />}
                     {currentStep === 6 && <BillingManager />}
                     {currentStep === 7 && <PatientFollowUp />}
@@ -352,7 +330,7 @@ export default function Home() {
                     {currentStep === 22 && <AdminHub />}
                     {currentStep === 23 && <StatsDashboard />}
                     {currentStep === 24 && <NeuralLogsDashboard />}
-                    
+
                     {![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].includes(currentStep) && (
                       <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
                         <Activity className="h-10 w-10 text-slate-200" />
@@ -375,26 +353,26 @@ export default function Home() {
         </div>
 
         <div className="absolute bottom-0 inset-x-0 bg-white border-t border-slate-200 p-3 px-6 z-40 flex items-center justify-between lg:pl-72 lg:pr-12">
-          <button 
+          <button
             onClick={prevStep}
             disabled={currentIndex === 0}
             className="flex items-center gap-2 px-4 h-9 rounded border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition-colors"
           >
             <ChevronLeft className="h-4 w-4" /> Précédent
           </button>
-          
+
           <div className="flex items-center gap-1.5">
             {visibleSteps.map(s => (
               <div key={s.id} className={cn("h-1.5 w-1.5 rounded-full", s.id === currentStep ? "bg-blue-600" : "bg-slate-200")} />
             ))}
           </div>
 
-          <button 
+          <button
             onClick={nextStep}
             disabled={currentIndex === visibleSteps.length - 1}
             className="flex items-center gap-2 px-6 h-9 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 disabled:opacity-30 transition-all shadow-sm"
           >
-            {currentIndex === visibleSteps.length - 1 ? "Terminer le parcours" : "Étape Suivante"} 
+            {currentIndex === visibleSteps.length - 1 ? "Terminer le parcours" : "Étape Suivante"}
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
@@ -403,13 +381,13 @@ export default function Home() {
       {/* MODAL NOUVEAU DOSSIER */}
       <AnimatePresence>
         {showResetModal && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -425,13 +403,13 @@ export default function Home() {
                 </p>
               </div>
               <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                <button 
+                <button
                   onClick={() => setShowResetModal(false)}
                   className="px-4 py-2 rounded text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors"
                 >
                   Annuler
                 </button>
-                <button 
+                <button
                   onClick={reset}
                   className="px-4 py-2 rounded bg-blue-600 text-white text-xs font-bold shadow-sm shadow-blue-200 hover:bg-blue-700 transition-colors flex items-center gap-2"
                 >
@@ -448,8 +426,3 @@ export default function Home() {
     </>
   );
 }
-
-
-
-
-
