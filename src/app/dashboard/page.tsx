@@ -100,7 +100,7 @@ const steps = [
 function stepsForRole(role: Role) {
   return steps.filter(s => {
     if (role === 'admin') return true;
-    if (role === 'accueil') return [1, 2, 5, 6, 7, 11, 16, 17, 18, 19, 20].includes(s.id);
+    if (role === 'accueil') return [1, 2, 5, 6, 7, 11, 13, 16, 17, 18, 19, 20].includes(s.id);
     if (role === 'praticien') return [2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(s.id);
     if (role === 'comptable') return [5, 7, 8].includes(s.id);
     return true;
