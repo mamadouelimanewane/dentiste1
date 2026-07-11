@@ -96,6 +96,62 @@ async function sendViaTwilio(phone: string, body: string): Promise<SendResult> {
   }
 }
 
+// Envoie une note vocale WhatsApp (média) — uniquement via Twilio, qui
+// accepte une MediaUrl publique. Meta Cloud API nécessite un upload de média
+// séparé, non implémenté ici (mode simulé si seul Meta est configuré).
+async function sendVoiceNoteViaTwilio(phone: string, mediaUrl: string): Promise<SendResult> {
+  try {
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64')}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          To: `whatsapp:${phone}`,
+          From: `whatsapp:${TWILIO_WHATSAPP_FROM}`,
+          MediaUrl: mediaUrl,
+        }),
+      }
+    );
+    const data = await res.json();
+    if (!res.ok) {
+      return { simulated: false, error: data?.message || 'Échec envoi note vocale (Twilio).' };
+    }
+    return { simulated: false, providerMessageId: data.sid };
+  } catch (e) {
+    return { simulated: false, error: e instanceof Error ? e.message : 'Erreur réseau (Twilio).' };
+  }
+}
+
+export async function sendWhatsAppVoiceNote(params: {
+  patientId?: string | null;
+  phone: string;
+  mediaUrl: string;
+  sentBy?: string | null;
+}): Promise<SendResult> {
+  const { patientId, phone, mediaUrl, sentBy } = params;
+
+  if (!isTwilioWhatsAppConfigured()) {
+    await sql`
+      insert into patient_messages (patient_id, phone, channel, direction, body, status, sent_by, media_url, media_type)
+      values (${patientId ?? null}, ${phone}, 'whatsapp', 'outbound', '[Note vocale]', 'simulated', ${sentBy ?? null}, ${mediaUrl}, 'audio/webm')
+    `;
+    return { simulated: true };
+  }
+
+  const result = await sendVoiceNoteViaTwilio(phone, mediaUrl);
+
+  await sql`
+    insert into patient_messages (patient_id, phone, channel, direction, body, status, provider_message_id, sent_by, media_url, media_type)
+    values (${patientId ?? null}, ${phone}, 'whatsapp', 'outbound', '[Note vocale]', ${result.error ? 'failed' : 'sent'}, ${result.providerMessageId ?? null}, ${sentBy ?? null}, ${mediaUrl}, 'audio/webm')
+  `;
+
+  return result;
+}
+
 // Envoie un message WhatsApp — via l'API Cloud Meta si configurée, sinon via
 // Twilio WhatsApp (Sandbox) si configuré, sinon journalise en mode simulé.
 export async function sendWhatsAppMessage(params: {

@@ -118,6 +118,10 @@ export function AgendaModule() {
   // Action sur un RDV existant
   const [activeAppt, setActiveAppt] = useState<Appointment | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
+  const [quickMessage, setQuickMessage] = useState("");
+  const [quickMessageChannel, setQuickMessageChannel] = useState<"whatsapp" | "sms">("whatsapp");
+  const [sendingQuickMessage, setSendingQuickMessage] = useState(false);
+  const [quickMessageSent, setQuickMessageSent] = useState(false);
 
   const weekStart = getWeekStart(weekOffset);
 
@@ -161,6 +165,11 @@ export function AgendaModule() {
     loadAppointments();
   }, [loadAppointments]);
 
+  useEffect(() => {
+    setQuickMessage("");
+    setQuickMessageSent(false);
+  }, [activeAppt?.id]);
+
   const openModal = (dayIdx = 0, hour = 9) => {
     setPrefilledDay(dayIdx);
     setPrefilledHour(hour);
@@ -184,6 +193,28 @@ export function AgendaModule() {
     });
     setActiveAppt(null);
     loadAppointments();
+  };
+
+  const sendQuickMessage = async () => {
+    if (!activeAppt || !quickMessage.trim() || !activeAppt.patient_phone) return;
+    setSendingQuickMessage(true);
+    try {
+      await fetch("/api/messages/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: activeAppt.patient_id,
+          phone: activeAppt.patient_phone,
+          message: quickMessage,
+          channel: quickMessageChannel,
+        }),
+      });
+      setQuickMessage("");
+      setQuickMessageSent(true);
+      setTimeout(() => setQuickMessageSent(false), 2500);
+    } finally {
+      setSendingQuickMessage(false);
+    }
   };
 
   const submitReschedule = async () => {
@@ -579,6 +610,45 @@ export function AgendaModule() {
                 <p className="text-[10px] text-blue-200 mt-0.5">{activeAppt.type} · {activeAppt.practitioner_name || "Non assigné"}</p>
               </div>
               <div className="p-5 space-y-2">
+                {/* Message rapide */}
+                {activeAppt.patient_phone ? (
+                  <div className="pb-3 mb-1 border-b border-slate-100 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={quickMessage}
+                        onChange={e => setQuickMessage(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && sendQuickMessage()}
+                        placeholder="Message rapide au patient..."
+                        className="flex-1 border border-slate-200 rounded px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <button
+                        onClick={() => setQuickMessageChannel(c => c === "whatsapp" ? "sms" : "whatsapp")}
+                        title={quickMessageChannel === "whatsapp" ? "WhatsApp (cliquer pour SMS)" : "SMS (cliquer pour WhatsApp)"}
+                        className={cn(
+                          "h-8 w-8 flex-shrink-0 rounded flex items-center justify-center transition-colors",
+                          quickMessageChannel === "whatsapp" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                        )}
+                      >
+                        {quickMessageChannel === "whatsapp" ? <MessageCircle className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
+                      </button>
+                      <button
+                        onClick={sendQuickMessage}
+                        disabled={!quickMessage.trim() || sendingQuickMessage}
+                        className="h-8 w-8 flex-shrink-0 rounded bg-slate-900 hover:bg-black text-white flex items-center justify-center transition-colors disabled:opacity-40"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    {quickMessageSent && (
+                      <p className="text-[10px] font-bold text-emerald-600 uppercase">✓ Message envoyé</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 font-bold uppercase pb-3 mb-1 border-b border-slate-100">
+                    Pas de numéro enregistré pour ce patient.
+                  </p>
+                )}
+
                 {activeAppt.status === "scheduled" && (
                   <>
                     {!activeAppt.checked_in_at && (

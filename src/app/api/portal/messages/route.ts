@@ -16,7 +16,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Session portail invalide.' }, { status: 401 });
 
   const messages = await sql`
-    select id, body, direction, status, created_at
+    select id, body, direction, status, created_at, media_url, media_type
     from patient_messages
     where patient_id = ${session.patientId} and channel in ('portal', 'whatsapp', 'sms')
     order by created_at asc

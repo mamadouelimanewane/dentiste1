@@ -1,23 +1,25 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  MessageCircle, 
-  Smartphone, 
-  Search, 
-  CheckCheck, 
-  Clock, 
-  Calendar, 
-  User, 
-  Bot, 
-  Sparkles, 
-  CheckCircle2, 
+import {
+  MessageCircle,
+  Smartphone,
+  Search,
+  CheckCheck,
+  Clock,
+  Calendar,
+  User,
+  Bot,
+  Sparkles,
+  CheckCircle2,
   ArrowRight,
   ShieldCheck,
   Zap,
   MoreVertical,
   Plus,
-  Send
+  Send,
+  Mic,
+  Square
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -86,7 +88,11 @@ export function WhatsAppIntelligentHub() {
 
   const [activeChat, setActiveChat] = useState<string | null>("1");
   const [inputText, setInputText] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [sendingVoice, setSendingVoice] = useState(false);
   const seenLogIds = React.useRef(new Set<string>());
+  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const chunksRef = React.useRef<Blob[]>([]);
 
   useEffect(() => {
     const mapLog = (log: any): WhatsAppMessage => ({
@@ -187,6 +193,50 @@ export function WhatsAppIntelligentHub() {
   };
 
   const selectedChat = messages.find(m => m.id === activeChat);
+
+  const startRecording = async () => {
+    const targetPhone = selectedChat?.phone;
+    if (!targetPhone) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        setSendingVoice(true);
+        try {
+          const formData = new FormData();
+          formData.append("audio", blob, "note-vocale.webm");
+          formData.append("phone", targetPhone);
+          await fetch("/api/whatsapp/send-voice", { method: "POST", body: formData });
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            sender: "Cabinet (Moi)",
+            phone: targetPhone,
+            text: "🎤 Note vocale envoyée",
+            time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            isAIProcessed: false,
+          }]);
+        } finally {
+          setSendingVoice(false);
+        }
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+    } catch {
+      // Micro indisponible ou permission refusée — pas d'action bloquante.
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700">
@@ -362,7 +412,18 @@ export function WhatsAppIntelligentHub() {
                        <Zap className="h-4 w-4 text-emerald-500 cursor-pointer hover:scale-110 transition-transform" />
                     </div>
                  </div>
-                 <button 
+                 <button
+                   onClick={recording ? stopRecording : startRecording}
+                   disabled={sendingVoice || !selectedChat?.phone}
+                   title={selectedChat?.phone ? (recording ? "Arrêter l'enregistrement" : "Note vocale") : "Sélectionnez une conversation avec un numéro"}
+                   className={cn(
+                     "h-12 w-12 rounded-full flex items-center justify-center text-white shadow-lg transition-all disabled:opacity-40",
+                     recording ? "bg-rose-600 animate-pulse" : "bg-slate-400 hover:bg-slate-500"
+                   )}
+                 >
+                    {recording ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                 </button>
+                 <button
                    onClick={handleSendMessage}
                    className="h-12 w-12 bg-emerald-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 hover:scale-105 transition-transform"
                  >
