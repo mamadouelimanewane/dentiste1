@@ -4,6 +4,10 @@ import { sql } from '@/lib/db';
 const TERMII_API_KEY = process.env.TERMII_API_KEY;
 const TERMII_SENDER_ID = process.env.TERMII_SENDER_ID; // ex: "CabinetDentaire"
 
+const PLIVO_AUTH_ID = process.env.PLIVO_AUTH_ID;
+const PLIVO_AUTH_TOKEN = process.env.PLIVO_AUTH_TOKEN;
+const PLIVO_SRC = process.env.PLIVO_SRC; // numéro Plivo ou expéditeur alphanumérique
+
 const AT_API_KEY = process.env.AFRICASTALKING_API_KEY;
 const AT_USERNAME = process.env.AFRICASTALKING_USERNAME;
 const AT_SENDER_ID = process.env.AFRICASTALKING_SENDER_ID; // optionnel
@@ -20,6 +24,10 @@ function isTermiiConfigured() {
   return !!TERMII_API_KEY;
 }
 
+function isPlivoConfigured() {
+  return !!PLIVO_AUTH_ID && !!PLIVO_AUTH_TOKEN && !!PLIVO_SRC;
+}
+
 function isAfricasTalkingConfigured() {
   return !!AT_API_KEY && !!AT_USERNAME;
 }
@@ -33,13 +41,13 @@ function isTwilioConfigured() {
 }
 
 export function isSmsConfigured() {
-  return isTermiiConfigured() || isAfricasTalkingConfigured() || isVonageConfigured() || isTwilioConfigured();
+  return isTermiiConfigured() || isPlivoConfigured() || isAfricasTalkingConfigured() || isVonageConfigured() || isTwilioConfigured();
 }
 
 interface SendResult {
   simulated: boolean;
   providerMessageId?: string;
-  provider?: 'termii' | 'africastalking' | 'vonage' | 'twilio';
+  provider?: 'termii' | 'plivo' | 'africastalking' | 'vonage' | 'twilio';
   error?: string;
 }
 
@@ -74,6 +82,29 @@ async function sendViaTermii(to: string, body: string): Promise<SendResult> {
   }
 
   return { simulated: false, provider: 'termii', providerMessageId: data.message_id };
+}
+
+async function sendViaPlivo(to: string, body: string): Promise<SendResult> {
+  const res = await fetch(`https://api.plivo.com/v1/Account/${PLIVO_AUTH_ID}/Message/`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${PLIVO_AUTH_ID}:${PLIVO_AUTH_TOKEN}`).toString('base64')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ src: PLIVO_SRC, dst: to.replace('+', ''), text: body }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || !data?.message_uuid?.[0]) {
+    return {
+      simulated: false,
+      provider: 'plivo',
+      error: data?.error || 'Échec envoi SMS (Plivo).',
+    };
+  }
+
+  return { simulated: false, provider: 'plivo', providerMessageId: data.message_uuid[0] };
 }
 
 async function sendViaAfricasTalking(to: string, body: string): Promise<SendResult> {
@@ -169,8 +200,8 @@ async function logMessage(params: {
   `;
 }
 
-// Envoie un SMS via Termii, Africa's Talking, Vonage ou Twilio, dans cet
-// ordre de priorité selon les clés configurées (le premier fournisseur
+// Envoie un SMS via Termii, Plivo, Africa's Talking, Vonage ou Twilio, dans
+// cet ordre de priorité selon les clés configurées (le premier fournisseur
 // disponible est utilisé). Sans aucune clé, journalise en base avec le
 // statut "simulated" au lieu d'appeler le réseau — l'UI affiche un badge
 // "Mode démo".
@@ -191,6 +222,8 @@ export async function sendSms(params: {
     const to = toE164(phone);
     const result = isTermiiConfigured()
       ? await sendViaTermii(to, body)
+      : isPlivoConfigured()
+      ? await sendViaPlivo(to, body)
       : isAfricasTalkingConfigured()
       ? await sendViaAfricasTalking(to, body)
       : isVonageConfigured()
