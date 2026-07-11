@@ -46,6 +46,10 @@ export async function sendSms(params: {
   }
 
   try {
+    // Twilio exige le format E.164 (préfixe "+") pour le SMS — contrairement
+    // à l'API WhatsApp qui accepte le numéro tel quel après le préfixe
+    // "whatsapp:". Les numéros patients sont souvent saisis sans le "+".
+    const to = phone.startsWith('+') ? phone : `+${phone.replace(/^0+/, '')}`;
     const res = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${ACCOUNT_SID}/Messages.json`,
       {
@@ -54,7 +58,7 @@ export async function sendSms(params: {
           Authorization: `Basic ${Buffer.from(`${ACCOUNT_SID}:${AUTH_TOKEN}`).toString('base64')}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({ To: phone, From: FROM_NUMBER!, Body: body }),
+        body: new URLSearchParams({ To: to, From: FROM_NUMBER!, Body: body }),
       }
     );
 
