@@ -33,6 +33,6 @@ export const PORTAL_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
-  path: '/portal',
+  path: '/',
   maxAge: SESSION_DURATION_SECONDS,
 };
