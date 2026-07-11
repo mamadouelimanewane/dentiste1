@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/permissions';
 import { sendWhatsAppMessage } from '@/lib/integrations/whatsapp';
 import { sendSms } from '@/lib/integrations/sms';
 
@@ -28,7 +28,7 @@ function formatDate(iso: string): string {
 // En mode démo (clés non configurées), journalise en base avec statut "simulated"
 // et retourne { simulated: true } pour affichage UI.
 export async function POST(request: Request) {
-  const { session, error, status } = await requireRole(['accueil', 'praticien', 'admin']);
+  const { session, error, status } = await requirePermission(18, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json() as NotifyBody;

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/permissions';
 import { sendWhatsAppVoiceNote } from '@/lib/integrations/whatsapp';
 
 export const dynamic = 'force-dynamic';
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 Mo
 
 export async function POST(request: Request) {
-  const { session, error, status } = await requireRole(['accueil', 'praticien', 'admin']);
+  const { session, error, status } = await requirePermission(18, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const formData = await request.formData();

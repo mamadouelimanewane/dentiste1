@@ -2,13 +2,17 @@
 
 import React, { createContext, useContext } from "react";
 import { signOut as signOutAction } from "@/app/login/actions";
+import type { ModulePermissions } from "@/lib/modules";
 
-export type Role = "admin" | "praticien" | "accueil" | "comptable";
+export type Role = string;
 
 interface AuthUser {
   id: string;
   fullName: string;
   role: Role;
+  roleLabel: string;
+  permissions: ModulePermissions;
+  manageRoles: boolean;
 }
 
 interface AuthContextType {

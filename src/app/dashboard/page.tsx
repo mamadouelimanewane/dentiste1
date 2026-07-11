@@ -66,6 +66,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePatient } from "@/lib/context";
 import { useAuth, type Role } from "@/lib/auth-context";
+import { hasPermission, type ModulePermissions } from "@/lib/modules";
 
 const steps = [
   { id: 1, title: "Accueil", fullTitle: "Accueil & Prise en charge", desc: "Enregistrement et vérification des droits.", icon: UserPlus },
@@ -94,23 +95,18 @@ const steps = [
   { id: 24, title: "Neural Center", fullTitle: "Data Brain Monitoring", desc: "Logs IA et activité asynchrone en temps réel.", icon: Database },
 ];
 
-// Source de vérité unique pour la visibilité des étapes par rôle (auparavant
-// dupliquée et incohérente entre le filtre d'affichage et la validation lors
-// d'un changement de rôle admin).
-function stepsForRole(role: Role) {
-  return steps.filter(s => {
-    if (role === 'admin') return true;
-    if (role === 'accueil') return [1, 2, 5, 6, 7, 11, 13, 16, 17, 18, 19, 20].includes(s.id);
-    if (role === 'praticien') return [2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(s.id);
-    if (role === 'comptable') return [5, 7, 8].includes(s.id);
-    return true;
-  });
+// Source de vérité unique pour la visibilité des étapes : privilège "view"
+// du rôle sur le module (table roles, gérable depuis l'admin), plus un
+// rôle en dur.
+function stepsForPermissions(permissions: ModulePermissions) {
+  return steps.filter(s => hasPermission(permissions, s.id, 'view'));
 }
 
 export default function Home() {
   const { currentPatient } = usePatient();
   const { user, signOut } = useAuth();
   const role = user.role;
+  const permissions = user.permissions;
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isMounted, setIsMounted] = useState(false);
@@ -129,11 +125,11 @@ export default function Home() {
     }
   }, [currentStep, isMounted]);
 
-  const visibleSteps = stepsForRole(role);
+  const visibleSteps = stepsForPermissions(permissions);
 
-  // Si le rôle du compte connecté ne donne plus accès à l'étape courante
-  // (ex. un admin a changé le rôle de l'utilisateur pendant la session),
-  // on se replie sur la première étape accessible.
+  // Si les privilèges du compte connecté ne donnent plus accès à l'étape
+  // courante (ex. un admin a modifié le rôle pendant la session), on se
+  // replie sur la première étape accessible.
   useEffect(() => {
     if (isMounted && !visibleSteps.find(s => s.id === currentStep)) {
       setCurrentStep(visibleSteps[0]?.id ?? 1);
@@ -264,7 +260,7 @@ export default function Home() {
 
           <div className="flex items-center gap-3">
             <div className="hidden md:flex flex-col text-right mr-2 border-l border-slate-200 pl-4">
-              <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">{role}</span>
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">{user.roleLabel}</span>
               <span className="text-sm font-black text-slate-900 tracking-tight">{user.fullName}</span>
             </div>
             <button
@@ -341,8 +337,8 @@ export default function Home() {
               </div>
 
               <div className="space-y-6">
-                {(role === 'admin' || role === 'praticien') && <PractitionerHub />}
-                {(role === 'admin' || role === 'praticien') && <ClinicalNotes phaseId={currentStep} />}
+                {hasPermission(permissions, 5, 'view') && <PractitionerHub />}
+                {hasPermission(permissions, 5, 'view') && <ClinicalNotes phaseId={currentStep} />}
               </div>
             </div>
           </div>

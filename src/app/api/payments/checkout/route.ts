@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/permissions';
 import { initiatePayment } from '@/lib/integrations/payment';
 
 export async function POST(request: Request) {
-  const { error, status } = await requireRole(['admin', 'praticien', 'accueil', 'comptable']);
+  const { error, status } = await requirePermission(6, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();

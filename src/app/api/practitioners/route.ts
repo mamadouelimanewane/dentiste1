@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { requireRole } from '@/lib/session';
+import { requireStaff } from '@/lib/permissions';
 
 export async function GET() {
-  const { error, status } = await requireRole(['admin', 'praticien', 'accueil', 'comptable']);
+  const { error, status } = await requireStaff();
   if (error) return NextResponse.json({ error }, { status });
 
   const practitioners = await sql`
-    select id, full_name from users where role = 'praticien' and is_active = true order by full_name
+    select u.id, u.full_name
+    from users u
+    join roles r on r.id = u.role_id
+    where r.is_practitioner = true and u.is_active = true
+    order by u.full_name
   `;
 
   return NextResponse.json({ practitioners });

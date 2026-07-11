@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/permissions';
 
 export async function GET(request: Request) {
-  const { error, status } = await requireRole(['admin', 'praticien', 'accueil', 'comptable']);
+  const { error, status } = await requirePermission(6, 'view');
   if (error) return NextResponse.json({ error }, { status });
 
   const { searchParams } = new URL(request.url);
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
 // Crée une facture à partir des actes non encore facturés d'un patient.
 export async function POST(request: Request) {
-  const { session, error, status } = await requireRole(['admin', 'praticien', 'comptable']);
+  const { session, error, status } = await requirePermission(6, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();

@@ -1,6 +1,6 @@
 import 'server-only';
 import { cookies } from 'next/headers';
-import { STAFF_COOKIE_NAME, verifyStaffSessionToken, type Role } from '@/lib/auth';
+import { STAFF_COOKIE_NAME, verifyStaffSessionToken } from '@/lib/auth';
 
 export async function getStaffSession() {
   const cookieStore = await cookies();
@@ -9,15 +9,6 @@ export async function getStaffSession() {
   return verifyStaffSessionToken(token);
 }
 
-// Vérifie la session et le rôle depuis une route API. Retourne la session si
-// autorisée, sinon une NextResponse d'erreur à renvoyer directement.
-export async function requireRole(allowedRoles: Role[]) {
-  const session = await getStaffSession();
-  if (!session) {
-    return { session: null, status: 401 as const, error: 'Non authentifié.' };
-  }
-  if (!allowedRoles.includes(session.role)) {
-    return { session: null, status: 403 as const, error: 'Rôle non autorisé.' };
-  }
-  return { session, status: 200 as const, error: null };
-}
+// Le contrôle d'accès par nom de rôle en dur (requireRole) a été remplacé
+// par des privilèges granulaires par module — voir src/lib/permissions.ts
+// (requirePermission, requireManageRoles, requireStaff).

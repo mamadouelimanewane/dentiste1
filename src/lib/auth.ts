@@ -5,11 +5,17 @@ import { SignJWT, jwtVerify } from 'jose';
 export const STAFF_COOKIE_NAME = 'dentiste_staff_session';
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 7; // 7 jours
 
-export type Role = 'admin' | 'praticien' | 'accueil' | 'comptable';
+// Les rôles sont désormais dynamiques (table `roles`, créables/modifiables
+// depuis l'admin) — plus un enum fixe. `role` reste le slug pour l'affichage
+// (badge, dropdown) ; toute décision d'autorisation doit passer par
+// `roleId` + src/lib/permissions.ts, jamais par une comparaison de nom.
+export type Role = string;
 
 export interface StaffSessionPayload {
   userId: string;
-  role: Role;
+  roleId: string;
+  role: string;
+  roleLabel: string;
   fullName: string;
 }
 
@@ -40,10 +46,12 @@ export async function createStaffSessionToken(payload: StaffSessionPayload) {
 export async function verifyStaffSessionToken(token: string): Promise<StaffSessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecretKey());
-    if (typeof payload.userId !== 'string' || typeof payload.role !== 'string') return null;
+    if (typeof payload.userId !== 'string' || typeof payload.roleId !== 'string') return null;
     return {
       userId: payload.userId,
-      role: payload.role as Role,
+      roleId: payload.roleId,
+      role: (payload.role as string) || '',
+      roleLabel: (payload.roleLabel as string) || '',
       fullName: (payload.fullName as string) || '',
     };
   } catch {

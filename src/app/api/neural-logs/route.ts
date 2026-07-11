@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { requireRole } from '@/lib/session';
+import { requireStaff } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  const { error, status } = await requireRole(['accueil', 'praticien', 'admin', 'comptable']);
+  const { error, status } = await requireStaff();
   if (error) return NextResponse.json({ error }, { status });
 
   const { searchParams } = new URL(request.url);
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { error, status } = await requireRole(['accueil', 'praticien', 'admin', 'comptable']);
+  const { error, status } = await requireStaff();
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();

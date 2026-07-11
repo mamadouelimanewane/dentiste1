@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { sql } from '@/lib/db';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/permissions';
 import { sendWhatsAppMessage } from '@/lib/integrations/whatsapp';
 import { sendSms } from '@/lib/integrations/sms';
 import { isDatabaseConfigured } from '@/lib/db';
@@ -11,7 +11,7 @@ function getBaseUrl(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const { error, status } = await requireRole(['admin', 'praticien', 'accueil', 'comptable']);
+  const { error, status } = await requirePermission(20, 'view');
   if (error) return NextResponse.json({ error }, { status });
 
   const { searchParams } = new URL(request.url);
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { session, error, status } = await requireRole(['admin', 'praticien', 'accueil']);
+  const { session, error, status } = await requirePermission(1, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();

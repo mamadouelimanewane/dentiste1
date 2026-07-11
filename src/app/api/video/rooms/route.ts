@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/permissions';
 import { createOrGetDailyRoom } from '@/lib/integrations/daily';
 
 export async function POST(request: Request) {
-  const { error, status } = await requireRole(['admin', 'praticien', 'accueil']);
+  const { error, status } = await requirePermission(11, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();

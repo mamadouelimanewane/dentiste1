@@ -4,48 +4,61 @@ import React, { useEffect, useState } from "react";
 import { Users, UserPlus, Shield, CheckCircle2, Lock, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Role = "admin" | "praticien" | "accueil" | "comptable";
+interface RoleOption {
+  id: string;
+  slug: string;
+  label: string;
+  is_system: boolean;
+}
 
 interface Profile {
   id: string;
   full_name: string;
   email: string;
-  role: Role;
+  role_id: string;
+  role: string;
+  role_label: string;
   is_active: boolean;
   created_at: string;
 }
 
-const ROLE_LABEL: Record<Role, string> = {
-  admin: "Administrateur",
-  praticien: "Praticien",
-  accueil: "Accueil",
-  comptable: "Comptable",
-};
+const BADGE_COLORS = [
+  "bg-amber-50 text-amber-700 border-amber-200",
+  "bg-blue-50 text-blue-700 border-blue-200",
+  "bg-purple-50 text-purple-700 border-purple-200",
+  "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "bg-rose-50 text-rose-700 border-rose-200",
+  "bg-cyan-50 text-cyan-700 border-cyan-200",
+];
 
-const ROLE_BADGE: Record<Role, string> = {
-  admin: "bg-amber-50 text-amber-700 border-amber-200",
-  praticien: "bg-blue-50 text-blue-700 border-blue-200",
-  accueil: "bg-purple-50 text-purple-700 border-purple-200",
-  comptable: "bg-emerald-50 text-emerald-700 border-emerald-200",
-};
+function badgeColorFor(roleId: string, roles: RoleOption[]) {
+  const idx = roles.findIndex((r) => r.id === roleId);
+  return BADGE_COLORS[idx % BADGE_COLORS.length] || BADGE_COLORS[0];
+}
 
 export function UserManagement() {
   const [users, setUsers] = useState<Profile[]>([]);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ email: "", fullName: "", role: "accueil" as Role });
+  const [inviteForm, setInviteForm] = useState({ email: "", fullName: "", roleId: "" });
   const [inviting, setInviting] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
 
-  const loadUsers = async () => {
+  const loadAll = async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const res = await fetch("/api/admin/users");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erreur de chargement.");
-      setUsers(data.users);
+      const [usersRes, rolesRes] = await Promise.all([fetch("/api/admin/users"), fetch("/api/admin/roles")]);
+      const usersData = await usersRes.json();
+      const rolesData = await rolesRes.json();
+      if (!usersRes.ok) throw new Error(usersData.error || "Erreur de chargement.");
+      setUsers(usersData.users);
+      if (rolesRes.ok) {
+        setRoles(rolesData.roles);
+        setInviteForm((f) => ({ ...f, roleId: f.roleId || rolesData.roles[0]?.id || "" }));
+      }
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : "Erreur inconnue.");
     } finally {
@@ -54,7 +67,7 @@ export function UserManagement() {
   };
 
   useEffect(() => {
-    loadUsers();
+    loadAll();
   }, []);
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -69,9 +82,9 @@ export function UserManagement() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erreur d'invitation.");
       setShowInvite(false);
-      setInviteForm({ email: "", fullName: "", role: "accueil" });
+      setInviteForm((f) => ({ email: "", fullName: "", roleId: f.roleId }));
       setTempPassword(data.tempPassword);
-      loadUsers();
+      loadAll();
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : "Erreur inconnue.");
     } finally {
@@ -79,17 +92,17 @@ export function UserManagement() {
     }
   };
 
-  const updateUser = async (userId: string, updates: { role?: Role; isActive?: boolean }) => {
+  const updateUser = async (userId: string, updates: { roleId?: string; isActive?: boolean }) => {
     const res = await fetch("/api/admin/users", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, ...updates }),
     });
-    if (res.ok) loadUsers();
+    if (res.ok) loadAll();
   };
 
   const activeCount = users.filter((u) => u.is_active).length;
-  const roleCount = new Set(users.map((u) => u.role)).size;
+  const roleCount = new Set(users.map((u) => u.role_id)).size;
 
   return (
     <div className="space-y-6">
@@ -164,15 +177,15 @@ export function UserManagement() {
                   </td>
                   <td className="p-4">
                     <select
-                      value={user.role}
-                      onChange={(e) => updateUser(user.id, { role: e.target.value as Role })}
+                      value={user.role_id}
+                      onChange={(e) => updateUser(user.id, { roleId: e.target.value })}
                       className={cn(
                         "px-2 py-1 rounded-sm text-[9px] font-bold uppercase tracking-widest border cursor-pointer",
-                        ROLE_BADGE[user.role]
+                        badgeColorFor(user.role_id, roles)
                       )}
                     >
-                      {Object.entries(ROLE_LABEL).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
+                      {roles.map((r) => (
+                        <option key={r.id} value={r.id}>{r.label}</option>
                       ))}
                     </select>
                   </td>
@@ -234,12 +247,12 @@ export function UserManagement() {
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Rôle</label>
                 <select
-                  value={inviteForm.role}
-                  onChange={(e) => setInviteForm((f) => ({ ...f, role: e.target.value as Role }))}
+                  value={inviteForm.roleId}
+                  onChange={(e) => setInviteForm((f) => ({ ...f, roleId: e.target.value }))}
                   className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
                 >
-                  {Object.entries(ROLE_LABEL).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>{r.label}</option>
                   ))}
                 </select>
               </div>

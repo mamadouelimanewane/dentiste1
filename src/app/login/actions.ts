@@ -14,13 +14,14 @@ export async function signIn(_prevState: { error: string | null }, formData: For
   }
 
   const rows = await sql`
-    select id, full_name, password_hash, role, is_active
-    from users
-    where email = ${email}
+    select u.id, u.full_name, u.password_hash, u.is_active, r.id as role_id, r.slug as role_slug, r.label as role_label
+    from users u
+    join roles r on r.id = u.role_id
+    where u.email = ${email}
     limit 1
   `;
   const user = rows[0] as
-    | { id: string; full_name: string; password_hash: string; role: string; is_active: boolean }
+    | { id: string; full_name: string; password_hash: string; is_active: boolean; role_id: string; role_slug: string; role_label: string }
     | undefined;
 
   if (!user || !user.is_active) {
@@ -34,7 +35,9 @@ export async function signIn(_prevState: { error: string | null }, formData: For
 
   const token = await createStaffSessionToken({
     userId: user.id,
-    role: user.role as any,
+    roleId: user.role_id,
+    role: user.role_slug,
+    roleLabel: user.role_label,
     fullName: user.full_name,
   });
 

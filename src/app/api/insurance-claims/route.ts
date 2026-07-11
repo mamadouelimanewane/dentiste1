@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/permissions';
 
 export async function GET() {
-  const { error, status } = await requireRole(['admin', 'praticien', 'accueil', 'comptable']);
+  const { error, status } = await requirePermission(9, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const claims = await sql`
@@ -18,7 +18,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { session, error, status } = await requireRole(['admin', 'praticien', 'accueil', 'comptable']);
+  const { session, error, status } = await requirePermission(9, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();

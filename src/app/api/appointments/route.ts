@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/permissions';
 
 const RECURRENCE_STEP_DAYS: Record<string, number> = {
   weekly: 7,
@@ -9,7 +9,7 @@ const RECURRENCE_STEP_DAYS: Record<string, number> = {
 };
 
 export async function GET(request: Request) {
-  const { error, status } = await requireRole(['admin', 'praticien', 'accueil', 'comptable']);
+  const { error, status } = await requirePermission(13, 'view');
   if (error) return NextResponse.json({ error }, { status });
 
   const { searchParams } = new URL(request.url);
@@ -74,7 +74,7 @@ async function hasConflict(practitionerId: string | null, scheduledAt: string, d
 }
 
 export async function POST(request: Request) {
-  const { error, status } = await requireRole(['admin', 'praticien', 'accueil']);
+  const { error, status } = await requirePermission(13, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();

@@ -4,16 +4,17 @@ import React, { useEffect, useState } from "react";
 import {
   Users, ShieldAlert, BookOpen, FileText, BarChart3, Building,
   Search, Plus, Filter, MoreVertical, Edit3, Trash2, CheckCircle2,
-  AlertCircle, Lock, Download, Settings
+  AlertCircle, Lock, Download, Settings, Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { RoleManager } from "@/components/RoleManager";
 
 interface AdminProfile {
   id: string;
   full_name: string;
   email: string;
-  role: "admin" | "praticien" | "accueil" | "comptable";
+  role: string;
   is_active: boolean;
 }
 
@@ -46,6 +47,7 @@ export function AdminHub() {
 
   const tabs = [
     { id: "utilisateurs", label: "Utilisateurs & RBAC", icon: Users },
+    { id: "roles", label: "Rôles & Privilèges", icon: Shield },
     { id: "audit", label: "Journal d'Audit", icon: ShieldAlert },
     { id: "catalogue", label: "Catalogue des Actes", icon: BookOpen },
     { id: "templates", label: "Modèles & Contrats", icon: FileText },
@@ -164,6 +166,13 @@ export function AdminHub() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* 1bis. RÔLES & PRIVILÈGES */}
+          {activeTab === "roles" && (
+            <div className="h-full overflow-y-auto p-5">
+              <RoleManager />
             </div>
           )}
 

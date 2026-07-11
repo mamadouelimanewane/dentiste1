@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/permissions';
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  const { error, status } = await requireRole(['admin', 'praticien', 'accueil']);
+  const { error, status } = await requirePermission(13, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();
