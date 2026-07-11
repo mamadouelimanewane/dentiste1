@@ -78,12 +78,10 @@ export function RoleManager() {
     const key = String(moduleId);
     const current = editing.permissions[key] || {};
     const nextValue = !current[action];
-    const next = {
-      ...current,
-      [action]: nextValue,
-      // Activer "gérer" implique au moins "voir".
-      view: action === "manage" && nextValue ? true : current.view,
-    };
+    const next = { ...current, [action]: nextValue };
+    // Activer "gérer" implique au moins "voir" ; désactiver "voir" retire aussi "gérer".
+    if (action === "manage" && nextValue) next.view = true;
+    if (action === "view" && !nextValue) next.manage = false;
     setEditing({ ...editing, permissions: { ...editing.permissions, [key]: next } });
   };
 
