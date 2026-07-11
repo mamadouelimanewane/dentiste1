@@ -296,12 +296,10 @@ export default function Home() {
             {/* Content Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
-                <AnimatePresence initial={false}>
-                  <motion.div
+                <motion.div
                     key={currentStep}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
                     transition={{ duration: 0.1 }}
                   >
                     {currentStep === 1 && <PatientRegistration />}
@@ -340,7 +338,6 @@ export default function Home() {
                       </div>
                     )}
                   </motion.div>
-                </AnimatePresence>
               </div>
 
               <div className="space-y-6">
