@@ -1,6 +1,9 @@
 import 'server-only';
 import { sql } from '@/lib/db';
 
+const TERMII_API_KEY = process.env.TERMII_API_KEY;
+const TERMII_SENDER_ID = process.env.TERMII_SENDER_ID; // ex: "CabinetDentaire"
+
 const AT_API_KEY = process.env.AFRICASTALKING_API_KEY;
 const AT_USERNAME = process.env.AFRICASTALKING_USERNAME;
 const AT_SENDER_ID = process.env.AFRICASTALKING_SENDER_ID; // optionnel
@@ -12,6 +15,10 @@ const VONAGE_FROM = process.env.VONAGE_FROM; // nom d'expéditeur ou numéro
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_FROM_NUMBER = process.env.TWILIO_FROM_NUMBER;
+
+function isTermiiConfigured() {
+  return !!TERMII_API_KEY;
+}
 
 function isAfricasTalkingConfigured() {
   return !!AT_API_KEY && !!AT_USERNAME;
@@ -26,13 +33,13 @@ function isTwilioConfigured() {
 }
 
 export function isSmsConfigured() {
-  return isAfricasTalkingConfigured() || isVonageConfigured() || isTwilioConfigured();
+  return isTermiiConfigured() || isAfricasTalkingConfigured() || isVonageConfigured() || isTwilioConfigured();
 }
 
 interface SendResult {
   simulated: boolean;
   providerMessageId?: string;
-  provider?: 'africastalking' | 'vonage' | 'twilio';
+  provider?: 'termii' | 'africastalking' | 'vonage' | 'twilio';
   error?: string;
 }
 
@@ -40,6 +47,33 @@ interface SendResult {
 // pour le SMS. Les numéros patients sont souvent saisis sans le "+".
 function toE164(phone: string) {
   return phone.startsWith('+') ? phone : `+${phone.replace(/^0+/, '')}`;
+}
+
+async function sendViaTermii(to: string, body: string): Promise<SendResult> {
+  const res = await fetch('https://api.ng.termii.com/api/sms/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      to: to.replace('+', ''),
+      from: TERMII_SENDER_ID || 'N-Alert',
+      sms: body,
+      type: 'plain',
+      channel: 'generic',
+      api_key: TERMII_API_KEY,
+    }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || !data?.message_id) {
+    return {
+      simulated: false,
+      provider: 'termii',
+      error: data?.message || 'Échec envoi SMS (Termii).',
+    };
+  }
+
+  return { simulated: false, provider: 'termii', providerMessageId: data.message_id };
 }
 
 async function sendViaAfricasTalking(to: string, body: string): Promise<SendResult> {
@@ -135,10 +169,11 @@ async function logMessage(params: {
   `;
 }
 
-// Envoie un SMS via Africa's Talking, Vonage ou Twilio, dans cet ordre de
-// priorité selon les clés configurées (le premier fournisseur disponible
-// est utilisé). Sans aucune clé, journalise en base avec le statut
-// "simulated" au lieu d'appeler le réseau — l'UI affiche un badge "Mode démo".
+// Envoie un SMS via Termii, Africa's Talking, Vonage ou Twilio, dans cet
+// ordre de priorité selon les clés configurées (le premier fournisseur
+// disponible est utilisé). Sans aucune clé, journalise en base avec le
+// statut "simulated" au lieu d'appeler le réseau — l'UI affiche un badge
+// "Mode démo".
 export async function sendSms(params: {
   patientId?: string | null;
   phone: string;
@@ -154,7 +189,9 @@ export async function sendSms(params: {
 
   try {
     const to = toE164(phone);
-    const result = isAfricasTalkingConfigured()
+    const result = isTermiiConfigured()
+      ? await sendViaTermii(to, body)
+      : isAfricasTalkingConfigured()
       ? await sendViaAfricasTalking(to, body)
       : isVonageConfigured()
       ? await sendViaVonage(to, body)

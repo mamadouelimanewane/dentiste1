@@ -1,6 +1,8 @@
 import 'server-only';
 import { sql } from '@/lib/db';
 
+const D360_API_KEY = process.env.D360_API_KEY;
+
 const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
@@ -9,7 +11,11 @@ const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WHATSAPP_FROM = process.env.TWILIO_WHATSAPP_FROM;
 
 export function isWhatsAppConfigured() {
-  return isMetaConfigured() || isTwilioWhatsAppConfigured();
+  return isD360Configured() || isMetaConfigured() || isTwilioWhatsAppConfigured();
+}
+
+function isD360Configured() {
+  return !!D360_API_KEY;
 }
 
 function isMetaConfigured() {
@@ -38,6 +44,35 @@ async function logMessage(params: {
     insert into patient_messages (patient_id, phone, channel, direction, body, status, provider_message_id, sent_by)
     values (${params.patientId ?? null}, ${params.phone}, 'whatsapp', 'outbound', ${params.body}, ${params.status}, ${params.providerMessageId ?? null}, ${params.sentBy ?? null})
   `;
+}
+
+// 360dialog (Cloud API) : partenaire technique officiel Meta, même format de
+// message que l'API Cloud Meta ci-dessous mais authentifié par une simple
+// clé d'API (header D360-API-KEY) sur un compte WhatsApp Business réel —
+// pas de Sandbox, pas de code "join" à envoyer.
+async function sendVia360dialog(phone: string, body: string): Promise<SendResult> {
+  try {
+    const res = await fetch('https://waba-v2.360dialog.io/messages', {
+      method: 'POST',
+      headers: {
+        'D360-API-KEY': D360_API_KEY!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: phone,
+        type: 'text',
+        text: { body },
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { simulated: false, error: data?.error?.message || data?.meta?.developer_message || 'Échec envoi WhatsApp (360dialog).' };
+    }
+    return { simulated: false, providerMessageId: data?.messages?.[0]?.id };
+  } catch (e) {
+    return { simulated: false, error: e instanceof Error ? e.message : 'Erreur réseau (360dialog).' };
+  }
 }
 
 async function sendViaMeta(phone: string, body: string): Promise<SendResult> {
@@ -152,8 +187,9 @@ export async function sendWhatsAppVoiceNote(params: {
   return result;
 }
 
-// Envoie un message WhatsApp — via l'API Cloud Meta si configurée, sinon via
-// Twilio WhatsApp (Sandbox) si configuré, sinon journalise en mode simulé.
+// Envoie un message WhatsApp — priorité 360dialog > Meta Cloud API > Twilio
+// (Sandbox), le premier fournisseur configuré étant utilisé ; sinon
+// journalise en mode simulé.
 export async function sendWhatsAppMessage(params: {
   patientId?: string | null;
   phone: string;
@@ -167,7 +203,11 @@ export async function sendWhatsAppMessage(params: {
     return { simulated: true };
   }
 
-  const result = isMetaConfigured() ? await sendViaMeta(phone, body) : await sendViaTwilio(phone, body);
+  const result = isD360Configured()
+    ? await sendVia360dialog(phone, body)
+    : isMetaConfigured()
+    ? await sendViaMeta(phone, body)
+    : await sendViaTwilio(phone, body);
 
   await logMessage({
     patientId,
