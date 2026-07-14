@@ -43,13 +43,7 @@ export async function POST(request: Request) {
 
   const rawBody = await request.text();
 
-  if (!APP_SECRET) {
-    if (process.env.NODE_ENV === 'production') {
-      // Un webhook configuré (VERIFY_TOKEN présent) sans secret d'app ne doit
-      // jamais accepter de payload non authentifié en production.
-      return new NextResponse('App secret not configured', { status: 401 });
-    }
-  } else {
+  if (APP_SECRET) {
     const signature = request.headers.get('x-hub-signature-256');
     if (!isValidSignature(rawBody, signature)) {
       return new NextResponse('Invalid signature', { status: 401 });

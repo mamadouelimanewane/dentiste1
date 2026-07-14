@@ -71,10 +71,8 @@ export async function POST(request: Request) {
 
   if (phone && isDatabaseConfigured()) {
     try {
-      // Token portail à usage long (48h) — aligné sur la même échelle que le
-      // lien de renvoi (24h, voir magic-link/route.ts) pour éviter une
-      // fenêtre de validité incohérente entre les deux flux.
-      const TOKEN_TTL_MS = 48 * 60 * 60 * 1000;
+      // Générer un token portail à usage long (7 jours)
+      const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
       const token = crypto.randomBytes(24).toString('hex');
       const expiresAt = new Date(Date.now() + TOKEN_TTL_MS).toISOString();
 
@@ -91,7 +89,7 @@ export async function POST(request: Request) {
         `🦷 Bienvenue au Cabinet Dentaire du Cap Vert, ${patient.full_name} !\n\n` +
         `Votre dossier N°${dossier} a bien été créé.\n\n` +
         `Accédez à votre espace patient (rendez-vous, documents, ordonnances) :\n${link}\n\n` +
-        `Lien valable 48h. À bientôt !`;
+        `Lien valable 7 jours. À bientôt !`;
 
       const [waResult, smsResult] = await Promise.all([
         sendWhatsAppMessage({ patientId: patient.id, phone, body: messageBody, sentBy: session!.userId }),

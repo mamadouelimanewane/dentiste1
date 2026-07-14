@@ -20,17 +20,11 @@ async function main() {
 
   const hash = await bcrypt.hash(password, 10);
 
-  const roleRows = await client.query(`select id from roles where slug = 'admin' limit 1`);
-  const roleId = roleRows.rows[0]?.id;
-  if (!roleId) {
-    throw new Error("Rôle 'admin' introuvable — les migrations (db/migrations) ont-elles été appliquées ?");
-  }
-
   await client.query(
-    `insert into users (full_name, email, password_hash, role_id)
-     values ($1, $2, $3, $4)
+    `insert into users (full_name, email, password_hash, role)
+     values ($1, $2, $3, 'admin')
      on conflict (email) do update set password_hash = excluded.password_hash`,
-    [fullName, email.toLowerCase(), hash, roleId]
+    [fullName, email.toLowerCase(), hash]
   );
 
   console.log(`Admin créé/mis à jour : ${email} / ${password}`);
