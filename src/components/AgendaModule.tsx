@@ -593,7 +593,7 @@ export function AgendaModule() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 pb-24"
             onClick={() => setActiveAppt(null)}
           >
             <motion.div
@@ -840,14 +840,14 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 pb-24"
     >
       <motion.div
         initial={{ scale: 0.92, opacity: 0, y: 16 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.92, opacity: 0, y: 16 }}
         transition={{ type: "spring", damping: 20, stiffness: 300 }}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[90vh] flex flex-col"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[calc(100vh-7rem)] flex flex-col"
       >
         <div className="bg-gradient-to-r from-[#1E3A8A] to-blue-500 p-5 text-white flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
