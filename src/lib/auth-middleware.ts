@@ -14,17 +14,25 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const isPublic =
+    PUBLIC_PATHS.includes(path) || PUBLIC_PREFIXES.some((p) => path.startsWith(p));
+
   if (!process.env.SESSION_SECRET) {
-    // Pas de secret configuré : on laisse passer sans forcer /login pour ne
-    // pas bloquer le dev/preview local avant que les env vars soient posées.
+    if (process.env.NODE_ENV === 'production') {
+      // En production, un secret manquant ne doit jamais désactiver
+      // silencieusement la protection des routes : on bloque au lieu de
+      // laisser passer. Le mode permissif ci-dessous ne vaut que pour le
+      // dev/preview local, avant que les env vars soient posées.
+      if (isPublic) return NextResponse.next();
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = '/login';
+      return NextResponse.redirect(redirectUrl);
+    }
     return NextResponse.next();
   }
 
   const token = request.cookies.get(STAFF_COOKIE_NAME)?.value;
   const session = token ? await verifyStaffSessionToken(token) : null;
-
-  const isPublic =
-    PUBLIC_PATHS.includes(path) || PUBLIC_PREFIXES.some((p) => path.startsWith(p));
 
   if (!session && !isPublic) {
     const redirectUrl = request.nextUrl.clone();

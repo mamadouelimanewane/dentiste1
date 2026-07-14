@@ -1,9 +1,26 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { sql } from '@/lib/db';
 import { verifyPassword, createStaffSessionToken, STAFF_COOKIE_NAME, STAFF_COOKIE_OPTIONS } from '@/lib/auth';
+
+// Hash bcrypt d'une valeur fixe non utilisée ailleurs — sert uniquement à
+// exécuter un bcrypt.compare de durée comparable quand le compte n'existe
+// pas, pour ne pas révéler par le timing de réponse qu'un email est inconnu.
+const DUMMY_HASH = '$2b$10$CwTycUXWue0Thq9StjUM0uJ8kn3.SIiF3rBpN9zfp1z/Ehk4xUuMS';
+
+const MAX_ATTEMPTS = 5;
+const WINDOW_MINUTES = 15;
+
+async function getClientIp() {
+  const h = await headers();
+  return h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown';
+}
+
+async function recordAttempt(email: string, ip: string, success: boolean) {
+  await sql`insert into login_attempts (email, ip, success) values (${email}, ${ip}, ${success})`;
+}
 
 export async function signIn(_prevState: { error: string | null }, formData: FormData) {
   const email = String(formData.get('email') || '').trim().toLowerCase();
@@ -11,6 +28,17 @@ export async function signIn(_prevState: { error: string | null }, formData: For
 
   if (!email || !password) {
     return { error: 'Email et mot de passe requis.' };
+  }
+
+  const ip = await getClientIp();
+
+  const recentFailures = await sql`
+    select count(*) as count from login_attempts
+    where email = ${email} and success = false
+      and created_at > now() - make_interval(mins => ${WINDOW_MINUTES})
+  `;
+  if (Number(recentFailures[0]?.count || 0) >= MAX_ATTEMPTS) {
+    return { error: 'Trop de tentatives. Réessayez dans quelques minutes.' };
   }
 
   const rows = await sql`
@@ -25,13 +53,18 @@ export async function signIn(_prevState: { error: string | null }, formData: For
     | undefined;
 
   if (!user || !user.is_active) {
+    await verifyPassword(password, DUMMY_HASH);
+    await recordAttempt(email, ip, false);
     return { error: 'Identifiants incorrects.' };
   }
 
   const valid = await verifyPassword(password, user.password_hash);
   if (!valid) {
+    await recordAttempt(email, ip, false);
     return { error: 'Identifiants incorrects.' };
   }
+
+  await recordAttempt(email, ip, true);
 
   const token = await createStaffSessionToken({
     userId: user.id,

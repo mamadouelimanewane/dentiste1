@@ -14,19 +14,21 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/portal/invalid`);
   }
 
+  // update ... returning atomique : marque le token utilisé et ne renvoie
+  // une ligne que s'il était encore valide, ce qui élimine la fenêtre de
+  // course où deux requêtes concurrentes avec le même token passeraient
+  // toutes les deux le check avant l'update.
   const rows = await sql`
-    select id, patient_id, expires_at, used_at
-    from patient_portal_tokens
-    where token = ${token}
-    limit 1
+    update patient_portal_tokens
+    set used_at = now()
+    where token = ${token} and used_at is null and expires_at >= now()
+    returning id, patient_id
   `;
   const row = rows[0];
 
-  if (!row || row.used_at || new Date(row.expires_at) < new Date()) {
+  if (!row) {
     return NextResponse.redirect(`${origin}/portal/invalid`);
   }
-
-  await sql`update patient_portal_tokens set used_at = now() where id = ${row.id}`;
 
   const sessionToken = await createPortalSessionToken(row.patient_id);
   const cookieStore = await cookies();
