@@ -3,12 +3,13 @@
 import React, { useEffect, useState } from "react";
 import {
   Users, ShieldAlert, BookOpen, FileText, BarChart3, Building,
-  Search, Plus, Filter, MoreVertical, Edit3, Trash2, CheckCircle2,
-  AlertCircle, Lock, Download, Settings, Shield
+  Plus, Filter, CheckCircle2,
+  Lock, Download, Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { RoleManager } from "@/components/RoleManager";
+import { DENTAL_NOMENCLATURE } from "@/lib/pricing";
 
 interface AdminProfile {
   id: string;
@@ -46,17 +47,6 @@ interface PractitionerStat {
   revenue: number;
 }
 
-// Nomenclature de démonstration : différente du vrai catalogue d'actes
-// utilisé dans Devis/Réalisation (40+ actes, tarifs FCFA réels). Affichée
-// à titre d'exemple d'écran de configuration, pas encore branchée à une
-// vraie table de tarifs modifiable.
-const MOCK_ACTES = [
-  { id: "C01", name: "Consultation initiale & Bilan", category: "Diagnostic", price: 15000, duration: "30 min", coverage: "100%" },
-  { id: "S01", name: "Détartrage sus et sous-gingival", category: "Prévention", price: 25000, duration: "30 min", coverage: "80%" },
-  { id: "P05", name: "Couronne Zircone sur dent naturelle", category: "Prothèse", price: 150000, duration: "60 min", coverage: "50%" },
-  { id: "I01", name: "Pose Implant Titane (Premium)", category: "Implantologie", price: 450000, duration: "90 min", coverage: "0%" },
-  { id: "E02", name: "Blanchiment au fauteuil (Laser)", category: "Esthétique", price: 180000, duration: "60 min", coverage: "0%" },
-];
 
 export function AdminHub() {
   const [activeTab, setActiveTab] = useState("utilisateurs");
@@ -303,21 +293,15 @@ export function AdminHub() {
                <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
                 <div>
                   <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Catalogue des Actes & Tarifs</h3>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase">Configuration de la nomenclature NGAP/CCAM</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase">Nomenclature utilisée dans Devis et Réalisation ({DENTAL_NOMENCLATURE.length} actes)</p>
                 </div>
                 <button
                   disabled
-                  title="Gestion du catalogue pas encore implémentée — le vrai catalogue utilisé pour les devis et actes réalisés se gère dans les modules Devis/Réalisation."
+                  title="Édition du catalogue pas encore implémentée — modifier src/lib/pricing.ts pour changer les tarifs."
                   className="bg-slate-300 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded shadow flex items-center gap-2 cursor-not-allowed"
                 >
                   <Plus className="h-4 w-4" /> Nouvel Acte
                 </button>
-              </div>
-              <div className="mx-4 mt-4 flex items-start gap-3 rounded-sm border border-amber-200 bg-amber-50 p-4">
-                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                <p className="text-xs font-medium text-amber-800">
-                  Module de démonstration : cette liste est illustrative et distincte du vrai catalogue d'actes (tarifs FCFA) utilisé dans les modules Devis et Réalisation. La gestion des tarifs depuis cet écran n'est pas encore implémentée.
-                </p>
               </div>
               <div className="overflow-x-auto p-4 flex-1">
                 <table className="w-full text-left text-sm border-collapse">
@@ -326,24 +310,18 @@ export function AdminHub() {
                       <th className="p-3">Code</th>
                       <th className="p-3">Désignation</th>
                       <th className="p-3">Catégorie</th>
-                      <th className="p-3">Durée Std</th>
-                      <th className="p-3">Couverture Max</th>
+                      <th className="p-3">Cotation</th>
                       <th className="p-3 text-right">Tarif Cabinet</th>
-                      <th className="p-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 border-x border-b border-slate-200">
-                    {MOCK_ACTES.map(acte => (
+                    {DENTAL_NOMENCLATURE.map(acte => (
                       <tr key={acte.id} className="hover:bg-slate-50">
                         <td className="p-3 font-black text-blue-900 text-xs">{acte.id}</td>
-                        <td className="p-3 font-bold text-slate-700 text-xs">{acte.name}</td>
+                        <td className="p-3 font-bold text-slate-700 text-xs">{acte.label}</td>
                         <td className="p-3 text-[10px] font-black uppercase text-slate-500">{acte.category}</td>
-                        <td className="p-3 text-xs font-medium text-slate-500">{acte.duration}</td>
-                        <td className="p-3 text-xs font-bold text-emerald-600">{acte.coverage}</td>
-                        <td className="p-3 text-right font-black text-slate-900 text-sm">{acte.price.toLocaleString()} F</td>
-                        <td className="p-3 text-right">
-                           <button className="text-slate-400 hover:text-blue-600"><MoreVertical className="h-4 w-4" /></button>
-                        </td>
+                        <td className="p-3 text-xs font-medium text-slate-500">{acte.cotation || "—"}</td>
+                        <td className="p-3 text-right font-black text-slate-900 text-sm">{(acte.price || 0).toLocaleString()} F</td>
                       </tr>
                     ))}
                   </tbody>

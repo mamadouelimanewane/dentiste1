@@ -2,17 +2,22 @@
 
 import React, { useState, useRef } from "react";
 import { DENTAL_NOMENCLATURE, DentalProcedure } from "@/lib/pricing";
-import { Plus, Trash2, FileText, Download, CheckCircle2, Eraser, ShoppingCart } from "lucide-react";
+import { Plus, Trash2, FileText, Download, CheckCircle2, Eraser, ShoppingCart, Save, AlertTriangle } from "lucide-react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { QuotePDF } from "./QuotePDF";
 import SignatureCanvas from "react-signature-canvas";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { usePatient } from "@/lib/context";
 
 export function QuoteBuilder() {
+  const { currentPatient } = usePatient();
   const [selected, setSelected] = useState<(DentalProcedure & { qty: number })[]>([]);
   const sigCanvas = useRef<SignatureCanvas>(null);
   const [isSigned, setIsSigned] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const add = (p: DentalProcedure) => {
     setSelected(prev => {
@@ -20,15 +25,44 @@ export function QuoteBuilder() {
       if (ex) return prev.map(i => i.id === p.id ? { ...i, qty: i.qty + 1 } : i);
       return [...prev, { ...p, qty: 1 }];
     });
+    setSaved(false);
   };
 
-  const remove = (id: string) => setSelected(prev => prev.filter(i => i.id !== id));
+  const remove = (id: string) => {
+    setSelected(prev => prev.filter(i => i.id !== id));
+    setSaved(false);
+  };
   const clearSignature = () => {
     sigCanvas.current?.clear();
     setIsSigned(false);
   };
 
   const total = selected.reduce((s, i) => s + (i.price || 0) * i.qty, 0);
+
+  const handleSave = async () => {
+    if (!currentPatient || selected.length === 0) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/quotes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: currentPatient.id,
+          items: selected.map(i => ({ id: i.id, label: i.label, qty: i.qty, price: i.price || 0 })),
+          total,
+          signed: isSigned,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de l'enregistrement du devis.");
+      setSaved(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -72,6 +106,16 @@ export function QuoteBuilder() {
               <span className="text-[10px] font-bold text-slate-500 uppercase">{selected.length} acte(s)</span>
             </div>
 
+            {!currentPatient && (
+              <div className="flex items-center gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-sm">
+                <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0" />
+                <p className="text-[10px] font-bold text-amber-300 uppercase leading-tight">Aucun patient actif — sélectionnez un dossier pour enregistrer ce devis</p>
+              </div>
+            )}
+            {error && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-sm text-xs text-red-300">{error}</div>
+            )}
+
             <div className="flex-1 space-y-3">
               {selected.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-slate-600 space-y-2 py-8">
@@ -103,39 +147,37 @@ export function QuoteBuilder() {
               </div>
               
               {selected.length > 0 && (
-                <PDFDownloadLink
-                  document={<QuotePDF items={selected.map(i => ({ label: i.label, qty: i.qty, price: i.price || 0 }))} total={total} patientName="Mamadou Diallo" />}
-                  fileName={`devis_${new Date().getTime()}.pdf`}
-                >
-                  {/* @ts-ignore */}
-                  {({ loading }) => (
-                    <button 
-                      disabled={loading}
-                      className="h-10 px-6 bg-blue-600 rounded flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider hover:bg-blue-700 transition-all shadow-sm shadow-blue-900/20 disabled:opacity-50"
-                    >
-                      <Download className="h-4 w-4" />
-                      {loading ? "Chargement..." : "Générer PDF"}
-                    </button>
-                  )}
-                </PDFDownloadLink>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleSave}
+                    disabled={saving || !currentPatient}
+                    className={cn(
+                      "h-10 px-4 rounded flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm disabled:opacity-50",
+                      saved ? "bg-emerald-600 hover:bg-emerald-700" : "bg-slate-700 hover:bg-slate-600"
+                    )}
+                  >
+                    {saved ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+                    {saving ? "Enregistrement..." : saved ? "Devis Enregistré" : "Enregistrer"}
+                  </button>
+                  <PDFDownloadLink
+                    document={<QuotePDF items={selected.map(i => ({ label: i.label, qty: i.qty, price: i.price || 0 }))} total={total} patientName={currentPatient?.name || "Patient non sélectionné"} />}
+                    fileName={`devis_${new Date().getTime()}.pdf`}
+                  >
+                    {/* @ts-ignore */}
+                    {({ loading }) => (
+                      <button
+                        disabled={loading}
+                        className="h-10 px-6 bg-blue-600 rounded flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider hover:bg-blue-700 transition-all shadow-sm shadow-blue-900/20 disabled:opacity-50"
+                      >
+                        <Download className="h-4 w-4" />
+                        {loading ? "Chargement..." : "Générer PDF"}
+                      </button>
+                    )}
+                  </PDFDownloadLink>
+                </div>
               )}
             </div>
           </div>
-
-          {/* DESTINATAIRES PANEL */}
-          {selected.length > 0 && (
-            <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-5 space-y-4">
-              <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Transmission des Exemplaires</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {['Patient (Email/Imprimé)', 'Comptabilité Cabinet', 'Assurance / Mutuelle'].map((dest, i) => (
-                  <label key={dest} className="flex items-center gap-3 p-3 border border-slate-100 rounded-sm cursor-pointer hover:bg-slate-50 transition-colors">
-                    <input type="checkbox" defaultChecked={i < 2} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                    <span className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">{dest}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* SIGNATURE PANEL */}
 
