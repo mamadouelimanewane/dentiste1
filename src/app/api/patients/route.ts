@@ -5,6 +5,7 @@ import { requirePermission } from '@/lib/permissions';
 import { sendWhatsAppMessage } from '@/lib/integrations/whatsapp';
 import { sendSms } from '@/lib/integrations/sms';
 import { isDatabaseConfigured } from '@/lib/db';
+import { recordAudit } from '@/lib/audit';
 
 function getBaseUrl(request: Request) {
   return process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
@@ -60,6 +61,14 @@ export async function POST(request: Request) {
   `;
 
   const patient = rows[0];
+
+  await recordAudit({
+    actorId: session!.userId,
+    action: 'Création dossier patient',
+    entityTable: 'patients',
+    entityId: patient.id,
+    meta: { fullName: patient.full_name, dossierNumber: patient.dossier_number },
+  });
 
   // ── Envoi automatique du message de bienvenue + lien portail ──────────────
   let welcomeResult: {

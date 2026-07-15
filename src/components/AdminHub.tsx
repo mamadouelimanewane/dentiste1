@@ -18,13 +18,38 @@ interface AdminProfile {
   is_active: boolean;
 }
 
-const MOCK_LOGS = [
-  { id: 1, time: "10:45:22", user: "Fatou Diop", action: "Création Dossier Patient", details: "Patient SN-45892-X (Mamadou Diallo)", module: "Accueil", severity: "info" },
-  { id: 2, time: "10:30:15", user: "Dr. Mamadou Fall", action: "Validation Devis", details: "Devis #D24-112 (168 000 FCFA)", module: "Facturation", severity: "success" },
-  { id: 3, time: "09:15:00", user: "Ousmane Kane", action: "Export Grand Livre", details: "Export Excel Période Avril 2026", module: "Comptabilité", severity: "info" },
-  { id: 4, time: "Hier, 18:45", user: "Dr. Aïssatou Sow", action: "Suppression Ordonnance", details: "Ordonnance #ORD-089 annulée", module: "Prescription", severity: "warning" },
-];
+interface AuditLog {
+  id: string;
+  action: string;
+  entity_table: string;
+  entity_id: string | null;
+  meta: Record<string, unknown> | null;
+  created_at: string;
+  actor_name: string | null;
+}
 
+interface StatsOverview {
+  kpis: {
+    chiffreAffaires: { value: number; trend: number | null };
+    nouveauxPatients: { value: number; trend: number | null };
+    tauxRealisationRdv: { value: number | null; trend: number | null };
+    encaissements: { value: number; trend: number | null };
+  };
+  evolutionCa: { label: string; total: number; heightPct: number }[];
+  topActs: { name: string; count: number; revenue: number }[];
+}
+
+interface PractitionerStat {
+  id: string;
+  name: string;
+  actsCount: number;
+  revenue: number;
+}
+
+// Nomenclature de démonstration : différente du vrai catalogue d'actes
+// utilisé dans Devis/Réalisation (40+ actes, tarifs FCFA réels). Affichée
+// à titre d'exemple d'écran de configuration, pas encore branchée à une
+// vraie table de tarifs modifiable.
 const MOCK_ACTES = [
   { id: "C01", name: "Consultation initiale & Bilan", category: "Diagnostic", price: 15000, duration: "30 min", coverage: "100%" },
   { id: "S01", name: "Détartrage sus et sous-gingival", category: "Prévention", price: 25000, duration: "30 min", coverage: "80%" },
@@ -36,6 +61,12 @@ const MOCK_ACTES = [
 export function AdminHub() {
   const [activeTab, setActiveTab] = useState("utilisateurs");
   const [users, setUsers] = useState<AdminProfile[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [biPeriod, setBiPeriod] = useState<"week" | "month" | "year">("month");
+  const [biOverview, setBiOverview] = useState<StatsOverview | null>(null);
+  const [biPractitioners, setBiPractitioners] = useState<PractitionerStat[]>([]);
+  const [biLoading, setBiLoading] = useState(false);
 
   useEffect(() => {
     if (activeTab !== "utilisateurs") return;
@@ -44,6 +75,47 @@ export function AdminHub() {
       .then((data) => setUsers(data.users || []))
       .catch(() => setUsers([]));
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "audit") return;
+    setAuditLoading(true);
+    fetch("/api/admin/audit-logs")
+      .then((res) => res.json())
+      .then((data) => setAuditLogs(data.logs || []))
+      .catch(() => setAuditLogs([]))
+      .finally(() => setAuditLoading(false));
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "bi") return;
+    setBiLoading(true);
+    Promise.all([
+      fetch(`/api/stats/overview?period=${biPeriod}`).then((res) => res.json()),
+      fetch(`/api/stats/practitioners?period=${biPeriod}`).then((res) => res.json()),
+    ])
+      .then(([overview, practitioners]) => {
+        setBiOverview(overview);
+        setBiPractitioners(practitioners.practitioners || []);
+      })
+      .catch(() => {
+        setBiOverview(null);
+        setBiPractitioners([]);
+      })
+      .finally(() => setBiLoading(false));
+  }, [activeTab, biPeriod]);
+
+  function formatFcfa(n: number) {
+    return `${Math.round(n).toLocaleString("fr-FR")} F`;
+  }
+
+  function formatTrend(trend: number | null) {
+    if (trend === null || !isFinite(trend)) return null;
+    return `${trend >= 0 ? "+" : ""}${trend.toFixed(1)}%`;
+  }
+
+  function formatLogTime(iso: string) {
+    return new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  }
 
   const tabs = [
     { id: "utilisateurs", label: "Utilisateurs & RBAC", icon: Users },
@@ -186,33 +258,36 @@ export function AdminHub() {
                 </div>
                 <div className="flex gap-2">
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-xs">
-                    <Filter className="h-3.5 w-3.5 text-slate-400" /> <span className="font-bold text-slate-600">Aujourd'hui</span>
+                    <Filter className="h-3.5 w-3.5 text-slate-400" /> <span className="font-bold text-slate-600">50 derniers événements</span>
                   </div>
-                  <button className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded shadow flex items-center gap-2">
+                  <button
+                    disabled
+                    title="Export CSV pas encore implémenté."
+                    className="bg-slate-300 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded shadow flex items-center gap-2 cursor-not-allowed"
+                  >
                     <Download className="h-4 w-4" /> Exporter (.CSV)
                   </button>
                 </div>
               </div>
               <div className="overflow-y-auto p-4 flex-1 bg-slate-50/50">
+                {auditLoading && <p className="text-xs text-slate-400 text-center py-8">Chargement...</p>}
+                {!auditLoading && auditLogs.length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-8">Aucun événement enregistré pour le moment.</p>
+                )}
                 <div className="space-y-3">
-                  {MOCK_LOGS.map(log => (
+                  {auditLogs.map(log => (
                     <div key={log.id} className="bg-white border border-slate-200 rounded p-4 flex items-start gap-4 shadow-sm">
-                      <div className={cn(
-                        "mt-1 rounded-full p-1.5",
-                        log.severity === 'info' ? "bg-blue-100 text-blue-600" :
-                        log.severity === 'success' ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"
-                      )}>
-                        {log.severity === 'warning' ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                      <div className="mt-1 rounded-full p-1.5 bg-blue-100 text-blue-600">
+                        <CheckCircle2 className="h-4 w-4" />
                       </div>
                       <div className="flex-1">
                         <div className="flex justify-between items-start">
                           <p className="text-xs font-black text-slate-900 uppercase tracking-widest">{log.action}</p>
-                          <span className="text-[10px] font-bold text-slate-400">{log.time}</span>
+                          <span className="text-[10px] font-bold text-slate-400">{formatLogTime(log.created_at)}</span>
                         </div>
-                        <p className="text-sm font-medium text-slate-600 mt-1">{log.details}</p>
                         <div className="flex items-center gap-3 mt-3">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-0.5 rounded">👤 {log.user}</span>
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-0.5 rounded">📦 {log.module}</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-0.5 rounded">👤 {log.actor_name || "Système"}</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-0.5 rounded">📦 {log.entity_table}</span>
                         </div>
                       </div>
                     </div>
@@ -230,9 +305,19 @@ export function AdminHub() {
                   <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Catalogue des Actes & Tarifs</h3>
                   <p className="text-[10px] font-bold text-slate-500 uppercase">Configuration de la nomenclature NGAP/CCAM</p>
                 </div>
-                <button className="bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded shadow hover:bg-blue-700 transition-colors flex items-center gap-2">
+                <button
+                  disabled
+                  title="Gestion du catalogue pas encore implémentée — le vrai catalogue utilisé pour les devis et actes réalisés se gère dans les modules Devis/Réalisation."
+                  className="bg-slate-300 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded shadow flex items-center gap-2 cursor-not-allowed"
+                >
                   <Plus className="h-4 w-4" /> Nouvel Acte
                 </button>
+              </div>
+              <div className="mx-4 mt-4 flex items-start gap-3 rounded-sm border border-amber-200 bg-amber-50 p-4">
+                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <p className="text-xs font-medium text-amber-800">
+                  Module de démonstration : cette liste est illustrative et distincte du vrai catalogue d'actes (tarifs FCFA) utilisé dans les modules Devis et Réalisation. La gestion des tarifs depuis cet écran n'est pas encore implémentée.
+                </p>
               </div>
               <div className="overflow-x-auto p-4 flex-1">
                 <table className="w-full text-left text-sm border-collapse">
@@ -276,126 +361,130 @@ export function AdminHub() {
                   <p className="text-[10px] font-bold text-slate-500 uppercase">Données consolidées en temps réel</p>
                 </div>
                 <div className="flex gap-2">
-                  <select className="bg-white border border-slate-200 rounded px-3 py-1.5 text-[10px] font-bold uppercase outline-none">
-                    <option>Les 30 derniers jours</option>
-                    <option>Trimestre en cours</option>
-                    <option>Année 2026</option>
+                  <select
+                    value={biPeriod}
+                    onChange={(e) => setBiPeriod(e.target.value as "week" | "month" | "year")}
+                    className="bg-white border border-slate-200 rounded px-3 py-1.5 text-[10px] font-bold uppercase outline-none"
+                  >
+                    <option value="week">Cette semaine</option>
+                    <option value="month">Ce mois</option>
+                    <option value="year">Cette année</option>
                   </select>
                 </div>
               </div>
-              
-              <div className="p-6 space-y-8">
-                {/* Key Metrics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {[
-                    { label: "Chiffre d'Affaires", value: "8,450,000 F", trend: "+12.5%", color: "text-blue-600" },
-                    { label: "Nouveaux Patients", value: "124", trend: "+8.2%", color: "text-emerald-600" },
-                    { label: "Taux d'Acceptation Devis", value: "68%", trend: "-2.1%", color: "text-amber-600" },
-                    { label: "Annulations RDV", value: "4.2%", trend: "-0.5%", color: "text-rose-600" },
-                  ].map((m, i) => (
-                    <div key={i} className="bg-white border border-slate-100 rounded p-4 shadow-sm">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{m.label}</p>
-                      <div className="flex items-end justify-between">
-                        <p className={cn("text-xl font-black tracking-tighter", m.color)}>{m.value}</p>
-                        <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", m.trend.startsWith('+') ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
-                          {m.trend}
-                        </span>
+
+              {biLoading && <p className="text-xs text-slate-400 text-center py-12">Chargement...</p>}
+
+              {!biLoading && biOverview && (
+                <div className="p-6 space-y-8">
+                  {/* Key Metrics Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {[
+                      { label: "Chiffre d'Affaires", value: formatFcfa(biOverview.kpis.chiffreAffaires.value), trend: formatTrend(biOverview.kpis.chiffreAffaires.trend), color: "text-blue-600" },
+                      { label: "Nouveaux Patients", value: String(biOverview.kpis.nouveauxPatients.value), trend: formatTrend(biOverview.kpis.nouveauxPatients.trend), color: "text-emerald-600" },
+                      { label: "Taux de Réalisation RDV", value: biOverview.kpis.tauxRealisationRdv.value !== null ? `${biOverview.kpis.tauxRealisationRdv.value.toFixed(0)}%` : "—", trend: formatTrend(biOverview.kpis.tauxRealisationRdv.trend), color: "text-amber-600" },
+                      { label: "Encaissements", value: formatFcfa(biOverview.kpis.encaissements.value), trend: formatTrend(biOverview.kpis.encaissements.trend), color: "text-purple-600" },
+                    ].map((m, i) => (
+                      <div key={i} className="bg-white border border-slate-100 rounded p-4 shadow-sm">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{m.label}</p>
+                        <div className="flex items-end justify-between">
+                          <p className={cn("text-xl font-black tracking-tighter", m.color)}>{m.value}</p>
+                          {m.trend && (
+                            <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", m.trend.startsWith('+') ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
+                              {m.trend}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Charts Row */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Revenue Chart (real, 12 derniers mois) */}
+                    <div className="bg-white border border-slate-200 rounded p-5 space-y-6 shadow-sm">
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">Encaissements (12 derniers mois)</h4>
+                      </div>
+                      <div className="h-48 flex items-end justify-between gap-2 px-2">
+                        {biOverview.evolutionCa.map((m, i) => (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer" title={formatFcfa(m.total)}>
+                            <div className="w-full bg-slate-50 rounded-t-sm relative overflow-hidden h-full flex flex-col justify-end">
+                              <motion.div
+                                initial={{ height: 0 }}
+                                animate={{ height: `${m.heightPct}%` }}
+                                transition={{ delay: i * 0.05, duration: 0.8 }}
+                                className="bg-blue-600 w-full rounded-t-sm group-hover:bg-blue-500 transition-colors"
+                              />
+                            </div>
+                            <span className="text-[8px] font-black text-slate-400 group-hover:text-blue-600">{m.label}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
 
-                {/* Charts Row */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Revenue Chart (CSS-based) */}
-                  <div className="bg-white border border-slate-200 rounded p-5 space-y-6 shadow-sm">
-                    <div className="flex justify-between items-center">
-                      <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">Flux de Trésorerie (M-1)</h4>
-                      <div className="flex gap-3">
-                        <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-blue-600" /><span className="text-[9px] font-bold text-slate-500 uppercase">Encaissements</span></div>
-                        <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-slate-200" /><span className="text-[9px] font-bold text-slate-500 uppercase">Prévisions</span></div>
+                    {/* Top Actes */}
+                    <div className="bg-white border border-slate-200 rounded p-5 space-y-6 shadow-sm">
+                      <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">Top Actes (Volume)</h4>
+                      {biOverview.topActs.length === 0 && (
+                        <p className="text-xs text-slate-400">Aucun acte réalisé sur la période.</p>
+                      )}
+                      <div className="space-y-4">
+                        {biOverview.topActs.map((act, i) => {
+                          const maxCount = Math.max(1, ...biOverview.topActs.map((a) => a.count));
+                          const pct = Math.round((act.count / maxCount) * 100);
+                          return (
+                            <div key={i} className="space-y-1.5">
+                              <div className="flex justify-between text-[10px] font-bold uppercase tracking-tight">
+                                <span className="text-slate-600">{act.name} ({act.count})</span>
+                                <span className="text-slate-900">{formatFcfa(act.revenue)}</span>
+                              </div>
+                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${pct}%` }}
+                                  transition={{ delay: 0.5 + i * 0.1, duration: 1 }}
+                                  className="h-full rounded-full bg-blue-600"
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                    <div className="h-48 flex items-end justify-between gap-2 px-2">
-                      {[40, 65, 45, 80, 55, 90, 75, 85, 60, 95, 70, 100].map((h, i) => (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer">
-                          <div className="w-full bg-slate-50 rounded-t-sm relative overflow-hidden h-full flex flex-col justify-end">
-                            <motion.div 
-                              initial={{ height: 0 }}
-                              animate={{ height: `${h}%` }}
-                              transition={{ delay: i * 0.05, duration: 0.8 }}
-                              className="bg-blue-600 w-full rounded-t-sm group-hover:bg-blue-500 transition-colors"
-                            />
-                          </div>
-                          <span className="text-[8px] font-black text-slate-400 group-hover:text-blue-600">J{i+1}</span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
 
-                  {/* Procedure Breakdown */}
-                  <div className="bg-white border border-slate-200 rounded p-5 space-y-6 shadow-sm">
-                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">Répartition par Acte</h4>
-                    <div className="space-y-4">
-                      {[
-                        { label: "Soins Conservateurs", value: 45, color: "bg-blue-600" },
-                        { label: "Prothèses Fixes", value: 30, color: "bg-emerald-500" },
-                        { label: "Chirurgie & Implants", value: 15, color: "bg-purple-600" },
-                        { label: "Orthodontie / ODF", value: 10, color: "bg-amber-500" },
-                      ].map((p, i) => (
-                        <div key={i} className="space-y-1.5">
-                          <div className="flex justify-between text-[10px] font-bold uppercase tracking-tight">
-                            <span className="text-slate-600">{p.label}</span>
-                            <span className="text-slate-900">{p.value}%</span>
-                          </div>
-                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${p.value}%` }}
-                              transition={{ delay: 0.5 + i * 0.1, duration: 1 }}
-                              className={cn("h-full rounded-full", p.color)}
-                            />
-                          </div>
-                        </div>
-                      ))}
+                  {/* Practitioner Performance Table */}
+                  <div className="bg-white border border-slate-200 rounded overflow-hidden shadow-sm">
+                    <div className="p-4 bg-slate-800 text-white flex justify-between items-center">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em]">Performance Praticiens</h4>
                     </div>
-                  </div>
-                </div>
-
-                {/* Practitioner Performance Table */}
-                <div className="bg-white border border-slate-200 rounded overflow-hidden shadow-sm">
-                  <div className="p-4 bg-slate-800 text-white flex justify-between items-center">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em]">Performance Praticiens</h4>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase">Source: Analytics Engine</span>
-                  </div>
-                  <table className="w-full text-left">
-                    <thead className="bg-slate-50 border-b border-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                      <tr>
-                        <th className="p-3">Praticien</th>
-                        <th className="p-3">Actes</th>
-                        <th className="p-3">Volume Horaire</th>
-                        <th className="p-3">Revenue (F)</th>
-                        <th className="p-3 text-right">Efficacité</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {[
-                        { name: "Dr. Mamadou Fall", acts: 142, hours: "156h", revenue: "3,850,000", efficiency: "94%" },
-                        { name: "Dr. Aïssatou Sow", acts: 98, hours: "124h", revenue: "2,920,000", efficiency: "88%" },
-                        { name: "Dr. Cheikh Tidiane", acts: 45, hours: "62h", revenue: "1,680,000", efficiency: "91%" },
-                      ].map((dr, i) => (
-                        <tr key={i} className="text-xs font-bold text-slate-700 hover:bg-slate-50/80 transition-colors">
-                          <td className="p-3 text-slate-900">{dr.name}</td>
-                          <td className="p-3">{dr.acts}</td>
-                          <td className="p-3">{dr.hours}</td>
-                          <td className="p-3">{dr.revenue}</td>
-                          <td className="p-3 text-right text-emerald-600">{dr.efficiency}</td>
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-50 border-b border-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                        <tr>
+                          <th className="p-3">Praticien</th>
+                          <th className="p-3">Actes</th>
+                          <th className="p-3 text-right">Revenue (F)</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {biPractitioners.length === 0 && (
+                          <tr>
+                            <td colSpan={3} className="p-6 text-center text-xs text-slate-400">Aucun praticien actif.</td>
+                          </tr>
+                        )}
+                        {biPractitioners.map((dr) => (
+                          <tr key={dr.id} className="text-xs font-bold text-slate-700 hover:bg-slate-50/80 transition-colors">
+                            <td className="p-3 text-slate-900">{dr.name}</td>
+                            <td className="p-3">{dr.actsCount}</td>
+                            <td className="p-3 text-right">{formatFcfa(dr.revenue)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 

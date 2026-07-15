@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requirePermission } from '@/lib/permissions';
 import { hashPassword, generateTempPassword } from '@/lib/auth';
+import { recordAudit } from '@/lib/audit';
 
 export async function GET() {
   const { error, status } = await requirePermission(10, 'manage');
@@ -18,7 +19,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { error, status } = await requirePermission(10, 'manage');
+  const { session, error, status } = await requirePermission(10, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();
@@ -37,6 +38,15 @@ export async function POST(request: Request) {
       values (${fullName}, ${email.toLowerCase()}, ${passwordHash}, ${roleId})
       returning id, full_name, email, role_id, is_active, created_at
     `;
+
+    await recordAudit({
+      actorId: session!.userId,
+      action: 'Création utilisateur',
+      entityTable: 'users',
+      entityId: rows[0].id,
+      meta: { email: rows[0].email, fullName: rows[0].full_name },
+    });
+
     return NextResponse.json({ user: rows[0], tempPassword });
   } catch (e: any) {
     if (e?.code === '23505') {
@@ -50,7 +60,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const { error, status } = await requirePermission(10, 'manage');
+  const { session, error, status } = await requirePermission(10, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();
@@ -81,6 +91,14 @@ export async function PATCH(request: Request) {
     if (rows.length === 0) {
       return NextResponse.json({ error: 'Utilisateur introuvable.' }, { status: 404 });
     }
+
+    await recordAudit({
+      actorId: session!.userId,
+      action: 'Modification utilisateur',
+      entityTable: 'users',
+      entityId: rows[0].id,
+      meta: { roleId, isActive },
+    });
 
     return NextResponse.json({ user: rows[0] });
   } catch (e: any) {

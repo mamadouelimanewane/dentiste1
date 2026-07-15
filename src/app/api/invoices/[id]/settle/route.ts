@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requirePermission } from '@/lib/permissions';
+import { recordAudit } from '@/lib/audit';
 
 // Règlement manuel (espèces, carte, prise en charge mutuelle) attesté par
 // le staff en présentiel — pas de flux réseau, contrairement au paiement
@@ -49,6 +50,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
       returning *
     `;
 
+    await recordAudit({
+      actorId: session!.userId,
+      action: 'Transmission facture à une mutuelle',
+      entityTable: 'invoices',
+      entityId: params.id,
+      meta: { provider: insuranceProvider.trim(), amount: invoice.total },
+    });
+
     return NextResponse.json({ invoice: updatedRows[0], claim: claimRows[0] });
   }
 
@@ -62,6 +71,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (rows.length === 0) {
     return NextResponse.json({ error: 'Facture introuvable.' }, { status: 404 });
   }
+
+  await recordAudit({
+    actorId: session!.userId,
+    action: 'Règlement facture',
+    entityTable: 'invoices',
+    entityId: params.id,
+    meta: { method, amount: rows[0].total },
+  });
 
   return NextResponse.json({ invoice: rows[0] });
 }

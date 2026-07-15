@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requireManageRoles } from '@/lib/permissions';
+import { recordAudit } from '@/lib/audit';
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  const { error, status } = await requireManageRoles();
+  const { session, error, status } = await requireManageRoles();
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();
@@ -41,11 +42,19 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: 'Rôle introuvable.' }, { status: 404 });
   }
 
+  await recordAudit({
+    actorId: session!.userId,
+    action: 'Modification rôle',
+    entityTable: 'roles',
+    entityId: params.id,
+    meta: { label: rows[0].label, permissions },
+  });
+
   return NextResponse.json({ role: rows[0] });
 }
 
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
-  const { error, status } = await requireManageRoles();
+  const { session, error, status } = await requireManageRoles();
   if (error) return NextResponse.json({ error }, { status });
 
   const target = await sql`select * from roles where id = ${params.id}`;
@@ -74,5 +83,14 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
   }
 
   await sql`delete from roles where id = ${params.id}`;
+
+  await recordAudit({
+    actorId: session!.userId,
+    action: 'Suppression rôle',
+    entityTable: 'roles',
+    entityId: params.id,
+    meta: { label: (target[0] as any).label },
+  });
+
   return NextResponse.json({ success: true });
 }
