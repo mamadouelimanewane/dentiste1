@@ -30,6 +30,8 @@ export function BillingManager() {
   const [invoice, setInvoice] = useState<{ id: string; invoice_number: string; status: string } | null>(null);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [insuranceProvider, setInsuranceProvider] = useState("");
+  const [insurancePolicyNumber, setInsurancePolicyNumber] = useState("");
 
   const loadActs = useCallback(async () => {
     if (!currentPatient) return;
@@ -44,9 +46,15 @@ export function BillingManager() {
 
   const total = executedActs.reduce((sum, item) => sum + Number(item.price || 0), 0);
   const isPaid = invoice?.status === "paid";
+  const isPendingInsurance = invoice?.status === "pending" && paymentMethod === "insurance";
+  const isSettled = isPaid || isPendingInsurance;
 
   const handlePayment = async () => {
     if (total === 0 || !currentPatient) return;
+    if (paymentMethod === "insurance" && !insuranceProvider.trim()) {
+      setError("Indiquez le nom de l'assureur / mutuelle avant de transmettre la facture.");
+      return;
+    }
     setProcessing(true);
     setError(null);
     try {
@@ -81,7 +89,12 @@ export function BillingManager() {
         const res = await fetch(`/api/invoices/${currentInvoice!.id}/settle`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ method: paymentMethod }),
+          body: JSON.stringify({
+            method: paymentMethod,
+            ...(paymentMethod === "insurance"
+              ? { insuranceProvider: insuranceProvider.trim(), insurancePolicyNumber: insurancePolicyNumber.trim() }
+              : {}),
+          }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Échec du règlement.");
@@ -167,14 +180,20 @@ export function BillingManager() {
               {/* @ts-ignore */}
               {({ loading }) => (
                 <button
-                  disabled={loading || isPaid}
+                  disabled={loading || isSettled}
                   className={cn(
                     "w-full h-10 rounded-sm text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all",
-                    isPaid ? "bg-emerald-600 text-white" : "bg-slate-900 text-white hover:bg-black disabled:opacity-50"
+                    isSettled ? "bg-emerald-600 text-white" : "bg-slate-900 text-white hover:bg-black disabled:opacity-50"
                   )}
                 >
-                  {isPaid ? <CheckCircle2 className="h-4 w-4" /> : <Download className="h-4 w-4" />}
-                  {loading ? "Génération..." : isPaid ? "Facture Payée & Téléchargée" : "Générer la Facture PDF"}
+                  {isSettled ? <CheckCircle2 className="h-4 w-4" /> : <Download className="h-4 w-4" />}
+                  {loading
+                    ? "Génération..."
+                    : isPaid
+                    ? "Facture Payée & Téléchargée"
+                    : isPendingInsurance
+                    ? "Facture Transmise & Téléchargée"
+                    : "Générer la Facture PDF"}
                 </button>
               )}
             </PDFDownloadLink>
@@ -204,7 +223,7 @@ export function BillingManager() {
               <button
                 key={method.id}
                 onClick={() => setPaymentMethod(method.id as PaymentMethod)}
-                disabled={isPaid}
+                disabled={isSettled}
                 className={cn(
                   "flex items-center gap-4 p-4 rounded-sm border transition-all disabled:opacity-50",
                   paymentMethod === method.id
@@ -218,13 +237,46 @@ export function BillingManager() {
             ))}
           </div>
 
+          {paymentMethod === "insurance" && !isSettled && (
+            <div className="space-y-3 pt-2">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Assureur / Mutuelle *</label>
+                <input
+                  value={insuranceProvider}
+                  onChange={(e) => setInsuranceProvider(e.target.value)}
+                  placeholder="AXA, IPM, Gras Savoye..."
+                  className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">N° Police / Adhérent</label>
+                <input
+                  value={insurancePolicyNumber}
+                  onChange={(e) => setInsurancePolicyNumber(e.target.value)}
+                  className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                />
+              </div>
+              <p className="text-[10px] text-slate-400">
+                Une déclaration sera créée dans le module Mutuelles ; la facture restera en attente jusqu'au règlement effectif de l'assureur.
+              </p>
+            </div>
+          )}
+
           <div className="pt-4 border-t border-slate-100">
             <button
               onClick={handlePayment}
-              disabled={total === 0 || isPaid || processing}
+              disabled={total === 0 || isSettled || processing}
               className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-sm text-xs font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-200 disabled:opacity-50"
             >
-              {isPaid ? "Paiement Enregistré" : processing ? "Traitement…" : `Régler ${total.toLocaleString()} FCFA`}
+              {isPaid
+                ? "Paiement Enregistré"
+                : isPendingInsurance
+                ? "Transmis à la Mutuelle"
+                : processing
+                ? "Traitement…"
+                : paymentMethod === "insurance"
+                ? `Transmettre ${total.toLocaleString()} FCFA à l'assureur`
+                : `Régler ${total.toLocaleString()} FCFA`}
             </button>
           </div>
         </div>
@@ -236,7 +288,6 @@ export function BillingManager() {
             {[
               { id: 'compta', label: 'Envoyer copie à la Comptabilité du Cabinet', default: true },
               { id: 'patient', label: 'Envoyer copie au Patient (Email)', default: true },
-              { id: 'assurance', label: 'Transmettre à l\'Assurance / Mutuelle', default: paymentMethod === 'insurance' }
             ].map((dest) => (
               <label key={dest.id} className="flex items-center gap-3 p-3 border border-slate-100 rounded-sm cursor-pointer hover:bg-slate-50 transition-colors">
                 <input type="checkbox" defaultChecked={dest.default} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
@@ -249,6 +300,14 @@ export function BillingManager() {
               <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5" />
               <p className="text-[10px] font-bold text-emerald-800 uppercase leading-relaxed">
                 Les écritures comptables ont été générées et les exemplaires transmis aux destinataires sélectionnés.
+              </p>
+            </div>
+          )}
+          {isPendingInsurance && (
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-sm flex items-start gap-2">
+              <Shield className="h-4 w-4 text-amber-600 mt-0.5" />
+              <p className="text-[10px] font-bold text-amber-800 uppercase leading-relaxed">
+                Facture transmise à {insuranceProvider || "l'assureur"} — en attente de règlement. Suivez son statut dans le module Mutuelles.
               </p>
             </div>
           )}
