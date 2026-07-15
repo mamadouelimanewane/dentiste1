@@ -1,14 +1,19 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Calendar, Archive, FileCheck, Star, ArrowRight, MessageSquare, Mic } from "lucide-react";
+import { Calendar, Archive, FileCheck, Star, ArrowRight, MessageSquare, Mic, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePatient } from "@/lib/context";
 
 export function PatientFollowUp() {
+  const { currentPatient } = usePatient();
   const [nextAppointment, setNextAppointment] = useState("");
   const [satisfaction, setSatisfaction] = useState(5);
   const [isArchived, setIsArchived] = useState(false);
   const [dictations, setDictations] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [appointmentCreated, setAppointmentCreated] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("dentiste_lite_dictations");
@@ -16,6 +21,35 @@ export function PatientFollowUp() {
       setDictations(JSON.parse(saved));
     }
   }, []);
+
+  const handleFinalize = async () => {
+    setError(null);
+    if (nextAppointment && currentPatient) {
+      setSaving(true);
+      try {
+        const res = await fetch("/api/appointments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            patientId: currentPatient.id,
+            scheduledAt: new Date(nextAppointment).toISOString(),
+            type: "Contrôle",
+            notes: "Rendez-vous de suivi programmé depuis la clôture de séance.",
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Échec de la programmation du rendez-vous.");
+        setAppointmentCreated(true);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Erreur inconnue.");
+        setSaving(false);
+        return;
+      } finally {
+        setSaving(false);
+      }
+    }
+    setIsArchived(true);
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -25,10 +59,15 @@ export function PatientFollowUp() {
             <Archive className="h-4 w-4 text-emerald-400" />
             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Clôture du Dossier</h3>
           </div>
-          <span className="text-[9px] font-bold text-slate-500 uppercase">Session : #445-2024</span>
+          <span className="text-[9px] font-bold text-slate-500 uppercase">
+            {currentPatient ? `Dossier : ${currentPatient.idNumber}` : "Aucun patient sélectionné"}
+          </span>
         </div>
 
         <div className="p-8 space-y-10">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm p-3">{error}</div>
+          )}
           {/* Dictations Summary */}
           {dictations.length > 0 && (
             <div className="space-y-4">
@@ -63,10 +102,19 @@ export function PatientFollowUp() {
                 value={nextAppointment}
                 onChange={(e) => setNextAppointment(e.target.value)}
               />
-              <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-sm">
-                <MessageSquare className="h-4 w-4 text-blue-600" />
-                <p className="text-[9px] font-bold text-blue-800 uppercase leading-tight">Rappel SMS automatique configuré</p>
-              </div>
+              {currentPatient?.phone ? (
+                <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-sm">
+                  <MessageSquare className="h-4 w-4 text-blue-600" />
+                  <p className="text-[9px] font-bold text-blue-800 uppercase leading-tight">
+                    {nextAppointment ? "Rappel automatique programmé pour ce RDV" : "Un rappel sera envoyé 24h avant, une fois le RDV programmé"}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-100 rounded-sm">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <p className="text-[9px] font-bold text-amber-800 uppercase leading-tight">Ce patient n'a pas de numéro — aucun rappel ne pourra être envoyé</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -92,24 +140,27 @@ export function PatientFollowUp() {
 
           {/* Final Action */}
           <div className="pt-10">
-            <button 
-              onClick={() => setIsArchived(true)}
+            <button
+              onClick={handleFinalize}
+              disabled={isArchived || saving}
               className={cn(
-                "w-full h-14 rounded-sm flex items-center justify-center gap-3 transition-all",
-                isArchived 
-                  ? "bg-emerald-600 text-white cursor-default" 
+                "w-full h-14 rounded-sm flex items-center justify-center gap-3 transition-all disabled:cursor-default",
+                isArchived
+                  ? "bg-emerald-600 text-white"
                   : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-100"
               )}
             >
               {isArchived ? (
                 <>
                   <FileCheck className="h-5 w-5" />
-                  <span className="text-xs font-bold uppercase tracking-[0.2em]">Dossier Archivé avec Succès</span>
+                  <span className="text-xs font-bold uppercase tracking-[0.2em]">Séance Clôturée</span>
                 </>
               ) : (
                 <>
                   <Archive className="h-5 w-5" />
-                  <span className="text-xs font-bold uppercase tracking-[0.2em]">Finaliser & Archiver la Séance</span>
+                  <span className="text-xs font-bold uppercase tracking-[0.2em]">
+                    {saving ? "Enregistrement…" : "Finaliser & Archiver la Séance"}
+                  </span>
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -118,11 +169,15 @@ export function PatientFollowUp() {
         </div>
       </div>
 
-      <div className="text-center">
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-          Une copie du compte-rendu a été envoyée au patient.
-        </p>
-      </div>
+      {isArchived && (
+        <div className="text-center">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            {appointmentCreated
+              ? "Prochain rendez-vous programmé et ajouté à l'agenda."
+              : "Séance clôturée."}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
