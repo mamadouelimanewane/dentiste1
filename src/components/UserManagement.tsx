@@ -41,6 +41,7 @@ export function UserManagement() {
   const [roles, setRoles] = useState<RoleOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteForm, setInviteForm] = useState({ email: "", fullName: "", roleId: "" });
   const [inviting, setInviting] = useState(false);
@@ -49,8 +50,13 @@ export function UserManagement() {
   const loadAll = async () => {
     setLoading(true);
     setErrorMsg(null);
+    setAccessDenied(false);
     try {
       const [usersRes, rolesRes] = await Promise.all([fetch("/api/admin/users"), fetch("/api/admin/roles")]);
+      if (usersRes.status === 403) {
+        setAccessDenied(true);
+        return;
+      }
       const usersData = await usersRes.json();
       const rolesData = await rolesRes.json();
       if (!usersRes.ok) throw new Error(usersData.error || "Erreur de chargement.");
@@ -103,6 +109,19 @@ export function UserManagement() {
 
   const activeCount = users.filter((u) => u.is_active).length;
   const roleCount = new Set(users.map((u) => u.role_id)).size;
+
+  if (!loading && accessDenied) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-8 flex flex-col items-center text-center gap-3">
+        <Lock className="h-8 w-8 text-slate-300" />
+        <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">Accès restreint</h3>
+        <p className="text-xs text-slate-500 max-w-sm">
+          Votre rôle vous permet de voir ce module mais pas de gérer les comptes utilisateurs.
+          Contactez un administrateur pour toute modification.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
