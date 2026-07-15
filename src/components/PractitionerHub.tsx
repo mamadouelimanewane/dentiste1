@@ -1,12 +1,60 @@
 "use client";
 
-import React, { useState } from "react";
-import { Zap, Activity, Users, Clock, BrainCircuit, Calendar, X, Pill, Stethoscope, Syringe, BookOpen, ChevronRight } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Activity, Calendar, X, Pill, Stethoscope, Syringe, BookOpen, ChevronRight, BrainCircuit } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
+interface TodayAppointment {
+  id: string;
+  patient_name: string;
+  type: string | null;
+  scheduled_at: string;
+  duration_minutes: number;
+  status: "scheduled" | "completed" | "cancelled" | "no_show";
+  checked_in_at: string | null;
+}
+
+function statusLabel(appt: TodayAppointment): string {
+  if (appt.status === "cancelled") return "Annulé";
+  if (appt.status === "no_show") return "Absent";
+  if (appt.status === "completed") return "Terminé";
+  if (appt.checked_in_at) return "En attente";
+  return "Prévu";
+}
+
 export function PractitionerHub() {
   const [isAgendaOpen, setIsAgendaOpen] = useState(false);
+  const [todayAppointments, setTodayAppointments] = useState<TodayAppointment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadToday = useCallback(async () => {
+    const from = new Date();
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(from);
+    to.setDate(to.getDate() + 1);
+    try {
+      const params = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
+      const res = await fetch(`/api/appointments?${params}`);
+      const data = await res.json();
+      if (res.ok) setTodayAppointments(data.appointments || []);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadToday();
+  }, [loadToday]);
+
+  const active = todayAppointments.filter(a => a.status !== "cancelled" && a.status !== "no_show");
+  const scheduled = active.filter(a => !a.checked_in_at && a.status !== "completed");
+  const waiting = active.filter(a => a.checked_in_at && a.status !== "completed");
+  const done = active.filter(a => a.status === "completed");
+
+  const avgDuration = active.length
+    ? Math.round(active.reduce((sum, a) => sum + (a.duration_minutes || 0), 0) / active.length)
+    : null;
 
   return (
     <>
@@ -27,16 +75,18 @@ export function PractitionerHub() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
                <div className="bg-slate-50 p-4 rounded-sm border border-slate-100">
-                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Patients</p>
-                 <p className="text-2xl font-black text-blue-900 mt-0.5">12</p>
+                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Patients Aujourd&apos;hui</p>
+                 <p className="text-2xl font-black text-blue-900 mt-0.5">{loading ? "—" : active.length}</p>
                </div>
                <div className="bg-slate-50 p-4 rounded-sm border border-slate-100">
-                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Temps Moyen</p>
-                 <p className="text-2xl font-black text-blue-900 mt-0.5">35<span className="text-xs text-slate-400 ml-1">min</span></p>
+                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Durée Moyenne</p>
+                 <p className="text-2xl font-black text-blue-900 mt-0.5">
+                   {avgDuration !== null ? avgDuration : "—"}<span className="text-xs text-slate-400 ml-1">min</span>
+                 </p>
                </div>
             </div>
-            
-            <button 
+
+            <button
               onClick={() => setIsAgendaOpen(true)}
               className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-sm text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm"
             >
@@ -44,43 +94,43 @@ export function PractitionerHub() {
               Voir mon Agenda
             </button>
           </div>
-          
+
           {/* Real-time Flow */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Flux Temps Réel</h4>
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Flux du Jour</h4>
             <div className="space-y-2.5">
               <div className="flex justify-between items-center text-sm">
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-rose-500" />
-                  <span className="font-bold text-slate-600">Salle d'attente</span>
+                  <div className="h-2 w-2 rounded-full bg-blue-500" />
+                  <span className="font-bold text-slate-600">Programmés</span>
                 </div>
-                <span className="font-black text-rose-600">4</span>
+                <span className="font-black text-blue-600">{loading ? "—" : scheduled.length}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-blue-500" />
-                  <span className="font-bold text-slate-600">Au Fauteuil</span>
+                  <div className="h-2 w-2 rounded-full bg-rose-500" />
+                  <span className="font-bold text-slate-600">Salle d&apos;attente</span>
                 </div>
-                <span className="font-black text-blue-600">2</span>
+                <span className="font-black text-rose-600">{loading ? "—" : waiting.length}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                  <span className="font-bold text-slate-600">Admin / Sortie</span>
+                  <span className="font-bold text-slate-600">Terminés</span>
                 </div>
-                <span className="font-black text-emerald-600">5</span>
+                <span className="font-black text-emerald-600">{loading ? "—" : done.length}</span>
               </div>
             </div>
           </div>
 
-          {/* AI Insight */}
+          {/* Radio IA — lien vers le module, pas de fausse alerte patient */}
           <div className="pt-4 border-t border-slate-100">
              <div className="flex items-start gap-3 bg-blue-50 p-4 rounded-sm border border-blue-100">
                <Activity className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                <div className="space-y-1.5">
-                 <p className="text-xs font-black text-blue-900 uppercase tracking-tight">AI Radio Insight</p>
+                 <p className="text-xs font-black text-blue-900 uppercase tracking-tight">Radio IA</p>
                  <p className="text-xs font-medium text-slate-600 leading-relaxed">
-                   Patient #224 : Anomalie détectée sur la 36 (possible carie interproximale).
+                   Module de démonstration — consultez l&apos;onglet &quot;Radio IA&quot; pour l&apos;analyse assistée de radiographies.
                  </p>
                </div>
              </div>
@@ -115,14 +165,14 @@ export function PractitionerHub() {
       {/* Agenda Modal */}
       <AnimatePresence>
         {isAgendaOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
             onClick={() => setIsAgendaOpen(false)}
           >
-            <motion.div 
+            <motion.div
               initial={{ y: 20, opacity: 0, scale: 0.95 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 20, opacity: 0, scale: 0.95 }}
@@ -138,57 +188,64 @@ export function PractitionerHub() {
                   </div>
                   <div>
                     <h2 className="text-lg font-black uppercase tracking-tight">Agenda du Jour</h2>
-                    <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mt-0.5">Dr. Diallo • 12 Patients Prévus</p>
+                    <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mt-0.5">
+                      {active.length} Patient{active.length > 1 ? "s" : ""} Prévu{active.length > 1 ? "s" : ""}
+                    </p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setIsAgendaOpen(false)} 
+                <button
+                  onClick={() => setIsAgendaOpen(false)}
                   className="h-10 w-10 bg-slate-800 hover:bg-rose-500 rounded flex items-center justify-center transition-colors text-slate-400 hover:text-white"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              
+
               {/* Modal Body */}
               <div className="p-6 overflow-y-auto space-y-3 flex-1">
-                 {[
-                   { time: "09:00", patient: "Aissatou Sow", type: "Consultation de routine", status: "Terminé", active: false },
-                   { time: "10:30", patient: "Mamadou Diallo", type: "Urgence / Soins Conservateurs", status: "En cours", active: true },
-                   { time: "11:45", patient: "Oumar Ndiaye", type: "Contrôle Post-Opératoire", status: "En attente", active: false },
-                   { time: "14:00", patient: "Fatou Diop", type: "Détartrage & Polissage", status: "Prévu", active: false },
-                   { time: "15:30", patient: "Cheikh Fall", type: "Pose d'Implant (Phase 1)", status: "Prévu", active: false },
-                   { time: "17:00", patient: "Ndeye Sylla", type: "Orthodontie (Ajustement)", status: "Prévu", active: false },
-                 ].map((apt, i) => (
-                   <div 
-                     key={i} 
-                     className={cn(
-                       "flex items-center p-4 border rounded-md gap-6 transition-all", 
-                       apt.active ? "border-blue-300 bg-blue-50 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"
-                     )}
-                   >
-                     <div className="text-2xl font-black text-slate-800 w-20 tracking-tighter">
-                       {apt.time}
-                     </div>
-                     <div className="flex-1">
-                       <p className="text-base font-black text-slate-900 uppercase tracking-tight">{apt.patient}</p>
-                       <div className="flex items-center gap-2 mt-1">
-                         <Activity className="h-3.5 w-3.5 text-slate-400" />
-                         <p className="text-[11px] font-bold text-slate-500 uppercase">{apt.type}</p>
-                       </div>
-                     </div>
-                     <div className="text-right flex-shrink-0 w-32">
-                       <span className={cn(
-                         "text-[10px] font-black uppercase px-3 py-1.5 rounded-sm tracking-widest inline-block text-center w-full", 
-                         apt.status === "Terminé" ? "bg-slate-100 text-slate-500" :
-                         apt.status === "En cours" ? "bg-blue-600 text-white shadow-md shadow-blue-200" :
-                         apt.status === "En attente" ? "bg-rose-100 text-rose-700" :
-                         "bg-slate-50 text-slate-400 border border-slate-100"
-                       )}>
-                         {apt.status}
-                       </span>
-                     </div>
+                 {active.length === 0 ? (
+                   <div className="flex flex-col items-center justify-center text-center py-12 gap-3">
+                     <Stethoscope className="h-8 w-8 text-slate-300" />
+                     <p className="text-sm font-bold text-slate-500">Aucun rendez-vous prévu aujourd&apos;hui.</p>
                    </div>
-                 ))}
+                 ) : (
+                   active
+                     .slice()
+                     .sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at))
+                     .map((apt) => {
+                       const label = statusLabel(apt);
+                       return (
+                         <div
+                           key={apt.id}
+                           className={cn(
+                             "flex items-center p-4 border rounded-md gap-6 transition-all",
+                             label === "En attente" ? "border-blue-300 bg-blue-50 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"
+                           )}
+                         >
+                           <div className="text-2xl font-black text-slate-800 w-20 tracking-tighter">
+                             {new Date(apt.scheduled_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                           </div>
+                           <div className="flex-1">
+                             <p className="text-base font-black text-slate-900 uppercase tracking-tight">{apt.patient_name}</p>
+                             <div className="flex items-center gap-2 mt-1">
+                               <Activity className="h-3.5 w-3.5 text-slate-400" />
+                               <p className="text-[11px] font-bold text-slate-500 uppercase">{apt.type || "Consultation"}</p>
+                             </div>
+                           </div>
+                           <div className="text-right flex-shrink-0 w-32">
+                             <span className={cn(
+                               "text-[10px] font-black uppercase px-3 py-1.5 rounded-sm tracking-widest inline-block text-center w-full",
+                               label === "Terminé" ? "bg-slate-100 text-slate-500" :
+                               label === "En attente" ? "bg-blue-600 text-white shadow-md shadow-blue-200" :
+                               "bg-slate-50 text-slate-400 border border-slate-100"
+                             )}>
+                               {label}
+                             </span>
+                           </div>
+                         </div>
+                       );
+                     })
+                 )}
               </div>
             </motion.div>
           </motion.div>
