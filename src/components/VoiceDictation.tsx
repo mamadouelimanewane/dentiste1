@@ -65,7 +65,7 @@ export function VoiceDictation() {
     if (isRecording) {
       if (recognition) recognition.stop();
       setIsRecording(false);
-      if (transcript && transcript !== "En attente de traitement par le Neural Core...") {
+      if (transcript) {
          setHistory(prev => [{
             id: Date.now(), 
             text: transcript, 
@@ -112,7 +112,7 @@ export function VoiceDictation() {
             <div className="bg-[#1E3A8A] p-5 text-white flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <Zap className="h-4 w-4 text-amber-400" />
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">AI Voice Dictation</h3>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Dictée Vocale</h3>
               </div>
               <div className="flex items-center gap-2">
                 <button 
