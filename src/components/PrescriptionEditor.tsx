@@ -3,6 +3,15 @@
 import React, { useState } from "react";
 import { ArrowLeft, History, Printer, Save, Plus, Pill, Star, Search, User, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePatient } from "@/lib/context";
+import { useAuth } from "@/lib/auth-context";
+import dynamic from "next/dynamic";
+
+const PDFDownloadLink = dynamic(
+  () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
+  { ssr: false }
+);
+import { PrescriptionPDF } from "./PrescriptionPDF";
 
 interface Med {
   id: number;
@@ -13,9 +22,13 @@ interface Med {
 }
 
 export function PrescriptionEditor() {
-  const [patient, setPatient] = useState("");
+  const { currentPatient } = usePatient();
+  const { user } = useAuth();
   const [meds, setMeds] = useState<Med[]>([]);
   const [currentMed, setCurrentMed] = useState({ name: "", dosage: "", duration: "", posology: "" });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const favoris = [
     "Amoxicilline",
@@ -34,6 +47,30 @@ export function PrescriptionEditor() {
 
   const removeMed = (id: number) => {
     setMeds(meds.filter(m => m.id !== id));
+  };
+
+  const handleSave = async () => {
+    if (!currentPatient || meds.length === 0) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/prescriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: currentPatient.id,
+          medications: meds.map(({ id, ...rest }) => rest),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de l'enregistrement.");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 4000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -55,11 +92,47 @@ export function PrescriptionEditor() {
            <button className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded transition-colors">
             <History className="h-4 w-4" /> Modèles récents
           </button>
-          <button className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-[#1E3A8A] hover:bg-blue-900 text-white px-5 py-2.5 rounded-sm transition-colors shadow-md shadow-blue-900/20">
-            <Save className="h-4 w-4" /> <Printer className="h-4 w-4" /> Sauvegarder & Imprimer
-          </button>
+          {currentPatient && meds.length > 0 ? (
+            <PDFDownloadLink
+              document={
+                <PrescriptionPDF
+                  patientName={currentPatient.name}
+                  practitionerName={user.fullName}
+                  medications={meds}
+                />
+              }
+              fileName={`Ordonnance_${currentPatient.name}.pdf`}
+            >
+              {/* @ts-ignore */}
+              {({ loading }) => (
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className={cn(
+                    "flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-5 py-2.5 rounded-sm transition-colors shadow-md disabled:opacity-60",
+                    saved ? "bg-emerald-600 text-white shadow-emerald-900/20" : "bg-[#1E3A8A] hover:bg-blue-900 text-white shadow-blue-900/20"
+                  )}
+                >
+                  <Save className="h-4 w-4" /> <Printer className="h-4 w-4" />
+                  {saving ? "Enregistrement…" : loading ? "Génération…" : saved ? "Ordonnance Enregistrée" : "Sauvegarder & Imprimer"}
+                </button>
+              )}
+            </PDFDownloadLink>
+          ) : (
+            <button
+              disabled
+              title={!currentPatient ? "Sélectionnez un patient (étape Accueil)" : "Ajoutez au moins un médicament"}
+              className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-slate-300 text-white px-5 py-2.5 rounded-sm cursor-not-allowed"
+            >
+              <Save className="h-4 w-4" /> <Printer className="h-4 w-4" /> Sauvegarder & Imprimer
+            </button>
+          )}
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm p-3">{error}</div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* LEFT COLUMN - EDITOR */}
@@ -69,16 +142,19 @@ export function PrescriptionEditor() {
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-4 flex items-center gap-2">
               <User className="h-4 w-4 text-blue-600" /> Identification Patient
             </h3>
-            <select 
-              className="w-full bg-slate-50 border border-slate-200 rounded p-3 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 transition-colors"
-              value={patient}
-              onChange={(e) => setPatient(e.target.value)}
-            >
-              <option value="">Choisir un patient...</option>
-              <option value="Jean-Pierre Badji">Jean-Pierre Badji</option>
-              <option value="Mariama Sow">Mariama Sow</option>
-              <option value="Ousmane Gueye">Ousmane Gueye</option>
-            </select>
+            {currentPatient ? (
+              <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded p-3">
+                <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-xs flex-shrink-0">
+                  {currentPatient.name.charAt(0)}
+                </div>
+                <div>
+                  <p className="text-sm font-black text-slate-900">{currentPatient.name}</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase">Patient actif</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 font-medium">Sélectionnez un patient depuis l'étape Accueil pour rédiger une ordonnance.</p>
+            )}
           </div>
 
           {/* Prescription Form */}
@@ -89,7 +165,7 @@ export function PrescriptionEditor() {
             
             <div className="mb-6">
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1">
-                <Star className="h-3 w-3 text-amber-400" /> Favoris Dr. Diallo
+                <Star className="h-3 w-3 text-amber-400" /> Favoris fréquents
               </p>
               <div className="flex flex-wrap gap-2">
                 {favoris.map(fav => (
@@ -168,12 +244,10 @@ export function PrescriptionEditor() {
           <div className="bg-white w-full max-w-[210mm] min-h-[297mm] shadow-xl p-10 md:p-14 relative font-serif text-slate-800">
              {/* Header */}
              <div className="text-center border-b-2 border-slate-800 pb-6 mb-8">
-               <h1 className="text-2xl font-bold uppercase tracking-wider text-[#1E3A8A]">Dr. Diallo Mamadou</h1>
-               <p className="text-sm font-semibold tracking-widest mt-1">Chirurgien Dentiste • Diplômé d'État</p>
+               <h1 className="text-2xl font-bold uppercase tracking-wider text-[#1E3A8A]">{user.fullName}</h1>
+               <p className="text-sm font-semibold tracking-widest mt-1">{user.roleLabel}</p>
                <div className="mt-4 text-xs space-y-1 text-slate-600">
-                 <p>Avenue du Cap Vert, Dakar, Sénégal</p>
-                 <p>Tél: +221 33 800 00 00 • contact@capvert-dentaire.sn</p>
-                 <p>N° RPPS : 10123456789</p>
+                 <p>Cabinet Dentaire du Cap Vert — Dakar, Sénégal</p>
                </div>
              </div>
 
@@ -185,7 +259,7 @@ export function PrescriptionEditor() {
              {/* Patient */}
              <div className="mb-12">
                <p className="text-sm font-bold">
-                 Prescription pour : <span className="font-normal border-b border-dotted border-slate-400 pb-0.5 inline-block min-w-[250px]">{patient || ""}</span>
+                 Prescription pour : <span className="font-normal border-b border-dotted border-slate-400 pb-0.5 inline-block min-w-[250px]">{currentPatient?.name || ""}</span>
                </p>
              </div>
 

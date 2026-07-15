@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Mic, MicOff, Globe, History, Brain, FileText, Pill, Activity, CheckCircle2, Save, Sparkles, Languages, Cpu, Zap, Database, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/lib/auth-context";
 
 declare global {
   interface Window {
@@ -13,6 +14,7 @@ declare global {
 }
 
 export function VoiceDictation() {
+  const { user } = useAuth();
   const [isRecording, setIsRecording] = useState(false);
   const [activeCategory, setActiveCategory] = useState<"note" | "ordonnance" | "plan">("note");
   const [language, setLanguage] = useState<"FR" | "EN">("FR");
@@ -87,22 +89,17 @@ export function VoiceDictation() {
             <Brain className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Neural Dictation Suite</h2>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">AI Voice Dictation — DentoPrestige Elite</p>
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Dictée Vocale</h2>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reconnaissance vocale du navigateur</p>
           </div>
         </div>
         <div className="flex items-center gap-6">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full">
-            <Search className="h-3.5 w-3.5 text-slate-400" />
-            <input type="text" placeholder="Rechercher un module..." className="bg-transparent border-none text-[10px] font-bold uppercase outline-none w-40" />
-          </div>
           <div className="flex items-center gap-2 border-l border-slate-200 pl-6">
             <div className="text-right">
-              <p className="text-[10px] font-black text-slate-900">22:00</p>
-              <p className="text-[9px] font-bold text-blue-600 uppercase">DR. DIALLO</p>
+              <p className="text-[9px] font-bold text-blue-600 uppercase">{user.roleLabel}</p>
             </div>
             <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-black text-xs">
-              DR
+              {user.fullName.charAt(0)}
             </div>
           </div>
         </div>
@@ -185,7 +182,7 @@ export function VoiceDictation() {
                           "{transcript || "Parlez maintenant..."}"
                         </p>
                         <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest animate-pulse">
-                          {transcript ? "Traitement Neural en cours..." : "Acquisition audio..."}
+                          {transcript ? "Transcription en cours..." : "Acquisition audio..."}
                         </p>
                       </div>
                     </motion.div>
@@ -238,13 +235,15 @@ export function VoiceDictation() {
               </div>
             </div>
 
-            {/* NEURAL STATUS BAR */}
+            {/* STATUS BAR */}
             <div className="bg-slate-900 p-6 flex flex-wrap gap-y-4 gap-x-12 items-center border-t border-slate-800">
                <div className="space-y-1">
                  <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em]">Reconnaissance</p>
                  <div className="flex items-center gap-2">
-                   <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                   <p className="text-[10px] font-black text-white uppercase tracking-tight">Navigateur Natif</p>
+                   <div className={cn("h-1.5 w-1.5 rounded-full", recognition ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
+                   <p className="text-[10px] font-black text-white uppercase tracking-tight">
+                     {recognition ? "Navigateur Natif" : "Non disponible"}
+                   </p>
                  </div>
                </div>
                <div className="space-y-1">
@@ -254,19 +253,17 @@ export function VoiceDictation() {
                  </p>
                </div>
                <div className="space-y-1">
-                 <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em]">Vocabulaire</p>
-                 <p className="text-[10px] font-black text-white uppercase tracking-tight">Dental V2 Elite</p>
-               </div>
-               <div className="space-y-1">
                  <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em]">Sauvegarde</p>
                  <div className="flex items-center gap-2">
                    <Database className="h-3 w-3 text-blue-400" />
-                   <p className="text-[10px] font-black text-white uppercase tracking-tight">JSON L Cloud</p>
+                   <p className="text-[10px] font-black text-white uppercase tracking-tight">Local (navigateur)</p>
                  </div>
                </div>
                <div className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-blue-900/50 rounded border border-blue-800">
                  <Cpu className="h-3.5 w-3.5 text-blue-400" />
-                 <span className="text-[9px] font-bold text-blue-100 uppercase tracking-widest">Statut Neural Core: 100% OK</span>
+                 <span className="text-[9px] font-bold text-blue-100 uppercase tracking-widest">
+                   Reconnaissance vocale native — aucune correction IA appliquée
+                 </span>
                </div>
             </div>
           </div>
@@ -310,39 +307,28 @@ export function VoiceDictation() {
 
           <div className="bg-[#1E3A8A] p-6 rounded-sm text-white space-y-6 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 rounded-full -mr-16 -mt-16 blur-3xl group-hover:scale-150 transition-transform duration-1000" />
-            
+
             <div className="relative z-10 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 bg-blue-800 rounded flex items-center justify-center">
                   <Sparkles className="h-4 w-4 text-blue-300" />
                 </div>
-                <h4 className="text-xs font-black uppercase tracking-widest">Intelligence Linguistique</h4>
+                <h4 className="text-xs font-black uppercase tracking-widest">À propos de ce module</h4>
               </div>
-              
+
               <div className="bg-blue-900/50 p-4 rounded-sm border border-blue-700/50 space-y-3">
                  <div className="flex items-center justify-between">
-                   <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">Correction IA</p>
+                   <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">Fonctionnement réel</p>
                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
                  </div>
                  <p className="text-[11px] font-medium leading-relaxed italic text-blue-100">
-                   "Le moteur IA corrige automatiquement les termes médicaux et structure la note cliniquement."
+                   "La transcription utilise la reconnaissance vocale native de votre navigateur — aucune correction ni structuration par IA n'est appliquée au texte."
                  </p>
               </div>
 
-              <div className="pt-4 space-y-3">
-                <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-widest text-blue-300">
-                  <span>Précision Sémantique</span>
-                  <span>99.4%</span>
-                </div>
-                <div className="h-1.5 bg-blue-900 rounded-full overflow-hidden border border-blue-800">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: "99.4%" }}
-                    transition={{ duration: 1.5, delay: 0.5 }}
-                    className="h-full bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]" 
-                  />
-                </div>
-              </div>
+              <p className="text-[10px] text-blue-200 leading-relaxed">
+                L'historique est enregistré localement dans ce navigateur uniquement (pas encore synchronisé avec le dossier patient en base).
+              </p>
             </div>
           </div>
         </div>

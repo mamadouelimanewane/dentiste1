@@ -85,10 +85,18 @@ export function ProstheticsLab() {
         </div>
         
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-slate-900/20">
-            <Plus className="h-4 w-4 text-sky-400" /> Nouvel Ordre Labo
+          <button
+            disabled
+            title="Module de démonstration — pas encore connecté à un vrai laboratoire"
+            className="flex items-center gap-2 bg-slate-300 text-white px-5 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest cursor-not-allowed"
+          >
+            <Plus className="h-4 w-4" /> Nouvel Ordre Labo
           </button>
         </div>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-sm">
+        Module de démonstration — travaux, laboratoires et statuts affichés à titre d'exemple, pas encore reliés à un vrai laboratoire.
       </div>
 
       {/* DASHBOARD STATS */}

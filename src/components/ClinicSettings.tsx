@@ -1,33 +1,75 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Settings, Building2, Phone, Mail, MapPin, Globe, FileText, UploadCloud, Save, CheckCircle2, ShieldCheck, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const DEFAULT_SETTINGS = {
+  clinicName: "CABINET DENTAIRE DU CAP VERT",
+  slogan: "L'excellence dentaire au Cap Vert",
+  phone: "+221 33 800 00 00",
+  email: "contact@capvert-dentaire.sn",
+  website: "www.capvert-dentaire.sn",
+  address: "Avenue du Cap Vert, Dakar, Sénégal",
+  rpps: "10123456789",
+  ninea: "001234567 2V2",
+  rccm: "SN-DKR-2026-B-1234",
+  currency: "FCFA",
+};
+
 export function ClinicSettings() {
   const [isSaved, setIsSaved] = useState(false);
-  const [formData, setFormData] = useState({
-    clinicName: "CABINET DENTAIRE DU CAP VERT",
-    slogan: "L'excellence dentaire au Cap Vert",
-    phone: "+221 33 800 00 00",
-    email: "contact@capvert-dentaire.sn",
-    website: "www.capvert-dentaire.sn",
-    address: "Avenue du Cap Vert, Dakar, Sénégal",
-    rpps: "10123456789",
-    ninea: "001234567 2V2",
-    rccm: "SN-DKR-2026-B-1234",
-    currency: "FCFA",
-  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState(DEFAULT_SETTINGS);
+
+  useEffect(() => {
+    fetch("/api/clinic-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.settings) {
+          setFormData({
+            clinicName: data.settings.clinic_name ?? DEFAULT_SETTINGS.clinicName,
+            slogan: data.settings.slogan ?? "",
+            phone: data.settings.phone ?? "",
+            email: data.settings.email ?? "",
+            website: data.settings.website ?? "",
+            address: data.settings.address ?? "",
+            rpps: data.settings.rpps ?? "",
+            ninea: data.settings.ninea ?? "",
+            rccm: data.settings.rccm ?? "",
+            currency: data.settings.currency ?? "FCFA",
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaved(true);
-    // Here we would typically save to a database or global context
-    setTimeout(() => setIsSaved(false), 3000);
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/clinic-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de l'enregistrement.");
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -206,18 +248,20 @@ export function ClinicSettings() {
         </div>
 
         {/* SUBMIT BUTTON */}
-        <div className="flex justify-end">
-          <button 
+        <div className="flex items-center justify-end gap-4">
+          {error && <p className="text-xs font-bold text-red-600">{error}</p>}
+          <button
             type="submit"
+            disabled={saving || loading}
             className={cn(
-              "h-12 px-8 rounded-sm text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg",
-              isSaved 
-                ? "bg-emerald-600 text-white shadow-emerald-900/20" 
+              "h-12 px-8 rounded-sm text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-60",
+              isSaved
+                ? "bg-emerald-600 text-white shadow-emerald-900/20"
                 : "bg-slate-900 text-white hover:bg-black shadow-slate-900/20"
             )}
           >
             {isSaved ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-            {isSaved ? "Paramètres Enregistrés" : "Sauvegarder les Paramètres"}
+            {saving ? "Enregistrement…" : isSaved ? "Paramètres Enregistrés" : "Sauvegarder les Paramètres"}
           </button>
         </div>
       </form>

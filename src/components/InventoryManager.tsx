@@ -36,10 +36,18 @@ export function InventoryManager() {
            <button className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded transition-colors">
             <Filter className="h-4 w-4" /> Filtres
           </button>
-          <button className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-[#1E3A8A] hover:bg-blue-900 text-white px-5 py-2.5 rounded-sm transition-colors shadow-md shadow-blue-900/20">
+          <button
+            disabled
+            title="Module de démonstration — pas encore connecté à un vrai stock"
+            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-slate-300 text-white px-5 py-2.5 rounded-sm cursor-not-allowed"
+          >
             <ShoppingCart className="h-4 w-4" /> Nouvelle Commande
           </button>
         </div>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-sm">
+        Module de démonstration — articles, stocks et fournisseurs affichés à titre d'exemple, pas encore reliés à un vrai inventaire.
       </div>
 
       <div className="bg-[#0F172A] text-white p-6 rounded-sm flex justify-between items-center relative overflow-hidden">

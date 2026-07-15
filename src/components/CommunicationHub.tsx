@@ -1,20 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
-import { 
-  MessageCircle, 
-  MessageSquare, 
-  Mail, 
-  Send, 
-  History, 
-  Zap, 
-  BarChart, 
-  Settings, 
-  Plus, 
-  Search, 
-  Users, 
-  CheckCircle, 
-  Clock, 
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  MessageCircle,
+  MessageSquare,
+  Mail,
+  Send,
+  History,
+  Zap,
+  BarChart,
+  Settings,
+  Plus,
+  Search,
+  Users,
+  CheckCircle,
+  Clock,
   Activity,
   SendHorizontal,
   Bell,
@@ -27,6 +27,23 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { DemoModeBadge } from "@/components/DemoModeBadge";
 
+interface RecentMessage {
+  id: string;
+  channel: "whatsapp" | "sms" | "portal";
+  status: string;
+  body: string;
+  created_at: string;
+  recipient_name: string;
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  simulated: "Simulé",
+  sent: "Envoyé",
+  delivered: "Livré",
+  read: "Lu",
+  failed: "Erreur",
+};
+
 export function CommunicationHub() {
   const [activeTab, setActiveTab] = useState<"Envoyer" | "Historique" | "Automatisation" | "Analytique">("Envoyer");
   const [channel, setChannel] = useState<"WhatsApp" | "SMS" | "Email">("WhatsApp");
@@ -36,6 +53,21 @@ export function CommunicationHub() {
   const [showScheduler, setShowScheduler] = useState(false);
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [recentMessages, setRecentMessages] = useState<RecentMessage[]>([]);
+
+  const loadRecent = useCallback(async () => {
+    try {
+      const res = await fetch("/api/messages/recent");
+      const data = await res.json();
+      if (res.ok) setRecentMessages(data.messages || []);
+    } catch {
+      // silencieux : le panneau reste vide plutôt que d'afficher des données inventées.
+    }
+  }, []);
+
+  useEffect(() => {
+    loadRecent();
+  }, [loadRecent]);
 
   const calculateCost = () => {
     if (message.length === 0) return 0;
@@ -64,6 +96,7 @@ export function CommunicationHub() {
       if (!res.ok) throw new Error(data.error || "Échec de l'envoi.");
       setFeedback(data.simulated ? "Envoyé (mode démo — non transmis réellement)." : "Message envoyé.");
       setMessage("");
+      loadRecent();
     } catch (e) {
       setFeedback(e instanceof Error ? e.message : "Erreur inconnue.");
     } finally {
@@ -370,22 +403,24 @@ export function CommunicationHub() {
                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               </div>
               <div className="p-2 overflow-y-auto space-y-1">
-                 {[
-                   { name: "Mamadou Fall", time: "14:05", status: "Lu", channel: "WA", msg: "Bonjour, votre RDV est confirmé..." },
-                   { name: "Aïssatou Sow", time: "13:42", status: "Envoyé", channel: "SMS", msg: "Merci pour votre visite ce jour..." },
-                   { name: "Fatou Diop", time: "12:15", status: "Erreur", channel: "WA", msg: "Votre devis est disponible..." },
-                   { name: "Ousmane Kane", time: "11:20", status: "Lu", channel: "WA", msg: "Rappel RDV : Demain 09:30" }
-                 ].map((log, i) => (
-                   <div key={i} className="flex flex-col p-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 group cursor-pointer">
+                 {recentMessages.length === 0 && (
+                   <p className="text-[10px] text-slate-400 font-medium text-center py-8">Aucun envoi pour l'instant.</p>
+                 )}
+                 {recentMessages.map((log) => (
+                   <div key={log.id} className="flex flex-col p-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 group cursor-pointer">
                       <div className="flex justify-between items-center mb-1">
-                         <span className="text-[10px] font-black text-slate-900 group-hover:text-blue-600">{log.name}</span>
-                         <span className="text-[8px] font-bold text-slate-400">{log.time}</span>
+                         <span className="text-[10px] font-black text-slate-900 group-hover:text-blue-600">{log.recipient_name}</span>
+                         <span className="text-[8px] font-bold text-slate-400">
+                           {new Date(log.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-500 truncate">{log.msg}</p>
+                      <p className="text-[10px] text-slate-500 truncate">{log.body}</p>
                       <div className="flex items-center justify-between mt-2">
                          <div className="flex items-center gap-1.5">
-                            <div className={cn("h-4 w-4 rounded-full flex items-center justify-center text-[7px] font-black", log.channel === "WA" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700")}>{log.channel}</div>
-                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{log.status}</span>
+                            <div className={cn("h-4 w-4 rounded-full flex items-center justify-center text-[7px] font-black", log.channel === "whatsapp" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700")}>
+                              {log.channel === "whatsapp" ? "WA" : log.channel === "sms" ? "SMS" : "PT"}
+                            </div>
+                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{STATUS_LABEL[log.status] || log.status}</span>
                          </div>
                          <ChevronRight className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-all" />
                       </div>
