@@ -115,6 +115,9 @@ export default function Home() {
 
   useEffect(() => {
     setIsMounted(true);
+    // Sur mobile/tablette, la sidebar (menu plein écran en overlay) démarre
+    // fermée pour ne pas écraser le contenu dans le peu d'espace restant.
+    setIsSidebarOpen(window.innerWidth >= 1024);
     const saved = localStorage.getItem("dentiste_lite_step");
     if (saved) setCurrentStep(parseInt(saved));
   }, []);
@@ -170,6 +173,13 @@ export default function Home() {
   return (
     <>
     <div className="min-h-screen bg-[#F1F5F9] flex overflow-hidden font-sans">
+      {/* Fond assombri derrière la sidebar en overlay mobile — tap pour fermer */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-slate-900/50 lg:hidden"
+        />
+      )}
       {/* PROFESSIONAL SIDEBAR (NAVY BLUE) */}
       <aside
         className={cn(
@@ -197,7 +207,10 @@ export default function Home() {
               return (
                 <button
                   key={step.id}
-                  onClick={() => setCurrentStep(step.id)}
+                  onClick={() => {
+                    setCurrentStep(step.id);
+                    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                  }}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded transition-all text-sm font-medium",
                     isActive
