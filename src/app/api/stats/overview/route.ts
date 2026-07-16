@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { requirePermission } from '@/lib/permissions';
+import { getRoleById } from '@/lib/permissions';
+import { getStaffSession } from '@/lib/session';
+import { hasPermission } from '@/lib/modules';
 
 type Period = 'week' | 'month' | 'year';
 
@@ -34,8 +36,15 @@ function pctChange(current: number, previous: number): number | null {
 }
 
 export async function GET(request: Request) {
-  const { error, status } = await requirePermission(23, 'view');
-  if (error) return NextResponse.json({ error }, { status });
+  // Consommé à la fois par la page Statistiques (module 23) et par l'onglet
+  // Business Intelligence de Super Admin (module 22) — un rôle avec l'un ou
+  // l'autre doit pouvoir y accéder.
+  const session = await getStaffSession();
+  if (!session) return NextResponse.json({ error: 'Non authentifié.' }, { status: 401 });
+  const role = await getRoleById(session.roleId);
+  if (!role || (!hasPermission(role.permissions, 23, 'view') && !hasPermission(role.permissions, 22, 'view'))) {
+    return NextResponse.json({ error: 'Rôle non autorisé.' }, { status: 403 });
+  }
 
   const { searchParams } = new URL(request.url);
   const periodParam = searchParams.get('period');
