@@ -1,8 +1,9 @@
+import Link from 'next/link';
 import LoginForm from './LoginForm';
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0F172A] px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F172A] px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-white">
@@ -13,6 +14,11 @@ export default function LoginPage() {
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
           <LoginForm />
         </div>
+      </div>
+      <div className="flex gap-4 mt-8 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+        <Link href="/mentions-legales" className="hover:text-slate-300">Mentions légales</Link>
+        <span>·</span>
+        <Link href="/confidentialite" className="hover:text-slate-300">Confidentialité</Link>
       </div>
     </div>
   );

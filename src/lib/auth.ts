@@ -69,7 +69,9 @@ export const STAFF_COOKIE_OPTIONS = {
 
 export function generateTempPassword() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const bytes = new Uint8Array(14);
+  globalThis.crypto.getRandomValues(bytes);
   let out = '';
-  for (let i = 0; i < 10; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 14; i++) out += chars[bytes[i] % chars.length];
   return out;
 }

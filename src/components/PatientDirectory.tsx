@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Search, User, Phone, Calendar, FolderOpen, ArrowUpRight, Send } from "lucide-react";
+import { Search, User, Phone, Calendar, FolderOpen, ArrowUpRight, Send, ShieldOff, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatient, mapDbPatientToContext } from "@/lib/context";
 
@@ -20,6 +20,8 @@ export function PatientDirectory() {
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [portalFeedback, setPortalFeedback] = useState<string | null>(null);
+  const [confirmingAnonymizeId, setConfirmingAnonymizeId] = useState<string | null>(null);
+  const [anonymizing, setAnonymizing] = useState<string | null>(null);
 
   const search = useCallback(async (q: string) => {
     setLoading(true);
@@ -36,6 +38,22 @@ export function PatientDirectory() {
     const timeout = setTimeout(() => search(searchQuery), 300);
     return () => clearTimeout(timeout);
   }, [searchQuery, search]);
+
+  const anonymizePatient = async (patient: PatientRow) => {
+    setAnonymizing(patient.id);
+    setPortalFeedback(null);
+    try {
+      const res = await fetch(`/api/patients/${patient.id}/anonymize`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de l'anonymisation.");
+      setConfirmingAnonymizeId(null);
+      search(searchQuery);
+    } catch (e) {
+      setPortalFeedback(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setAnonymizing(null);
+    }
+  };
 
   const openPatientFile = async (patient: PatientRow) => {
     const res = await fetch(`/api/patients/${patient.id}`);
@@ -145,21 +163,54 @@ export function PatientDirectory() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => openPatientFile(patient)}
-                    className="flex-1 flex items-center justify-center gap-2 bg-slate-50 hover:bg-[#1E3A8A] text-slate-700 hover:text-white border border-slate-200 hover:border-[#1E3A8A] px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all"
-                  >
-                    Ouvrir <ArrowUpRight className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={() => sendPortalAccess(patient, "whatsapp")}
-                    title="Envoyer l'accès au portail patient par WhatsApp"
-                    className="px-3 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 rounded-sm transition-all"
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+                {confirmingAnonymizeId === patient.id ? (
+                  <div className="bg-rose-50 border border-rose-200 rounded-sm p-3 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 text-rose-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-[10px] font-bold text-rose-800 uppercase leading-tight">
+                        Action irréversible : nom, téléphone, adresse et identifiant seront effacés. L'historique clinique/facturation reste conservé de façon anonyme.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => anonymizePatient(patient)}
+                        disabled={anonymizing === patient.id}
+                        className="flex-1 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-widest"
+                      >
+                        {anonymizing === patient.id ? "..." : "Confirmer"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmingAnonymizeId(null)}
+                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-widest"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openPatientFile(patient)}
+                      className="flex-1 flex items-center justify-center gap-2 bg-slate-50 hover:bg-[#1E3A8A] text-slate-700 hover:text-white border border-slate-200 hover:border-[#1E3A8A] px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all"
+                    >
+                      Ouvrir <ArrowUpRight className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => sendPortalAccess(patient, "whatsapp")}
+                      title="Envoyer l'accès au portail patient par WhatsApp"
+                      className="px-3 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 rounded-sm transition-all"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setConfirmingAnonymizeId(patient.id)}
+                      title="Anonymiser ce dossier (droit à l'oubli)"
+                      className="px-3 bg-slate-50 hover:bg-rose-600 text-slate-500 hover:text-white border border-slate-200 hover:border-rose-600 rounded-sm transition-all"
+                    >
+                      <ShieldOff className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))
           ) : (
