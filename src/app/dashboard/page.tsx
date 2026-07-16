@@ -182,9 +182,10 @@ export default function Home() {
       )}
       {/* PROFESSIONAL SIDEBAR (NAVY BLUE) */}
       <aside
+        style={{ transform: isSidebarOpen ? "translateX(0)" : "translateX(-100%)" }}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-[#0F172A] text-slate-300 transition-transform duration-200 transform lg:relative lg:translate-x-0 flex flex-col border-r border-blue-900/20",
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:hidden"
+          "fixed inset-y-0 left-0 z-50 w-64 bg-[#0F172A] text-slate-300 transition-transform duration-200 lg:relative lg:!transform-none flex flex-col border-r border-blue-900/20",
+          !isSidebarOpen && "lg:hidden"
         )}
       >
         <div className="p-6 space-y-8 flex-1">
