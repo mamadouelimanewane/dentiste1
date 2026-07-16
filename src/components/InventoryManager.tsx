@@ -1,250 +1,234 @@
 "use client";
 
-import React, { useState } from "react";
-import { Package, ShoppingCart, AlertTriangle, TrendingDown, Plus, Search, Filter, Box, AlertCircle, CheckCircle2, ChevronRight, Activity, TrendingUp } from "lucide-react";
-import { motion } from "framer-motion";
+import React, { useEffect, useState, useCallback } from "react";
+import { Package, AlertTriangle, Plus, Search, Box, AlertCircle, CheckCircle2, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function InventoryManager() {
-  const [activeTab, setActiveTab] = useState<"Consommables" | "Implants" | "Commandes" | "Péremptions">("Consommables");
+interface InventoryItem {
+  id: string;
+  ref: string | null;
+  name: string;
+  category: string;
+  quantity: number;
+  min_threshold: number;
+  unit_price: number;
+}
 
-  const inventoryItems = [
-    { id: 1, name: "Gants Nitrile Taille M", ref: "GLV-NIT-M", category: "EPI", stock: 12, min: 20, status: "low" },
-    { id: 2, name: "Résine Composite A2", ref: "CMP-A2-SYR", category: "Restauration", stock: 45, min: 10, status: "ok" },
-    { id: 3, name: "Implant Titane Ø4.0 x 10mm", ref: "IMP-T4010", category: "Chirurgie", stock: 2, min: 5, status: "critical" },
-    { id: 4, name: "Aiguilles Anesthésie 30G", ref: "NDL-30G-S", category: "Anesthésie", stock: 150, min: 50, status: "ok" },
-    { id: 5, name: "Ciment Scellement Verre Ionomère", ref: "CEM-GI-01", category: "Prothèse", stock: 0, min: 5, status: "out" },
-  ];
+function formatFcfa(n: number) {
+  return `${Math.round(n).toLocaleString("fr-FR")} F`;
+}
+
+export function InventoryManager() {
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("Toutes");
+  const [adjusting, setAdjusting] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetch("/api/inventory")
+      .then((res) => res.json())
+      .then((data) => setItems(data.items || []))
+      .catch(() => setError("Impossible de charger le stock."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const adjustQuantity = async (id: string, delta: number) => {
+    setAdjusting(id);
+    setError(null);
+    try {
+      const res = await fetch("/api/inventory", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, quantityDelta: delta }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de l'ajustement.");
+      setItems((prev) => prev.map((i) => (i.id === id ? data.item : i)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setAdjusting(null);
+    }
+  };
+
+  const categories = ["Toutes", ...Array.from(new Set(items.map((i) => i.category)))];
+  const filtered = items.filter((i) => {
+    const matchCategory = category === "Toutes" || i.category === category;
+    const matchSearch = !search || i.name.toLowerCase().includes(search.toLowerCase()) || (i.ref || "").toLowerCase().includes(search.toLowerCase());
+    return matchCategory && matchSearch;
+  });
+
+  const valeurStock = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+  const articlesReferences = items.length;
+  const alertesRupture = items.filter((i) => i.quantity <= i.min_threshold).length;
+  const quantiteTotale = items.reduce((s, i) => s + i.quantity, 0);
+
+  function statusOf(i: InventoryItem): "out" | "low" | "ok" {
+    if (i.quantity === 0) return "out";
+    if (i.quantity <= i.min_threshold) return "low";
+    return "ok";
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* HEADER BAR - DASHBOARD STYLE */}
       <div className="bg-white border border-slate-200 rounded-sm p-4 flex flex-col md:flex-row items-center justify-between shadow-sm gap-4">
         <div className="flex items-center gap-4 w-full md:w-auto">
           <div className="h-10 w-10 bg-[#1E3A8A] text-white rounded flex items-center justify-center shadow-lg shadow-blue-200">
             <Package className="h-6 w-6 text-fuchsia-400" />
           </div>
           <div>
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Inventory Manager Pro</h2>
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Gestion des Stocks</h2>
             <div className="flex items-center gap-2">
               <Box className="h-3 w-3 text-fuchsia-500" />
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Stock & Commandes</p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{articlesReferences} article(s) référencé(s)</p>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-           <button className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded transition-colors">
-            <Filter className="h-4 w-4" /> Filtres
-          </button>
-          <button
-            disabled
-            title="Module de démonstration — pas encore connecté à un vrai stock"
-            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-slate-300 text-white px-5 py-2.5 rounded-sm cursor-not-allowed"
-          >
-            <ShoppingCart className="h-4 w-4" /> Nouvelle Commande
-          </button>
-        </div>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-sm">
-        Module de démonstration — articles, stocks et fournisseurs affichés à titre d'exemple, pas encore reliés à un vrai inventaire.
-      </div>
-
-      <div className="bg-[#0F172A] text-white p-6 rounded-sm flex justify-between items-center relative overflow-hidden">
-        <div className="relative z-10 space-y-1">
-          <h3 className="text-lg font-black uppercase tracking-widest text-fuchsia-400">Gestion Intelligente des Consommables</h3>
-          <p className="text-slate-300 text-xs font-medium">Suivi en temps réel des stocks, alertes de rupture et gestion des dates de péremption.</p>
-        </div>
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-fuchsia-500/20 to-transparent" />
-        <Package className="absolute -right-4 -top-4 h-32 w-32 text-fuchsia-500 opacity-20" />
-      </div>
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm p-3">{error}</div>}
 
       {/* KPI CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Valeur du Stock", value: "3.2M CFA", icon: TrendingDown, color: "text-emerald-500", bg: "bg-emerald-50" },
-          { label: "Articles en Stock", value: "842", icon: Box, color: "text-blue-500", bg: "bg-blue-50" },
-          { label: "Alertes Rupture", value: "3", icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", alert: true },
-          { label: "Commandes en cours", value: "2", icon: ShoppingCart, color: "text-indigo-500", bg: "bg-indigo-50" },
+          { label: "Valeur du Stock", value: formatFcfa(valeurStock), icon: Package, color: "text-emerald-500", bg: "bg-emerald-50" },
+          { label: "Articles Référencés", value: String(articlesReferences), icon: Box, color: "text-blue-500", bg: "bg-blue-50" },
+          { label: "Alertes Stock Bas", value: String(alertesRupture), icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", alert: alertesRupture > 0 },
+          { label: "Quantité Totale", value: String(quantiteTotale), icon: Box, color: "text-indigo-500", bg: "bg-indigo-50" },
         ].map((kpi, i) => (
           <div key={i} className={cn("bg-white border p-5 rounded-sm shadow-sm flex flex-col justify-center relative overflow-hidden", kpi.alert ? "border-amber-200" : "border-slate-200")}>
-             {kpi.alert && <div className="absolute top-0 right-0 h-full w-1 bg-amber-400" />}
-             <div className="flex items-center gap-2 mb-2">
-               <div className={cn("p-1.5 rounded", kpi.bg)}>
-                 <kpi.icon className={cn("h-4 w-4", kpi.color)} />
-               </div>
-             </div>
-             <span className="text-2xl font-black text-slate-900">{kpi.value}</span>
-             <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">{kpi.label}</span>
+            {kpi.alert && <div className="absolute top-0 right-0 h-full w-1 bg-amber-400" />}
+            <div className="flex items-center gap-2 mb-2">
+              <div className={cn("p-1.5 rounded", kpi.bg)}>
+                <kpi.icon className={cn("h-4 w-4", kpi.color)} />
+              </div>
+            </div>
+            <span className="text-2xl font-black text-slate-900">{kpi.value}</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">{kpi.label}</span>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* MAIN LIST */}
-        <div className="lg:col-span-3 space-y-4">
-          <div className="flex justify-between items-center bg-white p-3 border border-slate-200 rounded-sm shadow-sm flex-wrap gap-4">
-            <div className="flex gap-2 border-b md:border-b-0 border-slate-200 pb-2 md:pb-0 w-full md:w-auto overflow-x-auto">
-              {["Consommables", "Implants", "Commandes", "Péremptions"].map((tab) => (
-                <button 
-                  key={tab}
-                  onClick={() => setActiveTab(tab as any)}
-                  className={cn(
-                    "px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded transition-all whitespace-nowrap",
-                    activeTab === tab ? "bg-fuchsia-50 text-fuchsia-700" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-                  )}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-sm w-full md:w-64">
-              <Search className="h-3.5 w-3.5 text-slate-400" />
-              <input type="text" placeholder="Rechercher par ref ou nom..." className="bg-transparent border-none text-[10px] font-bold outline-none w-full uppercase" />
-            </div>
+      <div className="bg-white border border-slate-200 rounded-sm shadow-sm">
+        <div className="flex justify-between items-center p-3 border-b border-slate-200 flex-wrap gap-4">
+          <div className="flex gap-2 overflow-x-auto">
+            {categories.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCategory(c)}
+                className={cn(
+                  "px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded transition-all whitespace-nowrap",
+                  category === c ? "bg-fuchsia-50 text-fuchsia-700" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                )}
+              >
+                {c}
+              </button>
+            ))}
           </div>
-
-          <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                    <th className="p-4">Réf.</th>
-                    <th className="p-4">Désignation</th>
-                    <th className="p-4">Catégorie</th>
-                    <th className="p-4 text-right">Stock Actuel</th>
-                    <th className="p-4 text-center">Statut</th>
-                    <th className="p-4"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {inventoryItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
-                      <td className="p-4 text-xs font-bold text-slate-500">{item.ref}</td>
-                      <td className="p-4">
-                        <p className="text-sm font-black text-slate-900">{item.name}</p>
-                      </td>
-                      <td className="p-4">
-                        <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest">
-                          {item.category}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex flex-col items-end">
-                           <span className={cn(
-                             "text-sm font-black",
-                             item.status === 'out' ? "text-rose-600" : 
-                             item.status === 'critical' ? "text-rose-600" :
-                             item.status === 'low' ? "text-amber-500" : "text-slate-900"
-                           )}>
-                             {item.stock}
-                           </span>
-                           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Min: {item.min}</span>
-                        </div>
-                      </td>
-                      <td className="p-4 text-center">
-                        {item.status === 'ok' && <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest"><CheckCircle2 className="h-3 w-3" /> En Stock</span>}
-                        {item.status === 'low' && <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest"><AlertTriangle className="h-3 w-3" /> Bas</span>}
-                        {(item.status === 'critical' || item.status === 'out') && <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-700 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest"><AlertCircle className="h-3 w-3" /> Rupture</span>}
-                      </td>
-                      <td className="p-4 text-right">
-                        <button className="p-2 text-slate-400 hover:text-blue-600 transition-colors opacity-0 group-hover:opacity-100">
-                          <ChevronRight className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-sm w-full md:w-64">
+            <Search className="h-3.5 w-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher par ref ou nom..."
+              className="bg-transparent border-none text-[10px] font-bold outline-none w-full uppercase"
+            />
           </div>
         </div>
 
-        {/* SIDE PANEL - ACTIONS RAPIDES */}
-        <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
-             <div className="bg-slate-50 border-b border-slate-100 p-4">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-700 flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-blue-500" /> Tendance Stock
-                </h3>
-             </div>
-             <div className="p-4 space-y-4">
-                <div className="h-24 flex items-end justify-between gap-1 px-1">
-                   {[30, 45, 35, 60, 50, 75, 40].map((h, i) => (
-                      <div key={i} className="flex-1 bg-slate-100 rounded-t-sm relative overflow-hidden h-full flex flex-col justify-end group">
-                         <motion.div 
-                            initial={{ height: 0 }}
-                            animate={{ height: `${h}%` }}
-                            className="bg-fuchsia-500 w-full rounded-t-sm opacity-60 group-hover:opacity-100 transition-opacity"
-                         />
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                <th className="p-4">Réf.</th>
+                <th className="p-4">Désignation</th>
+                <th className="p-4">Catégorie</th>
+                <th className="p-4 text-right">Stock Actuel</th>
+                <th className="p-4 text-center">Statut</th>
+                <th className="p-4 text-right">Ajuster</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading && (
+                <tr><td colSpan={6} className="p-6 text-center text-xs text-slate-400">Chargement...</td></tr>
+              )}
+              {!loading && filtered.length === 0 && (
+                <tr><td colSpan={6} className="p-6 text-center text-xs text-slate-400">Aucun article.</td></tr>
+              )}
+              {filtered.map((item) => {
+                const s = statusOf(item);
+                return (
+                  <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
+                    <td className="p-4 text-xs font-bold text-slate-500">{item.ref || "—"}</td>
+                    <td className="p-4">
+                      <p className="text-sm font-black text-slate-900">{item.name}</p>
+                    </td>
+                    <td className="p-4">
+                      <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest">
+                        {item.category}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex flex-col items-end">
+                        <span className={cn(
+                          "text-sm font-black",
+                          s === 'out' ? "text-rose-600" : s === 'low' ? "text-amber-500" : "text-slate-900"
+                        )}>
+                          {item.quantity}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Min: {item.min_threshold}</span>
                       </div>
-                   ))}
-                </div>
-                <div className="flex justify-between text-[8px] font-bold text-slate-400 uppercase">
-                   <span>Lun</span>
-                   <span>Dim</span>
-                </div>
-             </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
-             <div className="bg-slate-50 border-b border-slate-100 p-4">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-700">Fournisseurs Clés</h3>
-             </div>
-             <div className="p-4 space-y-3">
-                {[
-                  { name: "Dento-Tech Dakar", contact: "77 123 45 67", rating: "★★★★★" },
-                  { name: "Pro-Médical International", contact: "33 821 00 11", rating: "★★★★☆" }
-                ].map((f, i) => (
-                  <div key={i} className="flex flex-col border-b border-slate-50 pb-2 last:border-0">
-                    <span className="text-xs font-black text-slate-900">{f.name}</span>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-[10px] font-bold text-slate-400">{f.contact}</span>
-                      <span className="text-[10px] text-amber-500">{f.rating}</span>
-                    </div>
-                  </div>
-                ))}
-             </div>
-          </div>
-          
-          <div className="bg-amber-50 border border-amber-200 rounded-sm p-5 space-y-3">
-             <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-widest flex items-center gap-2">
-               <AlertTriangle className="h-4 w-4" /> Action Requise
-             </h4>
-             <p className="text-xs text-amber-900 font-medium leading-relaxed">
-               3 articles sont en dessous de leur seuil d'alerte. Une commande fournisseur est recommandée.
-             </p>
-             <button className="w-full bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors shadow-md shadow-amber-900/20 active:scale-95 transition-transform">
-               Générer Bon de Commande
-             </button>
-          </div>
+                    </td>
+                    <td className="p-4 text-center">
+                      {s === 'ok' && <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest"><CheckCircle2 className="h-3 w-3" /> En Stock</span>}
+                      {s === 'low' && <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest"><AlertTriangle className="h-3 w-3" /> Bas</span>}
+                      {s === 'out' && <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-700 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest"><AlertCircle className="h-3 w-3" /> Rupture</span>}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          disabled={adjusting === item.id || item.quantity === 0}
+                          onClick={() => adjustQuantity(item.id, -1)}
+                          className="h-7 w-7 flex items-center justify-center rounded bg-slate-50 border border-slate-200 hover:bg-slate-200 text-slate-500 disabled:opacity-40"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          disabled={adjusting === item.id}
+                          onClick={() => adjustQuantity(item.id, 10)}
+                          title="Réassort +10"
+                          className="h-7 px-2 flex items-center justify-center gap-1 rounded bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase disabled:opacity-40"
+                        >
+                          <Plus className="h-3.5 w-3.5" /> 10
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
-  );
-}
 
-function ScanBarcodeIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 7V5a2 2 0 0 1 2-2h2" />
-      <path d="M17 3h2a2 2 0 0 1 2 2v2" />
-      <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
-      <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
-      <path d="M8 7v10" />
-      <path d="M12 7v10" />
-      <path d="M17 7v10" />
-    </svg>
+      {alertesRupture > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-sm p-5">
+          <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-widest flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" /> Action Requise
+          </h4>
+          <p className="text-xs text-amber-900 font-medium leading-relaxed mt-2">
+            {alertesRupture} article(s) sont à ou sous leur seuil d'alerte. Utilisez le bouton "+10" pour réassortir.
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
