@@ -10,6 +10,10 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { RoleManager } from "@/components/RoleManager";
 import { DENTAL_NOMENCLATURE } from "@/lib/pricing";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import { TemplateDocumentPDF } from "@/components/TemplateDocumentPDF";
+import { usePatient } from "@/lib/context";
+import { Edit3, Trash2, Save, X, AlertTriangle } from "lucide-react";
 
 interface AdminProfile {
   id: string;
@@ -47,10 +51,49 @@ interface PractitionerStat {
   revenue: number;
 }
 
+interface DocumentTemplate {
+  id: string;
+  name: string;
+  category: string;
+  body: string;
+  updated_at: string;
+}
+
+interface ClinicSettingsLite {
+  clinicName?: string;
+  address?: string;
+  phone?: string;
+}
+
+function substituteTemplate(body: string, patient: { name: string; idNumber?: string; birthDate?: string; phone?: string; address?: string } | null, clinic: ClinicSettingsLite | null) {
+  const today = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  return body
+    .replaceAll("{{patient.name}}", patient?.name || "—")
+    .replaceAll("{{patient.dossier}}", patient?.idNumber || "—")
+    .replaceAll("{{patient.birthDate}}", patient?.birthDate ? new Date(patient.birthDate).toLocaleDateString("fr-FR") : "—")
+    .replaceAll("{{patient.phone}}", patient?.phone || "—")
+    .replaceAll("{{patient.address}}", patient?.address || "—")
+    .replaceAll("{{clinic.name}}", clinic?.clinicName || "Cabinet Dentaire du Cap Vert")
+    .replaceAll("{{clinic.address}}", clinic?.address || "—")
+    .replaceAll("{{clinic.phone}}", clinic?.phone || "—")
+    .replaceAll("{{date}}", today);
+}
+
 
 export function AdminHub() {
+  const { currentPatient } = usePatient();
   const [activeTab, setActiveTab] = useState("utilisateurs");
   const [users, setUsers] = useState<AdminProfile[]>([]);
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [clinicSettings, setClinicSettings] = useState<ClinicSettingsLite | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<DocumentTemplate | null>(null);
+  const [showTemplateForm, setShowTemplateForm] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateCategory, setTemplateCategory] = useState("Autre");
+  const [templateBody, setTemplateBody] = useState("");
+  const [templateSaving, setTemplateSaving] = useState(false);
+  const [templateError, setTemplateError] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [biPeriod, setBiPeriod] = useState<"week" | "month" | "year">("month");
@@ -65,6 +108,77 @@ export function AdminHub() {
       .then((data) => setUsers(data.users || []))
       .catch(() => setUsers([]));
   }, [activeTab]);
+
+  const loadTemplates = () => {
+    setTemplatesLoading(true);
+    fetch("/api/document-templates")
+      .then((res) => res.json())
+      .then((data) => setTemplates(data.templates || []))
+      .catch(() => setTemplates([]))
+      .finally(() => setTemplatesLoading(false));
+  };
+
+  useEffect(() => {
+    if (activeTab !== "templates") return;
+    loadTemplates();
+    fetch("/api/clinic-settings")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const s = data?.settings;
+        setClinicSettings(s ? { clinicName: s.clinic_name, address: s.address, phone: s.phone } : null);
+      })
+      .catch(() => setClinicSettings(null));
+  }, [activeTab]);
+
+  const openNewTemplateForm = () => {
+    setEditingTemplate(null);
+    setTemplateName("");
+    setTemplateCategory("Autre");
+    setTemplateBody("");
+    setTemplateError(null);
+    setShowTemplateForm(true);
+  };
+
+  const openEditTemplateForm = (t: DocumentTemplate) => {
+    setEditingTemplate(t);
+    setTemplateName(t.name);
+    setTemplateCategory(t.category);
+    setTemplateBody(t.body);
+    setTemplateError(null);
+    setShowTemplateForm(true);
+  };
+
+  const saveTemplate = async () => {
+    if (!templateName.trim() || !templateBody.trim()) return;
+    setTemplateSaving(true);
+    setTemplateError(null);
+    try {
+      const res = await fetch(editingTemplate ? `/api/document-templates/${editingTemplate.id}` : "/api/document-templates", {
+        method: editingTemplate ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: templateName.trim(), category: templateCategory, body: templateBody }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de l'enregistrement.");
+      setShowTemplateForm(false);
+      loadTemplates();
+    } catch (e) {
+      setTemplateError(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setTemplateSaving(false);
+    }
+  };
+
+  const deleteTemplate = async (id: string) => {
+    try {
+      const res = await fetch(`/api/document-templates/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de la suppression.");
+      loadTemplates();
+    } catch (e) {
+      setTemplateError(e instanceof Error ? e.message : "Erreur inconnue.");
+    }
+  };
 
   useEffect(() => {
     if (activeTab !== "audit") return;
@@ -466,12 +580,120 @@ export function AdminHub() {
             </div>
           )}
 
-          {/* 5. TEMPLATES & 6. MULTISITE (Placeholders for size) */}
-          {(activeTab === "templates" || activeTab === "multisite") && (
+          {/* 5. MODÈLES & CONTRATS */}
+          {activeTab === "templates" && (
+            <div className="flex flex-col h-full overflow-y-auto">
+              <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Modèles & Contrats</h3>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase">
+                    {currentPatient ? `Génération pour : ${currentPatient.name}` : "Aucun patient actif — sélectionnez un dossier pour générer un document"}
+                  </p>
+                </div>
+                <button
+                  onClick={openNewTemplateForm}
+                  className="bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded shadow hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" /> Nouveau Modèle
+                </button>
+              </div>
+
+              {templateError && (
+                <div className="m-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm p-3">{templateError}</div>
+              )}
+
+              {showTemplateForm && (
+                <div className="m-4 bg-white border border-slate-200 rounded-sm shadow-sm p-5 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">
+                      {editingTemplate ? "Modifier le modèle" : "Nouveau modèle"}
+                    </h4>
+                    <button onClick={() => setShowTemplateForm(false)} className="text-slate-400 hover:text-slate-700">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      placeholder="Nom du modèle"
+                      className="border border-slate-200 rounded-sm p-2.5 text-sm outline-none focus:border-blue-400"
+                    />
+                    <input
+                      type="text"
+                      value={templateCategory}
+                      onChange={(e) => setTemplateCategory(e.target.value)}
+                      placeholder="Catégorie (ex: Consentement, Contrat, Attestation)"
+                      className="border border-slate-200 rounded-sm p-2.5 text-sm outline-none focus:border-blue-400"
+                    />
+                  </div>
+                  <textarea
+                    value={templateBody}
+                    onChange={(e) => setTemplateBody(e.target.value)}
+                    rows={8}
+                    placeholder="Corps du document..."
+                    className="w-full border border-slate-200 rounded-sm p-3 text-xs font-mono outline-none focus:border-blue-400"
+                  />
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    Placeholders : {"{{patient.name}}"} {"{{patient.dossier}}"} {"{{patient.birthDate}}"} {"{{patient.phone}}"} {"{{patient.address}}"} {"{{clinic.name}}"} {"{{clinic.address}}"} {"{{clinic.phone}}"} {"{{date}}"}
+                  </p>
+                  <button
+                    onClick={saveTemplate}
+                    disabled={templateSaving || !templateName.trim() || !templateBody.trim()}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2"
+                  >
+                    <Save className="h-3.5 w-3.5" /> {templateSaving ? "Enregistrement..." : "Enregistrer"}
+                  </button>
+                </div>
+              )}
+
+              <div className="p-4 space-y-3 flex-1">
+                {templatesLoading && <p className="text-xs text-slate-400 text-center py-8">Chargement...</p>}
+                {!templatesLoading && templates.length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-8">Aucun modèle. Créez-en un.</p>
+                )}
+                {templates.map((t) => (
+                  <div key={t.id} className="bg-white border border-slate-200 rounded-sm p-4 flex items-center justify-between gap-4 shadow-sm">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-black text-slate-900">{t.name}</p>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{t.category}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1 line-clamp-1">{t.body.slice(0, 100)}...</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {currentPatient ? (
+                        <PDFDownloadLink
+                          document={<TemplateDocumentPDF clinicName={clinicSettings?.clinicName || "Cabinet Dentaire du Cap Vert"} templateName={t.name} body={substituteTemplate(t.body, currentPatient, clinicSettings)} />}
+                          fileName={`${t.name.replace(/\s+/g, "_")}_${currentPatient.name.replace(/\s+/g, "_")}.pdf`}
+                        >
+                          {/* @ts-ignore */}
+                          {({ loading }) => (
+                            <button className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 disabled:opacity-50" disabled={loading}>
+                              <FileText className="h-3.5 w-3.5" /> {loading ? "..." : "Générer PDF"}
+                            </button>
+                          )}
+                        </PDFDownloadLink>
+                      ) : (
+                        <span title="Sélectionnez un patient actif" className="h-8 px-3 bg-slate-200 text-slate-400 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                          <AlertTriangle className="h-3.5 w-3.5" /> Générer PDF
+                        </span>
+                      )}
+                      <button onClick={() => openEditTemplateForm(t)} className="h-8 w-8 flex items-center justify-center text-slate-400 hover:text-blue-600"><Edit3 className="h-4 w-4" /></button>
+                      <button onClick={() => deleteTemplate(t.id)} className="h-8 w-8 flex items-center justify-center text-slate-400 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 6. MULTISITE (Placeholder) */}
+          {activeTab === "multisite" && (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-10 bg-slate-50/50">
               <div className="h-20 w-20 bg-white rounded-full shadow-sm flex items-center justify-center border border-slate-200 mb-6">
-                {activeTab === "templates" && <FileText className="h-10 w-10 text-amber-500" />}
-                {activeTab === "multisite" && <Building className="h-10 w-10 text-blue-500" />}
+                <Building className="h-10 w-10 text-blue-500" />
               </div>
               <h3 className="text-xl font-black uppercase tracking-widest text-slate-900 mb-2">Module en cours d'intégration</h3>
               <p className="text-sm font-medium text-slate-500 max-w-md">
