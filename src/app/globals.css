@@ -2,12 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 15, 23, 42;
-  --background-start-rgb: 255, 255, 255;
-  --background-end-rgb: 248, 250, 252;
-  --primary: 79 70 229;
-  --primary-foreground: 255 255 255;
+@layer base {
+  :root {
+    --background: #F8FAFC;
+    --foreground: #0F172A;
+    --surface: #FFFFFF;
+    --surface-foreground: #334155;
+  }
+
+  .dark,
+  [data-theme='dark'] {
+    --background: #020617;
+    --foreground: #F8FAFC;
+    --surface: #0F172A;
+    --surface-foreground: #94A3B8;
+  }
+
+  [data-theme='smart'] {
+    --background: #02040A; /* Abyssal black/blue */
+    --foreground: #F1F5F9;
+    --surface: rgba(255, 255, 255, 0.03); /* Thin glass */
+    --surface-foreground: #94A3B8;
+  }
 }
 
 html, body {
@@ -15,37 +31,92 @@ html, body {
   max-width: 100vw;
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
-}
+@layer utilities {
+  .glass-panel {
+    @apply backdrop-blur-md border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)];
+    background: rgba(255, 255, 255, 0.75);
+  }
+  .dark .glass-panel, [data-theme='dark'] .glass-panel {
+    @apply bg-slate-900 border-white/5 shadow-none;
+  }
+  [data-theme='smart'] .glass-panel {
+    background: rgba(6, 11, 25, 0.85);
+    @apply backdrop-blur-2xl border border-blue-500/20 shadow-[0_8px_32px_rgba(37,99,235,0.08)];
+  }
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+  .glass-dark {
+    @apply bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
+  [data-theme='smart'] .glass-dark {
+    @apply bg-transparent backdrop-blur-2xl border-r border-blue-500/10;
+  }
+
+  .premium-shadow {
+    @apply shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] transition-shadow duration-300;
+  }
+  .dark .premium-shadow, [data-theme='dark'] .premium-shadow {
+    @apply shadow-none hover:shadow-none;
+  }
+  [data-theme='smart'] .premium-shadow {
+    @apply shadow-[0_0_15px_rgba(37,99,235,0.02)] hover:shadow-[0_0_30px_rgba(37,99,235,0.15)] transition-shadow duration-300;
+  }
+
+  .micro-bounce {
+    @apply active:scale-[0.98] transition-transform duration-200;
+  }
+
+  /* ── SMART THEME: Neon Glow & Abyssal Effects ── */
+  [data-theme='smart'] .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* Module cards in Smart mode get a subtle neon border on hover */
+  [data-theme='smart'] .smart-card {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(99, 179, 237, 0.08);
+    box-shadow: 0 0 0 0 transparent;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  [data-theme='smart'] .smart-card:hover {
+    border-color: rgba(6, 182, 212, 0.4);
+    box-shadow: 0 0 20px -4px rgba(6, 182, 212, 0.2), 0 0 40px -8px rgba(37, 99, 235, 0.15);
+  }
+
+  /* Sidebar accent line in Smart mode */
+  [data-theme='smart'] aside {
+    background: rgba(2, 6, 23, 0.92) !important;
+    border-right: 1px solid rgba(6, 182, 212, 0.08) !important;
+  }
+  [data-theme='smart'] aside .active-nav-item {
+    background: rgba(6, 182, 212, 0.08) !important;
+    box-shadow: inset 4px 0 0 0 #06b6d4 !important;
+    color: #67e8f9 !important;
+  }
+
+  /* Scanline effect for Smart theme hero */
+  [data-theme='smart'] .hero-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(6, 182, 212, 0.015) 0px,
+      rgba(6, 182, 212, 0.015) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+    pointer-events: none;
+  }
+
+  /* Dark theme scrollbar */
+  .dark ::-webkit-scrollbar, [data-theme='dark'] ::-webkit-scrollbar { width: 6px; }
+  .dark ::-webkit-scrollbar-track, [data-theme='dark'] ::-webkit-scrollbar-track { background: transparent; }
+  .dark ::-webkit-scrollbar-thumb, [data-theme='dark'] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 99px; }
+
+  /* Smart theme pulsing neon dot animation */
+  @keyframes neon-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 4px #06b6d4; }
+    50% { opacity: 0.6; box-shadow: 0 0 8px #06b6d4, 0 0 20px rgba(6,182,212,0.3); }
+  }
+  [data-theme='smart'] .animate-pulse {
+    animation: neon-pulse 2s ease-in-out infinite;
   }
 }

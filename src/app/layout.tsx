@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Outfit } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const outfit = Outfit({ subsets: ["latin"], display: "swap", variable: "--font-outfit" });
 
 export const metadata: Metadata = {
   title: "Elite ERP CABINET DENTAIRE DU CAP VERT",
@@ -10,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 import { PatientProvider } from "@/lib/context";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 export default function RootLayout({
   children,
@@ -17,11 +18,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
-      <body className={inter.className}>
-        <PatientProvider>
-          {children}
-        </PatientProvider>
+    <html lang="fr" className={`${outfit.variable}`} suppressHydrationWarning>
+      <body className={`${outfit.className} bg-background text-foreground antialiased selection:bg-blue-500/30 transition-colors duration-300`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          themes={['light', 'dark', 'smart']}
+        >
+          <PatientProvider>
+            {children}
+          </PatientProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

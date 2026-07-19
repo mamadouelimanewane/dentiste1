@@ -14,6 +14,18 @@ export function PatientFollowUp() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [appointmentCreated, setAppointmentCreated] = useState(false);
+  const [practitioners, setPractitioners] = useState<any[]>([]);
+  const [selectedPractitioner, setSelectedPractitioner] = useState<string>("");
+  const [apptType, setApptType] = useState("Contrôle");
+  const [duration, setDuration] = useState(30);
+
+  useEffect(() => {
+    fetch("/api/practitioners")
+      .then(res => res.json())
+      .then(data => {
+        if (data.practitioners) setPractitioners(data.practitioners);
+      });
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem("dentiste_lite_dictations");
@@ -32,13 +44,18 @@ export function PatientFollowUp() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             patientId: currentPatient.id,
+            practitionerId: selectedPractitioner || undefined,
             scheduledAt: new Date(nextAppointment).toISOString(),
-            type: "Contrôle",
-            notes: "Rendez-vous de suivi programmé depuis la clôture de séance.",
+            durationMinutes: duration,
+            type: apptType,
+            notes: "Rendez-vous programmé depuis la clôture de séance.",
           }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Échec de la programmation du rendez-vous.");
+        if (!res.ok) {
+           if (res.status === 409) throw new Error("Conflit d'agenda à cet horaire pour ce praticien.");
+           throw new Error(data.error || "Échec de la programmation du rendez-vous.");
+        }
         setAppointmentCreated(true);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Erreur inconnue.");
@@ -98,21 +115,57 @@ export function PatientFollowUp() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input 
                 type="datetime-local" 
-                className="bg-slate-50 border border-slate-100 rounded-sm p-3 text-sm font-bold text-slate-900 outline-none focus:border-blue-300"
+                className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm font-bold text-slate-900 outline-none focus:border-blue-300 transition-all"
                 value={nextAppointment}
                 onChange={(e) => setNextAppointment(e.target.value)}
               />
+              <select
+                value={selectedPractitioner}
+                onChange={(e) => setSelectedPractitioner(e.target.value)}
+                className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm font-bold text-slate-900 outline-none focus:border-blue-300 transition-all appearance-none"
+              >
+                <option value="">-- Non assigné --</option>
+                {practitioners.map(p => (
+                  <option key={p.id} value={p.id}>Dr. {p.full_name}</option>
+                ))}
+              </select>
+              <select
+                value={apptType}
+                onChange={(e) => setApptType(e.target.value)}
+                className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm font-bold text-slate-900 outline-none focus:border-blue-300 transition-all appearance-none"
+              >
+                <option value="Contrôle">Contrôle</option>
+                <option value="Consultation">Consultation</option>
+                <option value="Soins">Soins</option>
+                <option value="Prothèse">Prothèse</option>
+                <option value="Chirurgie">Chirurgie</option>
+                <option value="Urgence">Urgence</option>
+              </select>
+              <select
+                value={duration}
+                onChange={(e) => setDuration(Number(e.target.value))}
+                className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm font-bold text-slate-900 outline-none focus:border-blue-300 transition-all appearance-none"
+              >
+                <option value={15}>15 min</option>
+                <option value={30}>30 min</option>
+                <option value={45}>45 min</option>
+                <option value={60}>1 heure</option>
+                <option value={90}>1h 30</option>
+              </select>
+            </div>
+            
+            <div className="mt-4">
               {currentPatient?.phone ? (
-                <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-sm">
+                <div className="flex items-center gap-3 p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
                   <MessageSquare className="h-4 w-4 text-blue-600" />
-                  <p className="text-[9px] font-bold text-blue-800 uppercase leading-tight">
-                    {nextAppointment ? "Rappel automatique programmé pour ce RDV" : "Un rappel sera envoyé 24h avant, une fois le RDV programmé"}
+                  <p className="text-[10px] font-bold text-blue-800 uppercase tracking-wide">
+                    {nextAppointment ? "Rappel automatique programmé (WhatsApp/SMS)" : "Un rappel sera envoyé 24h avant le RDV"}
                   </p>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-100 rounded-sm">
+                <div className="flex items-center gap-3 p-3 bg-amber-50/50 border border-amber-100 rounded-xl">
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  <p className="text-[9px] font-bold text-amber-800 uppercase leading-tight">Ce patient n'a pas de numéro — aucun rappel ne pourra être envoyé</p>
+                  <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wide">Ce patient n'a pas de numéro — aucun rappel ne sera envoyé</p>
                 </div>
               )}
             </div>

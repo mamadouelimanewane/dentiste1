@@ -5,7 +5,8 @@ import {
   Calendar as CalendarIcon, Clock, Users, Plus, Search,
   ChevronLeft, ChevronRight, CheckCircle2, ListTodo,
   X, MessageCircle, Smartphone, Send,
-  AlertTriangle, Bell, Check, User, LogIn, XCircle, UserX, CalendarClock
+  AlertTriangle, Bell, Check, User, LogIn, XCircle, UserX, CalendarClock,
+  Maximize2, Minimize2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
@@ -100,11 +101,14 @@ function practitionerColor(id: string | null, practitioners: Practitioner[]): st
 export function AgendaModule() {
   const { currentPatient } = usePatient();
   const [activeTab, setActiveTab] = useState<"Agenda" | "Attente">("Agenda");
+  const [agendaView, setAgendaView] = useState<"team" | "week">("team");
   const [weekOffset, setWeekOffset] = useState(0);
+  const [dayOffset, setDayOffset] = useState(0);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
   const [selectedPractitioner, setSelectedPractitioner] = useState<string>("all");
   const [loading, setLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Modal création RDV
   const [showModal, setShowModal] = useState(false);
@@ -123,7 +127,19 @@ export function AgendaModule() {
   const [sendingQuickMessage, setSendingQuickMessage] = useState(false);
   const [quickMessageSent, setQuickMessageSent] = useState(false);
 
-  const weekStart = getWeekStart(weekOffset);
+  const activeDate = new Date();
+  activeDate.setDate(activeDate.getDate() + dayOffset);
+  activeDate.setHours(0, 0, 0, 0);
+
+  const weekStart = agendaView === "week"
+    ? getWeekStart(weekOffset)
+    : (() => {
+        const d = new Date(activeDate);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        d.setDate(diff);
+        return d;
+      })();
 
   const weekDays = WEEK_DAYS.map((d, i) => {
     const date = new Date(weekStart);
@@ -137,12 +153,14 @@ export function AgendaModule() {
   });
 
   const monthLabel = weekStart.toLocaleString("fr-FR", { month: "long", year: "numeric" });
+  const teamDayLabel = activeDate.toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
   const loadAppointments = useCallback(async () => {
     setLoading(true);
-    const from = new Date(weekStart);
-    const to = new Date(weekStart);
-    to.setDate(to.getDate() + 7);
+    const from = agendaView === "week" ? new Date(weekStart) : new Date(activeDate);
+    const to = agendaView === "week" ? new Date(weekStart) : new Date(activeDate);
+    if (agendaView === "week") to.setDate(to.getDate() + 7);
+    else to.setDate(to.getDate() + 1);
     try {
       const params = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
       if (selectedPractitioner !== "all") params.set("practitionerId", selectedPractitioner);
@@ -152,7 +170,7 @@ export function AgendaModule() {
     } finally {
       setLoading(false);
     }
-  }, [weekOffset, selectedPractitioner]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [agendaView, weekStart, activeDate.getTime(), selectedPractitioner]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetch("/api/practitioners")
@@ -238,7 +256,10 @@ export function AgendaModule() {
   }).sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className={cn(
+      "animate-in fade-in duration-500",
+      isFullscreen ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-4 sm:p-6 overflow-y-auto flex flex-col space-y-6" : "space-y-6"
+    )}>
       {/* HEADER */}
       <div className="bg-white border border-slate-200 rounded-sm p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-4">
@@ -280,6 +301,19 @@ export function AgendaModule() {
               {p.full_name}
             </button>
           ))}
+          <div className="w-px h-6 bg-slate-200 mx-1 hidden sm:block" />
+          <button
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className={cn(
+              "flex items-center gap-2 px-5 py-2.5 text-xs font-black uppercase tracking-widest rounded-full shadow-lg transition-all hover:scale-105",
+              isFullscreen 
+                ? "bg-slate-800 text-white shadow-slate-900/30 hover:bg-slate-900" 
+                : "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-fuchsia-500/30 hover:shadow-fuchsia-500/50"
+            )}
+          >
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            <span>{isFullscreen ? "Réduire" : "Plein écran"}</span>
+          </button>
         </div>
       </div>
 
@@ -333,7 +367,7 @@ export function AgendaModule() {
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className={cn("grid grid-cols-1 lg:grid-cols-4 gap-6", isFullscreen && "flex-1")}>
         {/* SIDEBAR */}
         <div className="lg:col-span-1 space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -403,20 +437,30 @@ export function AgendaModule() {
         </div>
 
         {/* ZONE PRINCIPALE */}
-        <div className="lg:col-span-3 bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col h-[680px]">
+        <div className={cn(
+          "lg:col-span-3 bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col",
+          isFullscreen ? "h-[calc(100vh-140px)]" : "h-[680px]"
+        )}>
           {/* Toolbar */}
           <div className="p-4 border-b border-slate-200 flex flex-wrap gap-4 items-center justify-between bg-slate-50">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-sm shadow-sm px-2 py-1">
-                <button onClick={() => setWeekOffset(w => w - 1)} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700">
+                <button onClick={() => agendaView === "week" ? setWeekOffset(w => w - 1) : setDayOffset(d => d - 1)} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700">
                   <ChevronLeft className="h-4 w-4" />
                 </button>
-                <span className="text-sm font-black text-slate-900 uppercase min-w-[110px] text-center">{monthLabel}</span>
-                <button onClick={() => setWeekOffset(w => w + 1)} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700">
+                <span className="text-sm font-black text-slate-900 uppercase min-w-[150px] text-center">
+                  {agendaView === "week" ? monthLabel : teamDayLabel}
+                </span>
+                <button onClick={() => agendaView === "week" ? setWeekOffset(w => w + 1) : setDayOffset(d => d + 1)} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700">
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-              <button onClick={() => setWeekOffset(0)} className="text-[10px] font-bold text-blue-600 uppercase tracking-widest hover:underline">Aujourd&apos;hui</button>
+              <button onClick={() => { setWeekOffset(0); setDayOffset(0); }} className="text-[10px] font-bold text-blue-600 uppercase tracking-widest hover:underline">Aujourd&apos;hui</button>
+
+              <div className="flex gap-1 bg-slate-200/50 p-1 rounded border border-slate-200 ml-2">
+                <button onClick={() => setAgendaView("team")} className={cn("px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded transition-colors", agendaView === "team" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}>Équipe</button>
+                <button onClick={() => setAgendaView("week")} className={cn("px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded transition-colors", agendaView === "week" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}>Semaine</button>
+              </div>
             </div>
 
             <div className="flex gap-2 bg-white border border-slate-200 rounded-sm p-1 shadow-sm">
@@ -441,21 +485,26 @@ export function AgendaModule() {
             <div className="flex-1 flex flex-col overflow-hidden">
               <div className="flex border-b border-slate-200 bg-white flex-shrink-0">
                 <div className="w-16 flex-shrink-0 border-r border-slate-200" />
-                {weekDays.map((day, idx) => (
-                  <div key={idx} className={cn("flex-1 py-3 text-center border-r border-slate-200 last:border-r-0 flex flex-col items-center gap-1", day.isToday ? "bg-blue-50/50" : "")}>
+                {agendaView === "week" ? weekDays.map((day, idx) => (
+                  <div key={idx} className={cn("flex-1 py-3 text-center border-r border-slate-200 last:border-r-0 flex flex-col items-center gap-1 min-w-[120px]", day.isToday ? "bg-blue-50/50" : "")}>
                     <span className={cn("text-[10px] font-black uppercase tracking-widest", day.isToday ? "text-blue-600" : "text-slate-400")}>{day.name}</span>
                     <span className={cn("text-lg font-black", day.isToday ? "text-blue-700" : "text-slate-800")}>{day.date}</span>
                     {day.isToday && <div className="h-1 w-1 rounded-full bg-blue-600 mt-0.5" />}
                   </div>
+                )) : [...practitioners, { id: null, full_name: "Non assigné / Urgences" }].map((p, idx) => (
+                  <div key={idx} className="flex-1 py-3 text-center border-r border-slate-200 last:border-r-0 flex flex-col items-center gap-1 bg-slate-50/30 min-w-[150px]">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-2 line-clamp-1">{p.full_name}</span>
+                    <div className={cn("h-1 w-8 rounded-full mt-1", practitionerColor(p.id, practitioners))} />
+                  </div>
                 ))}
               </div>
 
-              <div className="flex-1 overflow-y-auto relative">
-                <div className="absolute inset-0 flex flex-col pointer-events-none">
+              <div className="flex-1 overflow-y-auto overflow-x-auto relative">
+                <div className="absolute inset-0 flex flex-col pointer-events-none min-w-max">
                   {HOURS.map(h => <div key={h} className="h-20 border-b border-slate-100 w-full" />)}
                 </div>
 
-                <div className="absolute inset-0 flex">
+                <div className="absolute inset-0 flex min-w-max">
                   <div className="w-16 flex-shrink-0 border-r border-slate-200 bg-white relative z-10">
                     {HOURS.map(h => (
                       <div key={h} className="h-20 border-b border-slate-100 flex items-start justify-center pt-2">
@@ -464,8 +513,8 @@ export function AgendaModule() {
                     ))}
                   </div>
 
-                  {weekDays.map((day, dayIdx) => (
-                    <div key={dayIdx} className={cn("flex-1 border-r border-slate-100 last:border-r-0 relative group", day.isToday ? "bg-blue-50/20" : "")}>
+                  {agendaView === "week" ? weekDays.map((day, dayIdx) => (
+                    <div key={dayIdx} className={cn("flex-1 border-r border-slate-100 last:border-r-0 relative group min-w-[120px]", day.isToday ? "bg-blue-50/20" : "")}>
                       {appointments.filter(a => new Date(a.scheduled_at).toDateString() === day.fullDate.toDateString()).map(appt => {
                         const apptDate = new Date(appt.scheduled_at);
                         const hourFloat = apptDate.getHours() + apptDate.getMinutes() / 60;
@@ -504,6 +553,49 @@ export function AgendaModule() {
                           <Plus className="h-5 w-5 text-blue-400" />
                         </button>
                       ))}
+                    </div>
+                  )) : [...practitioners, { id: null, full_name: "Non assigné" }].map((p, colIdx) => (
+                    <div key={colIdx} className="flex-1 border-r border-slate-100 last:border-r-0 relative group min-w-[150px]">
+                      {appointments.filter(a => new Date(a.scheduled_at).toDateString() === activeDate.toDateString() && a.practitioner_id === p.id).map(appt => {
+                        const apptDate = new Date(appt.scheduled_at);
+                        const hourFloat = apptDate.getHours() + apptDate.getMinutes() / 60;
+                        if (hourFloat < 8 || hourFloat > 20) return null;
+                        return (
+                          <button
+                            key={appt.id}
+                            onClick={() => setActiveAppt(appt)}
+                            className={cn(
+                              "absolute left-1 right-1 rounded text-white text-[9px] font-black px-1.5 py-1 z-10 overflow-hidden shadow-sm text-left transition-transform hover:scale-[1.02]",
+                              practitionerColor(appt.practitioner_id, practitioners),
+                              appt.status !== "scheduled" && "opacity-50"
+                            )}
+                            style={{ top: `${(hourFloat - 8) * 80 + 4}px`, height: "72px" }}
+                          >
+                            <p className="truncate">{appt.patient_name}</p>
+                            <p className="opacity-80 truncate">{appt.type}</p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              {appt.checked_in_at && <LogIn className="h-2.5 w-2.5 opacity-90" />}
+                              {appt.status === "completed" && <CheckCircle2 className="h-2.5 w-2.5 opacity-90" />}
+                              {appt.status === "cancelled" && <XCircle className="h-2.5 w-2.5 opacity-90" />}
+                              {appt.status === "no_show" && <UserX className="h-2.5 w-2.5 opacity-90" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+
+                      {HOURS.map(h => {
+                        const activeDayIdx = weekDays.findIndex(d => d.fullDate.toDateString() === activeDate.toDateString());
+                        return (
+                          <button
+                            key={h}
+                            onClick={() => openModal(activeDayIdx >= 0 ? activeDayIdx : 0, h)}
+                            className="absolute w-full opacity-0 group-hover:opacity-100 hover:bg-blue-100/40 transition-all flex items-center justify-center z-0"
+                            style={{ top: `${(h - 8) * 80}px`, height: "80px" }}
+                          >
+                            <Plus className="h-5 w-5 text-blue-400" />
+                          </button>
+                        );
+                      })}
                     </div>
                   ))}
                 </div>
@@ -840,76 +932,76 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 pb-24"
+      className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 pb-24"
     >
       <motion.div
         initial={{ scale: 0.92, opacity: 0, y: 16 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.92, opacity: 0, y: 16 }}
         transition={{ type: "spring", damping: 20, stiffness: 300 }}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[calc(100vh-7rem)] flex flex-col"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden max-h-[calc(100vh-4rem)] flex flex-col"
       >
-        <div className="bg-gradient-to-r from-[#1E3A8A] to-blue-500 p-5 text-white flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-white/20 rounded-lg flex items-center justify-center">
-              <CalendarIcon className="h-6 w-6" />
+        <div className="bg-gradient-to-r from-[#1E3A8A] to-blue-500 p-6 text-white flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <CalendarIcon className="h-7 w-7" />
             </div>
             <div>
-              <p className="text-[9px] font-bold uppercase tracking-widest text-blue-200">Elite Planner Pro</p>
-              <h3 className="text-base font-black">Nouveau Rendez-vous</h3>
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-200">Elite Planner Pro</p>
+              <h3 className="text-xl font-black">Nouveau Rendez-vous</h3>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-white/20 transition-colors">
-            <X className="h-5 w-5" />
+          <button onClick={onClose} className="p-2 rounded hover:bg-white/20 transition-colors">
+            <X className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="p-6 space-y-5 overflow-y-auto">
+        <div className="p-6 sm:p-8 space-y-6 overflow-y-auto">
           {errorMsg && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded p-3">{errorMsg}</div>
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold rounded-lg p-4">{errorMsg}</div>
           )}
 
           {/* Recherche patient */}
           <div className="relative">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
               Patient <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <input
                 value={patientQuery}
                 onChange={e => handlePatientQueryChange(e.target.value)}
                 onFocus={() => patientResults.length > 0 && setShowResults(true)}
                 placeholder="Rechercher un patient par nom, dossier ou téléphone..."
-                className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg text-base font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none shadow-sm"
               />
             </div>
             {showResults && patientResults.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded shadow-lg max-h-48 overflow-y-auto">
+              <div className="absolute z-10 mt-2 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
                 {patientResults.map(p => (
                   <button
                     key={p.id}
                     onClick={() => pickPatient(p)}
-                    className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-0"
+                    className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-0"
                   >
-                    <p className="text-xs font-bold text-slate-900">{p.full_name}</p>
-                    <p className="text-[10px] text-slate-400">{p.dossier_number} · {p.phone || "—"}</p>
+                    <p className="text-sm font-bold text-slate-900">{p.full_name}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{p.dossier_number} · {p.phone || "—"}</p>
                   </button>
                 ))}
               </div>
             )}
             {selectedPatient && (
-              <p className="text-[10px] text-emerald-600 font-bold mt-1">✓ {selectedPatient.dossier_number} · {selectedPatient.phone || "Pas de téléphone"}</p>
+              <p className="text-sm text-emerald-600 font-bold mt-2">✓ {selectedPatient.dossier_number} · {selectedPatient.phone || "Pas de téléphone"}</p>
             )}
           </div>
 
           {/* Praticien */}
           <div>
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Praticien</label>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Praticien</label>
             <select
               value={practitionerId}
               onChange={e => setPractitionerId(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white"
+              className="w-full px-4 py-3 border border-slate-200 rounded-lg text-base font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white shadow-sm"
             >
               <option value="">Non assigné</option>
               {practitioners.map(p => (
@@ -920,16 +1012,16 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
 
           {/* Jour */}
           <div>
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Jour</label>
-            <div className="flex gap-1.5 flex-wrap">
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2.5">Jour</label>
+            <div className="flex gap-2 flex-wrap">
               {weekDays.map((d, idx) => (
                 <button key={idx} onClick={() => setSelectedDay(idx)}
-                  className={cn("px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest transition-all border",
+                  className={cn("px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all border",
                     selectedDay === idx
-                      ? "bg-blue-600 text-white border-blue-600 shadow-md"
+                      ? "bg-blue-600 text-white border-blue-600 shadow-md scale-105"
                       : d.isToday
-                      ? "bg-blue-50 text-blue-700 border-blue-200"
-                      : "bg-slate-50 text-slate-600 border-slate-200 hover:border-blue-300"
+                      ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                      : "bg-slate-50 text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-white"
                   )}>
                   {d.name} {d.date}
                 </button>
@@ -938,15 +1030,15 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
           </div>
 
           {/* Heure + Type + Durée */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Heure</label>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Heure</label>
               <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                 <select
                   value={selectedHour}
                   onChange={e => setSelectedHour(Number(e.target.value))}
-                  className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white"
+                  className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg text-base font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white shadow-sm"
                 >
                   {HOURS.map(h => (
                     <option key={h} value={h}>{h}:00</option>
@@ -955,21 +1047,21 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Type de soin</label>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Type de soin</label>
               <select
                 value={selectedType}
                 onChange={e => setSelectedType(e.target.value)}
-                className="w-full px-3 py-2.5 border border-slate-200 rounded text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white"
+                className="w-full px-4 py-3 border border-slate-200 rounded-lg text-base font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white shadow-sm"
               >
                 {APPOINTMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Durée</label>
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Durée</label>
               <select
                 value={duration}
                 onChange={e => setDuration(Number(e.target.value))}
-                className="w-full px-3 py-2.5 border border-slate-200 rounded text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white"
+                className="w-full px-4 py-3 border border-slate-200 rounded-lg text-base font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white shadow-sm"
               >
                 {[15, 30, 45, 60, 90].map(m => <option key={m} value={m}>{m} min</option>)}
               </select>
@@ -978,8 +1070,8 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
 
           {/* Récurrence */}
           <div>
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Récurrence</label>
-            <div className="flex gap-2 flex-wrap items-center">
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2.5">Récurrence</label>
+            <div className="flex gap-2.5 flex-wrap items-center">
               {[
                 { val: "none", label: "Unique" },
                 { val: "weekly", label: "Hebdomadaire" },
@@ -990,59 +1082,59 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
                   key={opt.val}
                   onClick={() => setRecurrence(opt.val as typeof recurrence)}
                   className={cn(
-                    "px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest border transition-all",
-                    recurrence === opt.val ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
+                    "px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest border transition-all",
+                    recurrence === opt.val ? "bg-slate-900 text-white border-slate-900 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-700"
                   )}
                 >
                   {opt.label}
                 </button>
               ))}
               {recurrence !== "none" && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">× </span>
+                <div className="flex items-center gap-2 ml-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase">× </span>
                   <input
                     type="number"
                     min={2}
                     max={12}
                     value={recurrenceCount}
                     onChange={e => setRecurrenceCount(Number(e.target.value))}
-                    className="w-14 px-2 py-1 border border-slate-200 rounded text-xs font-bold text-center"
+                    className="w-16 px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold text-center shadow-sm"
                   />
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">occurrences</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase">occurrences</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Notification */}
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Bell className="h-4 w-4 text-slate-500" />
-              <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Notification patient</p>
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 sm:p-6 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <Bell className="h-5 w-5 text-slate-500" />
+              <p className="text-xs font-black text-slate-700 uppercase tracking-widest">Notification patient</p>
             </div>
 
             {!selectedPatient?.phone && (
-              <p className="text-[10px] text-amber-600 font-bold">⚠️ Ce patient n&apos;a pas de numéro enregistré — aucune notification ne pourra être envoyée.</p>
+              <p className="text-sm text-amber-700 font-bold bg-amber-100/50 p-3 rounded-lg border border-amber-200">⚠️ Ce patient n&apos;a pas de numéro enregistré — aucune notification ne pourra être envoyée.</p>
             )}
 
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2.5 flex-wrap">
               {[
-                { val: "both", icon: null, label: "WhatsApp + SMS", cls: "bg-slate-900 text-white border-slate-900" },
-                { val: "whatsapp", icon: MessageCircle, label: "WhatsApp", cls: "bg-green-600 text-white border-green-600" },
-                { val: "sms", icon: Smartphone, label: "SMS seulement", cls: "bg-blue-600 text-white border-blue-600" },
-                { val: "none", icon: null, label: "Aucune", cls: "bg-slate-100 text-slate-500 border-slate-200" },
+                { val: "both", icon: null, label: "WhatsApp + SMS", cls: "bg-slate-900 text-white border-slate-900 shadow-md" },
+                { val: "whatsapp", icon: MessageCircle, label: "WhatsApp", cls: "bg-green-600 text-white border-green-600 shadow-md" },
+                { val: "sms", icon: Smartphone, label: "SMS seulement", cls: "bg-blue-600 text-white border-blue-600 shadow-md" },
+                { val: "none", icon: null, label: "Aucune", cls: "bg-white text-slate-500 border-slate-300" },
               ].map(opt => (
                 <button
                   key={opt.val}
                   onClick={() => setChannel(opt.val as typeof channel)}
                   disabled={!selectedPatient?.phone && opt.val !== "none"}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-2 rounded text-[10px] font-black uppercase tracking-widest border transition-all disabled:opacity-40",
-                    channel === opt.val ? opt.cls : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
+                    "flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest border transition-all disabled:opacity-40",
+                    channel === opt.val ? opt.cls : "bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-700"
                   )}
                 >
-                  {channel === opt.val && opt.val !== "none" && <Check className="h-3 w-3" />}
-                  {opt.icon && <opt.icon className="h-3.5 w-3.5" />}
+                  {channel === opt.val && opt.val !== "none" && <Check className="h-4 w-4" />}
+                  {opt.icon && <opt.icon className="h-4 w-4" />}
                   {opt.label}
                 </button>
               ))}
@@ -1051,9 +1143,9 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
             {channel !== "none" && selectedPatient?.phone && (
               <button
                 onClick={() => setPreviewVisible(v => !v)}
-                className="text-[10px] font-bold text-blue-600 hover:underline"
+                className="text-sm font-bold text-blue-600 hover:underline inline-flex items-center gap-1 mt-2"
               >
-                {previewVisible ? "Masquer" : "Aperçu"} du message →
+                {previewVisible ? "Masquer l'aperçu" : "Voir l'aperçu du message"} →
               </button>
             )}
 
@@ -1063,7 +1155,7 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="text-[10px] font-mono bg-white border border-slate-200 rounded p-3 whitespace-pre-wrap text-slate-600 overflow-hidden"
+                  className="text-sm font-mono bg-white border border-slate-200 rounded-lg p-4 whitespace-pre-wrap text-slate-600 overflow-hidden shadow-inner mt-3"
                 >
                   {previewMessage}
                 </motion.pre>
@@ -1073,23 +1165,23 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3 flex-shrink-0">
-          <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-            {weekDays[selectedDay].label} {weekDays[selectedDay].date} · {selectedHour}:00 · {selectedType}
+        <div className="px-6 sm:px-8 py-5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4 flex-shrink-0 rounded-b-xl">
+          <div className="text-xs text-slate-500 font-bold uppercase tracking-widest">
+            {weekDays[selectedDay].label} {weekDays[selectedDay].date} · <span className="text-slate-900">{selectedHour}:00</span> · {selectedType}
           </div>
-          <div className="flex gap-3">
-            <button onClick={onClose} className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-200 rounded transition-colors">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <button onClick={onClose} className="flex-1 sm:flex-none px-5 py-3 text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
               Annuler
             </button>
             <button
               onClick={handleConfirm}
               disabled={!selectedPatient || sending}
-              className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest rounded transition-all shadow-md shadow-blue-900/20 disabled:opacity-50"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-widest rounded-lg transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50"
             >
               {sending ? (
                 <><span className="animate-spin">⏳</span> Envoi…</>
               ) : (
-                <><Send className="h-3.5 w-3.5" /> Confirmer &amp; Notifier</>
+                <><Send className="h-4 w-4" /> Confirmer &amp; Notifier</>
               )}
             </button>
           </div>

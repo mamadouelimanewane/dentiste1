@@ -48,17 +48,21 @@ export async function signIn(_prevState: { error: string | null }, formData: For
     where u.email = ${email}
     limit 1
   `;
+  console.log('Login attempt for', email);
+  console.log('Rows found:', rows.length);
   const user = rows[0] as
     | { id: string; full_name: string; password_hash: string; is_active: boolean; role_id: string; role_slug: string; role_label: string }
     | undefined;
 
   if (!user || !user.is_active) {
+    console.log('User not found or inactive');
     await verifyPassword(password, DUMMY_HASH);
     await recordAttempt(email, ip, false);
     return { error: 'Identifiants incorrects.' };
   }
 
   const valid = await verifyPassword(password, user.password_hash);
+  console.log('Password valid?', valid);
   if (!valid) {
     await recordAttempt(email, ip, false);
     return { error: 'Identifiants incorrects.' };
@@ -77,7 +81,7 @@ export async function signIn(_prevState: { error: string | null }, formData: For
   const cookieStore = await cookies();
   cookieStore.set(STAFF_COOKIE_NAME, token, STAFF_COOKIE_OPTIONS);
 
-  redirect('/dashboard');
+  redirect('/dashboard/apps');
 }
 
 export async function signOut() {

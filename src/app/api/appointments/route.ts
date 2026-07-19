@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requirePermission } from '@/lib/permissions';
+import { sendWhatsAppMessage } from '@/lib/integrations/whatsapp';
+import { sendSms } from '@/lib/integrations/sms';
 
 const RECURRENCE_STEP_DAYS: Record<string, number> = {
   weekly: 7,
@@ -74,7 +76,7 @@ async function hasConflict(practitionerId: string | null, scheduledAt: string, d
 }
 
 export async function POST(request: Request) {
-  const { error, status } = await requirePermission(13, 'manage');
+  const { session, error, status } = await requirePermission(13, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();
@@ -106,6 +108,10 @@ export async function POST(request: Request) {
   const stepDays = RECURRENCE_STEP_DAYS[recurrence] || 0;
   const recurrenceGroupId = occurrences > 1 ? crypto.randomUUID() : null;
 
+  // Récupérer le patient pour les notifications
+  const patients = await sql`select full_name, phone from patients where id = ${patientId}`;
+  const patient = patients[0];
+
   const created: unknown[] = [];
   const skipped: { scheduledAt: string; reason: string; conflictWith?: string }[] = [];
 
@@ -129,7 +135,22 @@ export async function POST(request: Request) {
       values (${patientId}, ${practitionerId || null}, ${occurrenceIso}, ${durationMinutes}, ${type || null}, ${notes || null}, ${recurrenceGroupId})
       returning *
     `;
-    created.push(rows[0]);
+    const newAppointment = rows[0];
+    created.push(newAppointment);
+
+    // Envoi automatique SMS/WhatsApp
+    if (patient && patient.phone) {
+      const formattedDate = new Intl.DateTimeFormat('fr-FR', {
+        dateStyle: 'full',
+        timeStyle: 'short',
+      }).format(new Date(occurrenceIso));
+
+      const msg = `Bonjour ${patient.full_name}, votre rendez-vous est confirmé pour le ${formattedDate}. À bientôt au Cabinet !`;
+
+      // On lance l'envoi en arrière-plan (fire and forget)
+      sendWhatsAppMessage({ patientId, phone: patient.phone, body: msg, sentBy: session?.userId }).catch(console.error);
+      sendSms({ patientId, phone: patient.phone, body: msg, sentBy: session?.userId }).catch(console.error);
+    }
   }
 
   if (created.length === 0) {

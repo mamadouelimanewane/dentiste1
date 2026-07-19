@@ -14,6 +14,7 @@ import { UserManagement } from "@/components/UserManagement";
 import { Teleconsultation } from "@/components/Teleconsultation";
 import { VoiceDictation } from "@/components/VoiceDictation";
 import { AgendaModule } from "@/components/AgendaModule";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { AiRadioLab } from "@/components/AiRadioLab";
 import { SmileDesignStudio } from "@/components/SmileDesignStudio";
 import { ProstheticsLab } from "@/components/ProstheticsLab";
@@ -60,13 +61,15 @@ import {
   Settings,
   ShieldAlert,
   ShieldCheck,
-  Database
+  Database,
+  LayoutGrid,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePatient } from "@/lib/context";
 import { useAuth, type Role } from "@/lib/auth-context";
 import { hasPermission, type ModulePermissions } from "@/lib/modules";
+import { DENTAL_MODULE_GROUPS } from "@/lib/dentalModules";
 
 const steps = [
   { id: 1, title: "Accueil", fullTitle: "Accueil & Prise en charge", desc: "Enregistrement et vérification des droits.", icon: UserPlus },
@@ -120,6 +123,12 @@ export default function Home() {
     setIsSidebarOpen(window.innerWidth >= 1024);
     const saved = localStorage.getItem("dentiste_lite_step");
     if (saved) setCurrentStep(parseInt(saved));
+
+    // Redirection vers le portail si c'est la vue par défaut choisie
+    const homeView = localStorage.getItem("dentiste_home_view");
+    if (!homeView || homeView === "portal") {
+      window.location.replace("/dashboard/apps");
+    }
   }, []);
 
   useEffect(() => {
@@ -128,16 +137,21 @@ export default function Home() {
     }
   }, [currentStep, isMounted]);
 
-  const visibleSteps = stepsForPermissions(permissions);
+  const allVisibleSteps = stepsForPermissions(permissions);
+  
+  const activeGroup = DENTAL_MODULE_GROUPS.find(g => g.modules.some(m => m.id === currentStep));
+  const activeGroupModuleIds = activeGroup ? activeGroup.modules.map(m => m.id) : [];
+
+  const visibleSteps = allVisibleSteps.filter(s => activeGroupModuleIds.includes(s.id));
 
   // Si les privilèges du compte connecté ne donnent plus accès à l'étape
   // courante (ex. un admin a modifié le rôle pendant la session), on se
   // replie sur la première étape accessible.
   useEffect(() => {
-    if (isMounted && !visibleSteps.find(s => s.id === currentStep)) {
-      setCurrentStep(visibleSteps[0]?.id ?? 1);
+    if (isMounted && !allVisibleSteps.find(s => s.id === currentStep)) {
+      setCurrentStep(allVisibleSteps[0]?.id ?? 1);
     }
-  }, [isMounted, role]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isMounted, role, currentStep, allVisibleSteps]);
 
   const currentIndex = visibleSteps.findIndex(s => s.id === currentStep);
 
@@ -164,7 +178,7 @@ export default function Home() {
 
     // Delay slightly to allow state to settle, then hard reload
     setTimeout(() => {
-      window.location.href = '/';
+      window.location.href = '/dashboard/apps';
     }, 100);
   };
 
@@ -172,7 +186,7 @@ export default function Home() {
 
   return (
     <>
-    <div className="min-h-screen bg-[#F1F5F9] flex overflow-hidden font-sans">
+    <div className="min-h-screen bg-background flex overflow-hidden font-sans">
       {/* Fond assombri derrière la sidebar en overlay mobile — tap pour fermer */}
       {isSidebarOpen && (
         <div
@@ -180,26 +194,40 @@ export default function Home() {
           className="fixed inset-0 z-40 bg-slate-900/50 lg:hidden"
         />
       )}
-      {/* PROFESSIONAL SIDEBAR (NAVY BLUE) */}
+      {/* PROFESSIONAL SIDEBAR (DEEP NAVY / GLASS) */}
       <aside
         style={{ transform: isSidebarOpen ? "translateX(0)" : "translateX(-100%)" }}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-[#0F172A] text-slate-300 transition-transform duration-200 lg:relative lg:!transform-none flex flex-col border-r border-blue-900/20",
+          "fixed inset-y-0 left-0 z-50 w-72 glass-dark text-slate-300 transition-transform duration-300 ease-out lg:relative lg:!transform-none flex flex-col border-r border-white/5",
           !isSidebarOpen && "lg:hidden"
         )}
       >
-        <div className="p-6 space-y-8 flex-1">
-          <div className="flex items-center gap-3 px-2">
-            <div className="h-8 w-8 bg-blue-600 rounded flex items-center justify-center text-white">
-              <Activity className="h-5 w-5" />
+        <div className="p-8 space-y-8 flex-1 overflow-y-auto no-scrollbar">
+          <div className="flex items-center gap-4 px-1 justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 bg-blue-600 rounded flex items-center justify-center text-white">
+                <Activity className="h-5 w-5" />
+              </div>
+              <h1 className="font-bold tracking-tight text-white text-base">
+                Elite ERP <span className="text-blue-400">Cap Vert</span>
+              </h1>
             </div>
-            <h1 className="font-bold tracking-tight text-white text-base">
-              Elite ERP <span className="text-blue-400">Cap Vert</span>
-            </h1>
+            <button
+              onClick={() => {
+                localStorage.setItem("dentiste_home_view", "portal");
+                window.location.href = "/dashboard/apps";
+              }}
+              title="Portail des modules"
+              className="p-1.5 rounded text-slate-500 hover:text-blue-400 hover:bg-white/5 transition-colors flex-shrink-0"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
           </div>
 
-          <nav className="space-y-1">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest px-2 mb-4">Navigation</p>
+          <nav className="space-y-2">
+            <p className="text-xs font-black text-slate-500/80 uppercase tracking-widest px-2 mb-5">
+              {activeGroup ? activeGroup.label : "Navigation"}
+            </p>
             {visibleSteps.map((step) => {
               const Icon = step.icon;
               const isActive = currentStep === step.id;
@@ -213,14 +241,14 @@ export default function Home() {
                     if (window.innerWidth < 1024) setIsSidebarOpen(false);
                   }}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded transition-all text-sm font-medium",
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 text-sm font-semibold micro-bounce",
                     isActive
-                      ? "bg-blue-600/20 text-blue-400 border-r-2 border-blue-400"
+                      ? "bg-blue-600/15 text-blue-400 shadow-[inset_4px_0_0_0_#60a5fa]"
                       : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
                   )}
                 >
-                  <Icon className={cn("h-5 w-5", isActive ? "text-blue-400" : isCompleted ? "text-emerald-500" : "text-slate-500")} />
-                  <span className="text-sm">{step.title}</span>
+                  <Icon className={cn("h-5 w-5 transition-transform duration-300", isActive ? "text-blue-400 scale-110" : isCompleted ? "text-emerald-500" : "text-slate-500 group-hover:scale-110")} />
+                  <span className="text-sm tracking-wide">{step.title}</span>
                   {isCompleted && <CheckCircle2 className="h-4 w-4 ml-auto text-emerald-500" />}
                 </button>
               );
@@ -228,10 +256,10 @@ export default function Home() {
           </nav>
         </div>
 
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-6 border-t border-white/5">
           <button
             onClick={() => setShowResetModal(true)}
-            className="w-full h-12 rounded bg-blue-600 hover:bg-blue-500 transition-all flex items-center justify-center gap-2 text-sm font-bold text-white shadow-lg shadow-blue-900/20"
+            className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-500 transition-all duration-300 flex items-center justify-center gap-2 text-sm font-bold text-white shadow-[0_8px_20px_-6px_rgba(37,99,235,0.6)] micro-bounce"
           >
             <RotateCcw className="h-4 w-4" /> Nouveau Dossier
           </button>
@@ -241,7 +269,7 @@ export default function Home() {
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0 shadow-sm z-10">
+        <header className="h-16 glass-panel border-b-0 flex items-center justify-between px-8 flex-shrink-0 z-10 sticky top-0">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -251,10 +279,10 @@ export default function Home() {
             </button>
             <div className="flex items-center gap-3">
               <div className={cn(
-                "flex items-center gap-2 px-3 py-1 rounded-full transition-all border",
+                "flex items-center gap-2 px-4 py-2 rounded-full transition-all border",
                 currentPatient
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                  : "bg-slate-50 border-slate-200 text-slate-400"
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700"
+                  : "bg-slate-100/50 border-slate-200 text-slate-500"
               )}>
                 {currentPatient ? (
                   <motion.div
@@ -277,28 +305,40 @@ export default function Home() {
               <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">{user.roleLabel}</span>
               <span className="text-sm font-black text-slate-900 tracking-tight">{user.fullName}</span>
             </div>
+            {/* Bouton Portail */}
+            <button
+              onClick={() => {
+                localStorage.setItem("dentiste_home_view", "portal");
+                window.location.href = "/dashboard/apps";
+              }}
+              title="Portail des modules"
+              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <ThemeSwitcher compact />
             <button
               onClick={signOut}
               title="Déconnexion"
-              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50/50 rounded transition-colors"
             >
               <LogOut className="h-4 w-4" />
             </button>
-            <span className="text-xs font-bold text-slate-300 uppercase bg-slate-50 px-2 py-1 border border-slate-100 rounded">v1.3.1</span>
+            <span className="text-xs font-bold text-slate-400 uppercase bg-slate-100 px-3 py-1.5 rounded-full">v1.4.0</span>
           </div>
         </header>
 
         {/* Workspace */}
-        <div className="flex-1 overflow-y-auto p-6 lg:p-8 no-scrollbar bg-[#F8FAFC]">
-          <div className="max-w-5xl mx-auto space-y-8 pb-20">
+        <div className="flex-1 overflow-y-auto p-6 lg:p-10 no-scrollbar">
+          <div className="max-w-5xl mx-auto space-y-10 pb-24">
             {/* Phase Header */}
-            <div className="border-b border-slate-200 pb-6">
+            <div className="border-b border-foreground/10 pb-6">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Étape {currentStep}</span>
-                <div className="h-1.5 w-1.5 rounded-full bg-slate-300" />
-                <span className="text-xs font-medium text-slate-400 uppercase">{steps[currentStep-1].desc}</span>
+                <div className="h-1.5 w-1.5 rounded-full bg-foreground/20" />
+                <span className="text-xs font-medium text-foreground/50 uppercase">{steps[currentStep-1].desc}</span>
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+              <h2 className="text-2xl font-bold text-foreground tracking-tight">
                 {steps[currentStep-1].fullTitle}
               </h2>
             </div>
@@ -358,11 +398,11 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="absolute bottom-0 inset-x-0 bg-white border-t border-slate-200 p-3 px-6 z-40 flex items-center justify-between lg:pl-72 lg:pr-12">
+        <div className="absolute bottom-0 inset-x-0 glass-panel border-t-0 p-4 px-8 z-40 flex items-center justify-between lg:pl-80 lg:pr-12">
           <button
             onClick={prevStep}
             disabled={currentIndex === 0}
-            className="flex items-center gap-2 px-4 h-9 rounded border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition-colors"
+            className="flex items-center gap-2 px-5 h-11 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition-all micro-bounce"
           >
             <ChevronLeft className="h-4 w-4" /> Précédent
           </button>
@@ -376,7 +416,7 @@ export default function Home() {
           <button
             onClick={nextStep}
             disabled={currentIndex === visibleSteps.length - 1}
-            className="flex items-center gap-2 px-6 h-9 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 disabled:opacity-30 transition-all shadow-sm"
+            className="flex items-center gap-2 px-8 h-11 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-30 transition-all shadow-[0_8px_20px_-6px_rgba(37,99,235,0.6)] micro-bounce"
           >
             {currentIndex === visibleSteps.length - 1 ? "Terminer le parcours" : "Étape Suivante"}
             <ChevronRight className="h-4 w-4" />

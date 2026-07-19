@@ -40,9 +40,9 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (session && path === '/login') {
+  if (session && (path === '/' || path === '/login')) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = '/dashboard';
+    redirectUrl.pathname = '/dashboard/apps';
     return NextResponse.redirect(redirectUrl);
   }
 
