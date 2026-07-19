@@ -56,9 +56,17 @@ const APPOINTMENT_TYPES = [
 ];
 
 const PRACTITIONER_COLORS = [
-  "bg-blue-500", "bg-emerald-500", "bg-violet-500", "bg-orange-500",
-  "bg-rose-500", "bg-cyan-500", "bg-amber-500", "bg-indigo-500"
+  { solid: "bg-blue-500", light: "bg-blue-500/15", border: "border-blue-500/30", borderLeft: "border-l-blue-500", text: "text-blue-900", textLight: "text-blue-700" },
+  { solid: "bg-emerald-500", light: "bg-emerald-500/15", border: "border-emerald-500/30", borderLeft: "border-l-emerald-500", text: "text-emerald-900", textLight: "text-emerald-700" },
+  { solid: "bg-violet-500", light: "bg-violet-500/15", border: "border-violet-500/30", borderLeft: "border-l-violet-500", text: "text-violet-900", textLight: "text-violet-700" },
+  { solid: "bg-orange-500", light: "bg-orange-500/15", border: "border-orange-500/30", borderLeft: "border-l-orange-500", text: "text-orange-900", textLight: "text-orange-700" },
+  { solid: "bg-rose-500", light: "bg-rose-500/15", border: "border-rose-500/30", borderLeft: "border-l-rose-500", text: "text-rose-900", textLight: "text-rose-700" },
+  { solid: "bg-cyan-500", light: "bg-cyan-500/15", border: "border-cyan-500/30", borderLeft: "border-l-cyan-500", text: "text-cyan-900", textLight: "text-cyan-700" },
+  { solid: "bg-amber-500", light: "bg-amber-500/15", border: "border-amber-500/30", borderLeft: "border-l-amber-500", text: "text-amber-900", textLight: "text-amber-700" },
+  { solid: "bg-indigo-500", light: "bg-indigo-500/15", border: "border-indigo-500/30", borderLeft: "border-l-indigo-500", text: "text-indigo-900", textLight: "text-indigo-700" },
 ];
+
+const DEFAULT_COLOR = { solid: "bg-slate-400", light: "bg-slate-400/15", border: "border-slate-400/30", borderLeft: "border-l-slate-400", text: "text-slate-800", textLight: "text-slate-600" };
 
 const WEEK_DAYS = [
   { name: "lun", label: "Lundi" },
@@ -90,10 +98,11 @@ function formatLabel(iso: string): string {
   });
 }
 
-function practitionerColor(id: string | null, practitioners: Practitioner[]): string {
-  if (!id) return "bg-slate-400";
+function practitionerColor(id: string | null, practitioners: Practitioner[]) {
+  if (!id) return DEFAULT_COLOR;
   const idx = practitioners.findIndex(p => p.id === id);
-  return PRACTITIONER_COLORS[idx % PRACTITIONER_COLORS.length] || "bg-slate-400";
+  if (idx === -1) return DEFAULT_COLOR;
+  return PRACTITIONER_COLORS[idx % PRACTITIONER_COLORS.length];
 }
 
 // ── Composant principal ───────────────────────────────────────────────────────
@@ -305,10 +314,10 @@ export function AgendaModule() {
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
             className={cn(
-              "flex items-center gap-2 px-5 py-2.5 text-xs font-black uppercase tracking-widest rounded-full shadow-lg transition-all hover:scale-105",
+              "flex items-center gap-2 px-6 py-3 text-sm font-black uppercase tracking-widest rounded-full shadow-lg transition-all hover:scale-105",
               isFullscreen 
                 ? "bg-slate-800 text-white shadow-slate-900/30 hover:bg-slate-900" 
-                : "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-fuchsia-500/30 hover:shadow-fuchsia-500/50"
+                : "bg-emerald-600 text-white shadow-emerald-500/30 hover:bg-emerald-700 hover:shadow-emerald-500/50"
             )}
           >
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -416,22 +425,25 @@ export function AgendaModule() {
               {!loading && appointments.length === 0 && (
                 <p className="p-4 text-[10px] text-slate-400 text-center uppercase tracking-widest">Aucun RDV</p>
               )}
-              {appointments.map(appt => (
-                <button
-                  key={appt.id}
-                  onClick={() => setActiveAppt(appt)}
-                  className="w-full p-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left"
-                >
-                  <div className={cn("h-2 w-2 rounded-full flex-shrink-0", practitionerColor(appt.practitioner_id, practitioners))} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black text-slate-900 truncate">{appt.patient_name}</p>
-                    <p className="text-[9px] text-slate-400">{appt.type} · {new Date(appt.scheduled_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
-                  </div>
-                  {appt.status !== "scheduled" && (
-                    <span className="text-[8px] font-black uppercase text-slate-400">{appt.status}</span>
-                  )}
-                </button>
-              ))}
+              {appointments.map(appt => {
+                const colors = practitionerColor(appt.practitioner_id, practitioners);
+                return (
+                  <button
+                    key={appt.id}
+                    onClick={() => setActiveAppt(appt)}
+                    className="w-full p-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left"
+                  >
+                    <div className={cn("h-2 w-2 rounded-full flex-shrink-0", colors.solid)} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-black text-slate-900 truncate">{appt.patient_name}</p>
+                      <p className="text-[9px] text-slate-400">{appt.type} · {new Date(appt.scheduled_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                    </div>
+                    {appt.status !== "scheduled" && (
+                      <span className="text-[8px] font-black uppercase text-slate-400">{appt.status}</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -483,17 +495,17 @@ export function AgendaModule() {
 
           {activeTab === "Agenda" ? (
             <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex border-b border-slate-200 bg-white flex-shrink-0">
-                <div className="w-16 flex-shrink-0 border-r border-slate-200" />
+              <div className="flex border-b border-slate-200 bg-white/95 backdrop-blur-md flex-shrink-0 sticky top-0 z-20 shadow-sm">
+                <div className="w-16 flex-shrink-0 border-r border-slate-200 bg-white/50" />
                 {agendaView === "week" ? weekDays.map((day, idx) => (
                   <div key={idx} className={cn("flex-1 py-3 text-center border-r border-slate-200 last:border-r-0 flex flex-col items-center gap-1 min-w-[120px]", day.isToday ? "bg-blue-50/50" : "")}>
-                    <span className={cn("text-[10px] font-black uppercase tracking-widest", day.isToday ? "text-blue-600" : "text-slate-400")}>{day.name}</span>
-                    <span className={cn("text-lg font-black", day.isToday ? "text-blue-700" : "text-slate-800")}>{day.date}</span>
+                    <span className={cn("text-xs font-black uppercase tracking-widest", day.isToday ? "text-blue-600" : "text-slate-400")}>{day.name}</span>
+                    <span className={cn("text-xl font-black", day.isToday ? "text-blue-700" : "text-slate-800")}>{day.date}</span>
                     {day.isToday && <div className="h-1 w-1 rounded-full bg-blue-600 mt-0.5" />}
                   </div>
                 )) : [...practitioners, { id: null, full_name: "Non assigné / Urgences" }].map((p, idx) => (
                   <div key={idx} className="flex-1 py-3 text-center border-r border-slate-200 last:border-r-0 flex flex-col items-center gap-1 bg-slate-50/30 min-w-[150px]">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-2 line-clamp-1">{p.full_name}</span>
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-500 px-2 line-clamp-1">{p.full_name}</span>
                     <div className={cn("h-1 w-8 rounded-full mt-1", practitionerColor(p.id, practitioners))} />
                   </div>
                 ))}
@@ -508,7 +520,7 @@ export function AgendaModule() {
                   <div className="w-16 flex-shrink-0 border-r border-slate-200 bg-white relative z-10">
                     {HOURS.map(h => (
                       <div key={h} className="h-20 border-b border-slate-100 flex items-start justify-center pt-2">
-                        <span className="text-[10px] font-bold text-slate-400">{h}:00</span>
+                        <span className="text-xs font-bold text-slate-400">{h}:00</span>
                       </div>
                     ))}
                   </div>
@@ -519,26 +531,30 @@ export function AgendaModule() {
                         const apptDate = new Date(appt.scheduled_at);
                         const hourFloat = apptDate.getHours() + apptDate.getMinutes() / 60;
                         if (hourFloat < 8 || hourFloat > 20) return null;
+                        const colors = practitionerColor(appt.practitioner_id, practitioners);
                         return (
-                          <button
+                          <motion.button
+                            layoutId={`appt-${appt.id}`}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
                             key={appt.id}
                             onClick={() => setActiveAppt(appt)}
                             className={cn(
-                              "absolute left-1 right-1 rounded text-white text-[9px] font-black px-1.5 py-1 z-10 overflow-hidden shadow-sm text-left transition-transform hover:scale-[1.02]",
-                              practitionerColor(appt.practitioner_id, practitioners),
-                              appt.status !== "scheduled" && "opacity-50"
+                              "absolute left-1 right-1 rounded-lg text-xs font-black px-2 py-1.5 z-10 overflow-hidden shadow-sm text-left transition-all hover:scale-[1.02] hover:shadow-md border border-l-4 backdrop-blur-sm group",
+                              colors.light, colors.border, colors.borderLeft, colors.text,
+                              appt.status !== "scheduled" && "opacity-60 grayscale"
                             )}
                             style={{ top: `${(hourFloat - 8) * 80 + 4}px`, height: "72px" }}
                           >
-                            <p className="truncate">{appt.patient_name}</p>
-                            <p className="opacity-80 truncate">{appt.type}</p>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              {appt.checked_in_at && <LogIn className="h-2.5 w-2.5 opacity-90" />}
-                              {appt.status === "completed" && <CheckCircle2 className="h-2.5 w-2.5 opacity-90" />}
-                              {appt.status === "cancelled" && <XCircle className="h-2.5 w-2.5 opacity-90" />}
-                              {appt.status === "no_show" && <UserX className="h-2.5 w-2.5 opacity-90" />}
+                            <p className="truncate tracking-tight leading-tight">{appt.patient_name}</p>
+                            <p className={cn("truncate text-[10px] leading-tight font-bold mt-0.5", colors.textLight)}>{appt.type}</p>
+                            <div className="flex items-center gap-1 mt-1 opacity-80">
+                              {appt.checked_in_at && <LogIn className="h-3 w-3" />}
+                              {appt.status === "completed" && <CheckCircle2 className="h-3 w-3" />}
+                              {appt.status === "cancelled" && <XCircle className="h-3 w-3" />}
+                              {appt.status === "no_show" && <UserX className="h-3 w-3" />}
                             </div>
-                          </button>
+                          </motion.button>
                         );
                       })}
 
@@ -546,11 +562,13 @@ export function AgendaModule() {
                         <button
                           key={h}
                           onClick={() => openModal(dayIdx, h)}
-                          className="absolute w-full opacity-0 group-hover:opacity-100 hover:bg-blue-100/40 transition-all flex items-center justify-center z-0"
+                          className="absolute w-full opacity-0 hover:opacity-100 transition-all flex items-center justify-center z-0 p-1"
                           style={{ top: `${(h - 8) * 80}px`, height: "80px" }}
                           title={`Créer un RDV le ${day.label} à ${h}:00`}
                         >
-                          <Plus className="h-5 w-5 text-blue-400" />
+                          <div className="w-full h-full border-2 border-dashed border-blue-400/50 bg-blue-50/50 rounded-lg flex items-center justify-center text-blue-600 font-bold text-xs uppercase tracking-widest backdrop-blur-sm">
+                            <Plus className="h-4 w-4 mr-1" /> Ajouter
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -560,26 +578,30 @@ export function AgendaModule() {
                         const apptDate = new Date(appt.scheduled_at);
                         const hourFloat = apptDate.getHours() + apptDate.getMinutes() / 60;
                         if (hourFloat < 8 || hourFloat > 20) return null;
+                        const colors = practitionerColor(appt.practitioner_id, practitioners);
                         return (
-                          <button
+                          <motion.button
+                            layoutId={`appt-team-${appt.id}`}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
                             key={appt.id}
                             onClick={() => setActiveAppt(appt)}
                             className={cn(
-                              "absolute left-1 right-1 rounded text-white text-[9px] font-black px-1.5 py-1 z-10 overflow-hidden shadow-sm text-left transition-transform hover:scale-[1.02]",
-                              practitionerColor(appt.practitioner_id, practitioners),
-                              appt.status !== "scheduled" && "opacity-50"
+                              "absolute left-1 right-1 rounded-lg text-xs font-black px-2 py-1.5 z-10 overflow-hidden shadow-sm text-left transition-all hover:scale-[1.02] hover:shadow-md border border-l-4 backdrop-blur-sm group",
+                              colors.light, colors.border, colors.borderLeft, colors.text,
+                              appt.status !== "scheduled" && "opacity-60 grayscale"
                             )}
                             style={{ top: `${(hourFloat - 8) * 80 + 4}px`, height: "72px" }}
                           >
-                            <p className="truncate">{appt.patient_name}</p>
-                            <p className="opacity-80 truncate">{appt.type}</p>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              {appt.checked_in_at && <LogIn className="h-2.5 w-2.5 opacity-90" />}
-                              {appt.status === "completed" && <CheckCircle2 className="h-2.5 w-2.5 opacity-90" />}
-                              {appt.status === "cancelled" && <XCircle className="h-2.5 w-2.5 opacity-90" />}
-                              {appt.status === "no_show" && <UserX className="h-2.5 w-2.5 opacity-90" />}
+                            <p className="truncate tracking-tight leading-tight">{appt.patient_name}</p>
+                            <p className={cn("truncate text-[10px] leading-tight font-bold mt-0.5", colors.textLight)}>{appt.type}</p>
+                            <div className="flex items-center gap-1 mt-1 opacity-80">
+                              {appt.checked_in_at && <LogIn className="h-3 w-3" />}
+                              {appt.status === "completed" && <CheckCircle2 className="h-3 w-3" />}
+                              {appt.status === "cancelled" && <XCircle className="h-3 w-3" />}
+                              {appt.status === "no_show" && <UserX className="h-3 w-3" />}
                             </div>
-                          </button>
+                          </motion.button>
                         );
                       })}
 
@@ -589,10 +611,12 @@ export function AgendaModule() {
                           <button
                             key={h}
                             onClick={() => openModal(activeDayIdx >= 0 ? activeDayIdx : 0, h)}
-                            className="absolute w-full opacity-0 group-hover:opacity-100 hover:bg-blue-100/40 transition-all flex items-center justify-center z-0"
+                            className="absolute w-full opacity-0 hover:opacity-100 transition-all flex items-center justify-center z-0 p-1"
                             style={{ top: `${(h - 8) * 80}px`, height: "80px" }}
                           >
-                            <Plus className="h-5 w-5 text-blue-400" />
+                            <div className="w-full h-full border-2 border-dashed border-blue-400/50 bg-blue-50/50 rounded-lg flex items-center justify-center text-blue-600 font-bold text-xs uppercase tracking-widest backdrop-blur-sm">
+                              <Plus className="h-4 w-4 mr-1" /> Ajouter
+                            </div>
                           </button>
                         );
                       })}
@@ -602,10 +626,10 @@ export function AgendaModule() {
 
                 {weekOffset === 0 && (
                   <>
-                    <div className="absolute left-16 right-0 h-[2px] bg-red-400 z-30 shadow-[0_0_8px_rgba(248,113,113,0.8)]"
+                    <div className="absolute left-16 right-0 h-[2px] bg-red-500 z-30 shadow-[0_0_12px_rgba(239,68,68,1)] animate-pulse"
                       style={{ top: `${Math.max(0, (new Date().getHours() - 8) * 80 + (new Date().getMinutes() / 60) * 80)}px` }} />
-                    <div className="absolute w-2 h-2 rounded-full bg-red-500 z-30"
-                      style={{ top: `${Math.max(-4, (new Date().getHours() - 8) * 80 + (new Date().getMinutes() / 60) * 80 - 4)}px`, left: "56px" }} />
+                    <div className="absolute w-2.5 h-2.5 rounded-full bg-red-600 z-30 shadow-[0_0_10px_rgba(239,68,68,1)] animate-pulse border border-white"
+                      style={{ top: `${Math.max(-4, (new Date().getHours() - 8) * 80 + (new Date().getMinutes() / 60) * 80 - 4)}px`, left: "55px" }} />
                   </>
                 )}
               </div>
@@ -620,8 +644,8 @@ export function AgendaModule() {
                 </div>
               )}
               {todaysAppointments.map(appt => (
-                <div key={appt.id} className="flex items-center gap-4 p-4 border border-slate-200 rounded-sm bg-white shadow-sm">
-                  <div className={cn("h-10 w-10 rounded-full flex items-center justify-center text-white font-black text-xs flex-shrink-0", practitionerColor(appt.practitioner_id, practitioners))}>
+                <div key={appt.id} className="group relative flex items-center gap-4 p-5 border border-slate-200/60 rounded-2xl bg-white/60 backdrop-blur-md shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                  <div className={cn("h-12 w-12 rounded-full flex items-center justify-center text-white font-black text-sm flex-shrink-0 shadow-inner", practitionerColor(appt.practitioner_id, practitioners).solid)}>
                     {appt.patient_name[0]}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -807,8 +831,8 @@ interface BookingModalProps {
 }
 
 function BookingModal({ weekDays, initialDay, initialHour, currentPatient, practitioners, onClose, onConfirm }: BookingModalProps) {
-  const [selectedPatient, setSelectedPatient] = useState<PatientHit | null>(
-    currentPatient ? { id: currentPatient.id, full_name: currentPatient.name, phone: currentPatient.phone, dossier_number: currentPatient.idNumber } : null
+  const [selectedPatients, setSelectedPatients] = useState<PatientHit[]>(
+    currentPatient ? [{ id: currentPatient.id, full_name: currentPatient.name, phone: currentPatient.phone, dossier_number: currentPatient.idNumber }] : []
   );
   const [patientQuery, setPatientQuery] = useState(currentPatient?.name || "");
   const [patientResults, setPatientResults] = useState<PatientHit[]>([]);
@@ -822,6 +846,7 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
   const [duration, setDuration] = useState(30);
   const [recurrence, setRecurrence] = useState<"none" | "weekly" | "biweekly" | "monthly">("none");
   const [recurrenceCount, setRecurrenceCount] = useState(4);
+  const [multiMode, setMultiMode] = useState<"sequential" | "concurrent">("sequential");
   const [channel, setChannel] = useState<"both" | "whatsapp" | "sms" | "none">("both");
   const [sending, setSending] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -834,7 +859,7 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
   })();
 
   const previewMessage =
-    `🦷 Bonjour ${selectedPatient?.full_name || "…"},\n\n` +
+    `🦷 Bonjour ${selectedPatients.length > 0 ? selectedPatients[0].full_name : "…"},\n\n` +
     `Votre rendez-vous au Cabinet Dentaire du Cap Vert est confirmé :\n\n` +
     `📅 ${formatLabel(appointmentIso)}\n` +
     `🔧 ${selectedType}\n\n` +
@@ -843,7 +868,6 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
 
   const handlePatientQueryChange = (value: string) => {
     setPatientQuery(value);
-    setSelectedPatient(null);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     if (value.trim().length < 2) {
       setPatientResults([]);
@@ -860,13 +884,19 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
   };
 
   const pickPatient = (p: PatientHit) => {
-    setSelectedPatient(p);
-    setPatientQuery(p.full_name);
+    if (!selectedPatients.find(x => x.id === p.id)) {
+      setSelectedPatients([...selectedPatients, p]);
+    }
+    setPatientQuery("");
     setShowResults(false);
   };
 
+  const removePatient = (id: string) => {
+    setSelectedPatients(selectedPatients.filter(x => x.id !== id));
+  };
+
   const handleConfirm = async () => {
-    if (!selectedPatient) return;
+    if (selectedPatients.length === 0) return;
     setSending(true);
     setErrorMsg(null);
 
@@ -875,13 +905,14 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          patientId: selectedPatient.id,
+          patientIds: selectedPatients.map(p => p.id),
           practitionerId: practitionerId || undefined,
           scheduledAt: appointmentIso,
           durationMinutes: duration,
           type: selectedType,
           recurrence,
           recurrenceCount: recurrence === "none" ? 1 : recurrenceCount,
+          multiMode: selectedPatients.length > 1 ? multiMode : undefined,
         }),
       });
       const data = await res.json();
@@ -892,15 +923,17 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
       }
 
       let notifyResult: NotifyResult | null = null;
-      const phone = selectedPatient.phone;
+      // On prend juste le premier patient pour simuler l'affichage de la notification dans l'UI
+      const firstPatient = selectedPatients[0];
+      const phone = firstPatient.phone;
       if (channel !== "none" && phone) {
         try {
           const notifyRes = await fetch("/api/appointments/notify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              patientId: selectedPatient.id,
-              patientName: selectedPatient.full_name,
+              patientId: firstPatient.id,
+              patientName: firstPatient.full_name,
               phone,
               appointmentDate: appointmentIso,
               appointmentType: selectedType,
@@ -961,18 +994,28 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-bold rounded-lg p-4">{errorMsg}</div>
           )}
 
-          {/* Recherche patient */}
+            {/* Recherche patient */}
           <div className="relative">
             <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
-              Patient <span className="text-red-500">*</span>
+              Patient(s) <span className="text-red-500">*</span>
             </label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {selectedPatients.map(p => (
+                <div key={p.id} className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-700 px-3 py-1.5 rounded-full text-sm font-bold shadow-sm">
+                  <span>{p.full_name}</span>
+                  <button onClick={() => removePatient(p.id)} className="p-0.5 hover:bg-blue-200 rounded-full transition-colors ml-1">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <input
                 value={patientQuery}
                 onChange={e => handlePatientQueryChange(e.target.value)}
                 onFocus={() => patientResults.length > 0 && setShowResults(true)}
-                placeholder="Rechercher un patient par nom, dossier ou téléphone..."
+                placeholder="Rechercher pour ajouter un patient (nom, dossier, tél)..."
                 className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg text-base font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none shadow-sm"
               />
             </div>
@@ -990,8 +1033,38 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
                 ))}
               </div>
             )}
-            {selectedPatient && (
-              <p className="text-sm text-emerald-600 font-bold mt-2">✓ {selectedPatient.dossier_number} · {selectedPatient.phone || "Pas de téléphone"}</p>
+            
+            {selectedPatients.length > 1 && (
+              <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">
+                  Mode de réservation multiple
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setMultiMode("sequential")}
+                    className={cn(
+                      "flex-1 px-3 py-2 text-xs font-bold uppercase rounded-md border transition-colors",
+                      multiMode === "sequential" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 hover:bg-slate-100"
+                    )}
+                  >
+                    À la suite
+                  </button>
+                  <button
+                    onClick={() => setMultiMode("concurrent")}
+                    className={cn(
+                      "flex-1 px-3 py-2 text-xs font-bold uppercase rounded-md border transition-colors",
+                      multiMode === "concurrent" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 hover:bg-slate-100"
+                    )}
+                  >
+                    Même créneau
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium mt-2 leading-relaxed">
+                  {multiMode === "sequential" 
+                    ? "Les patients seront programmés l'un après l'autre (ex: 10h00, 10h30, 11h00)." 
+                    : "Les patients seront programmés exactement à la même heure (ex: 10h00, 10h00, 10h00)."}
+                </p>
+              </div>
             )}
           </div>
 
@@ -1113,8 +1186,8 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
               <p className="text-xs font-black text-slate-700 uppercase tracking-widest">Notification patient</p>
             </div>
 
-            {!selectedPatient?.phone && (
-              <p className="text-sm text-amber-700 font-bold bg-amber-100/50 p-3 rounded-lg border border-amber-200">⚠️ Ce patient n&apos;a pas de numéro enregistré — aucune notification ne pourra être envoyée.</p>
+            {selectedPatients.length > 0 && !selectedPatients.some(p => p.phone) && (
+              <p className="text-sm text-amber-700 font-bold bg-amber-100/50 p-3 rounded-lg border border-amber-200">⚠️ Aucun patient sélectionné n&apos;a de numéro enregistré — aucune notification ne pourra être envoyée.</p>
             )}
 
             <div className="flex gap-2.5 flex-wrap">
@@ -1127,7 +1200,7 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
                 <button
                   key={opt.val}
                   onClick={() => setChannel(opt.val as typeof channel)}
-                  disabled={!selectedPatient?.phone && opt.val !== "none"}
+                  disabled={selectedPatients.length > 0 && !selectedPatients.some(p => p.phone) && opt.val !== "none"}
                   className={cn(
                     "flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest border transition-all disabled:opacity-40",
                     channel === opt.val ? opt.cls : "bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-700"
@@ -1140,7 +1213,7 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
               ))}
             </div>
 
-            {channel !== "none" && selectedPatient?.phone && (
+            {channel !== "none" && selectedPatients.some(p => p.phone) && (
               <button
                 onClick={() => setPreviewVisible(v => !v)}
                 className="text-sm font-bold text-blue-600 hover:underline inline-flex items-center gap-1 mt-2"
@@ -1175,7 +1248,7 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
             </button>
             <button
               onClick={handleConfirm}
-              disabled={!selectedPatient || sending}
+              disabled={selectedPatients.length === 0 || sending}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-widest rounded-lg transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50"
             >
               {sending ? (

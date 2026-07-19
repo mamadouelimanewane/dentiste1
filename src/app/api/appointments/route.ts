@@ -82,6 +82,7 @@ export async function POST(request: Request) {
   const body = await request.json();
   const {
     patientId,
+    patientIds = [],
     practitionerId,
     scheduledAt,
     durationMinutes = 30,
@@ -89,8 +90,10 @@ export async function POST(request: Request) {
     notes,
     recurrence = 'none',
     recurrenceCount = 1,
+    multiMode = 'sequential',
   } = body as {
     patientId?: string;
+    patientIds?: string[];
     practitionerId?: string;
     scheduledAt?: string;
     durationMinutes?: number;
@@ -98,58 +101,72 @@ export async function POST(request: Request) {
     notes?: string;
     recurrence?: 'none' | 'weekly' | 'biweekly' | 'monthly';
     recurrenceCount?: number;
+    multiMode?: 'sequential' | 'concurrent';
   };
 
-  if (!patientId || !scheduledAt) {
-    return NextResponse.json({ error: 'patientId et scheduledAt sont requis.' }, { status: 400 });
+  const finalPatientIds = patientIds.length > 0 ? patientIds : (patientId ? [patientId] : []);
+
+  if (finalPatientIds.length === 0 || !scheduledAt) {
+    return NextResponse.json({ error: 'patientId(s) et scheduledAt sont requis.' }, { status: 400 });
   }
 
   const occurrences = recurrence === 'none' ? 1 : Math.min(Math.max(recurrenceCount, 1), 12);
   const stepDays = RECURRENCE_STEP_DAYS[recurrence] || 0;
   const recurrenceGroupId = occurrences > 1 ? crypto.randomUUID() : null;
 
-  // Récupérer le patient pour les notifications
-  const patients = await sql`select full_name, phone from patients where id = ${patientId}`;
-  const patient = patients[0];
-
+  // Récupérer les patients pour les notifications
+  const patientsInfo = finalPatientIds.length > 0 
+    ? await sql`select id, full_name, phone from patients where id = any(${finalPatientIds as string[]})`
+    : [];
+  
   const created: unknown[] = [];
   const skipped: { scheduledAt: string; reason: string; conflictWith?: string }[] = [];
 
   for (let i = 0; i < occurrences; i++) {
-    const occurrenceDate = new Date(scheduledAt);
-    occurrenceDate.setDate(occurrenceDate.getDate() + stepDays * i);
-    const occurrenceIso = occurrenceDate.toISOString();
+    const occurrenceBaseDate = new Date(scheduledAt);
+    occurrenceBaseDate.setDate(occurrenceBaseDate.getDate() + stepDays * i);
 
-    const conflict = await hasConflict(practitionerId || null, occurrenceIso, durationMinutes);
-    if (conflict) {
-      skipped.push({
-        scheduledAt: occurrenceIso,
-        reason: 'conflit',
-        conflictWith: conflict.patient_name,
-      });
-      continue;
-    }
+    for (let pIdx = 0; pIdx < finalPatientIds.length; pIdx++) {
+      const pId = finalPatientIds[pIdx];
+      const patient = patientsInfo.find(p => p.id === pId);
+      
+      const occurrenceDate = new Date(occurrenceBaseDate);
+      if (multiMode === 'sequential' && pIdx > 0) {
+        occurrenceDate.setMinutes(occurrenceDate.getMinutes() + (durationMinutes * pIdx));
+      }
+      const occurrenceIso = occurrenceDate.toISOString();
 
-    const rows = await sql`
-      insert into appointments (patient_id, practitioner_id, scheduled_at, duration_minutes, type, notes, recurrence_group_id)
-      values (${patientId}, ${practitionerId || null}, ${occurrenceIso}, ${durationMinutes}, ${type || null}, ${notes || null}, ${recurrenceGroupId})
-      returning *
-    `;
-    const newAppointment = rows[0];
-    created.push(newAppointment);
+      const conflict = await hasConflict(practitionerId || null, occurrenceIso, durationMinutes);
+      if (conflict) {
+        skipped.push({
+          scheduledAt: occurrenceIso,
+          reason: 'conflit',
+          conflictWith: conflict.patient_name,
+        });
+        continue;
+      }
 
-    // Envoi automatique SMS/WhatsApp
-    if (patient && patient.phone) {
-      const formattedDate = new Intl.DateTimeFormat('fr-FR', {
-        dateStyle: 'full',
-        timeStyle: 'short',
-      }).format(new Date(occurrenceIso));
+      const rows = await sql`
+        insert into appointments (patient_id, practitioner_id, scheduled_at, duration_minutes, type, notes, recurrence_group_id)
+        values (${pId}, ${practitionerId || null}, ${occurrenceIso}, ${durationMinutes}, ${type || null}, ${notes || null}, ${recurrenceGroupId})
+        returning *
+      `;
+      const newAppointment = rows[0];
+      created.push(newAppointment);
 
-      const msg = `Bonjour ${patient.full_name}, votre rendez-vous est confirmé pour le ${formattedDate}. À bientôt au Cabinet !`;
+      // Envoi automatique SMS/WhatsApp
+      if (patient && patient.phone) {
+        const formattedDate = new Intl.DateTimeFormat('fr-FR', {
+          dateStyle: 'full',
+          timeStyle: 'short',
+        }).format(new Date(occurrenceIso));
 
-      // On lance l'envoi en arrière-plan (fire and forget)
-      sendWhatsAppMessage({ patientId, phone: patient.phone, body: msg, sentBy: session?.userId }).catch(console.error);
-      sendSms({ patientId, phone: patient.phone, body: msg, sentBy: session?.userId }).catch(console.error);
+        const msg = `Bonjour ${patient.full_name}, votre rendez-vous est confirmé pour le ${formattedDate}. À bientôt au Cabinet !`;
+
+        // On lance l'envoi en arrière-plan (fire and forget)
+        sendWhatsAppMessage({ patientId: pId, phone: patient.phone, body: msg, sentBy: session?.userId }).catch(console.error);
+        sendSms({ patientId: pId, phone: patient.phone, body: msg, sentBy: session?.userId }).catch(console.error);
+      }
     }
   }
 

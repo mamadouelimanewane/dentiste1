@@ -345,7 +345,7 @@ export default function Home() {
 
             {/* Content Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
+              <div className={cn("space-y-6", currentStep === 13 ? "lg:col-span-3" : "lg:col-span-2")}>
                 <motion.div
                     key={currentStep}
                     initial={{ opacity: 0 }}
@@ -390,10 +390,12 @@ export default function Home() {
                   </motion.div>
               </div>
 
-              <div className="space-y-6">
-                {hasPermission(permissions, 5, 'view') && <PractitionerHub />}
-                {hasPermission(permissions, 5, 'view') && <ClinicalNotes phaseId={currentStep} />}
-              </div>
+              {currentStep !== 13 && (
+                <div className="space-y-6">
+                  {hasPermission(permissions, 5, 'view') && <PractitionerHub />}
+                  {hasPermission(permissions, 5, 'view') && <ClinicalNotes phaseId={currentStep} />}
+                </div>
+              )}
             </div>
           </div>
         </div>

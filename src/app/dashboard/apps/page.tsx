@@ -245,7 +245,7 @@ export default function DentalAppsHubPage() {
                       {/* Texte */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-base font-bold text-foreground truncate">{mod.name}</p>
+                          <p className="text-lg font-bold text-foreground truncate">{mod.name}</p>
                           {mod.badge && (
                             <span
                               className="text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest"
@@ -258,9 +258,9 @@ export default function DentalAppsHubPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm leading-snug mt-1 text-slate-500">{mod.desc}</p>
+                        <p className="text-sm leading-snug mt-1.5 text-slate-500">{mod.desc}</p>
                         <div
-                          className="inline-flex items-center gap-1 mt-3 text-xs font-bold uppercase tracking-wide"
+                          className="inline-flex items-center gap-1 mt-3 text-sm font-bold uppercase tracking-wide"
                           style={{ color: style.color }}
                         >
                           Ouvrir{" "}
