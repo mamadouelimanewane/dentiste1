@@ -218,8 +218,4 @@ export function QuoteBuilder() {
       />
     </div>
   );
-} </div>
-  );
 }
-
-
