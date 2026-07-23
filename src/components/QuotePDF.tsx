@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
   page: { padding: 50, backgroundColor: '#FFFFFF', fontFamily: 'Helvetica' },
@@ -55,9 +55,10 @@ interface QuotePDFProps {
   items: { label: string; qty: number; price: number }[];
   total: number;
   patientName: string;
+  signatureBase64?: string | null;
 }
 
-export const QuotePDF = ({ items, total, patientName }: QuotePDFProps) => (
+export const QuotePDF = ({ items, total, patientName, signatureBase64 }: QuotePDFProps) => (
   <Document>
     <Page size="A4" style={styles.page}>
       {/* Header Premium */}
@@ -135,9 +136,18 @@ export const QuotePDF = ({ items, total, patientName }: QuotePDFProps) => (
         </View>
         <View style={styles.signatureBox}>
           <Text style={styles.signatureTitle}>Le Patient</Text>
-          <View style={styles.signatureLine}>
-            <Text style={styles.signatureLabel}>Bon pour accord, le : ____/____/20__</Text>
-          </View>
+          {signatureBase64 ? (
+            <Image src={signatureBase64} style={{ width: 150, height: 50, marginBottom: 5 }} />
+          ) : (
+            <View style={[styles.signatureLine, { marginTop: 30 }]}>
+              <Text style={styles.signatureLabel}>Bon pour accord, le : ____/____/20__</Text>
+            </View>
+          )}
+          {signatureBase64 && (
+            <View style={styles.signatureLine}>
+              <Text style={styles.signatureLabel}>Signé électroniquement le {new Date().toLocaleDateString('fr-FR')} à {new Date().toLocaleTimeString('fr-FR')}</Text>
+            </View>
+          )}
         </View>
       </View>
 

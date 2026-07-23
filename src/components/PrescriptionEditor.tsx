@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowLeft, History, Printer, Save, Plus, Pill, Star, Search, User, FileText } from "lucide-react";
+import { ArrowLeft, History, Printer, Save, Plus, Pill, Star, Search, User, FileText, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
 import { useAuth } from "@/lib/auth-context";
@@ -49,6 +49,15 @@ export function PrescriptionEditor() {
     setMeds(meds.filter(m => m.id !== id));
   };
 
+  const autoPrescribe = () => {
+    // Simulation Copilot IA
+    setMeds([
+      { id: Date.now(), name: "Amoxicilline", dosage: "1g", duration: "6 jours", posology: "1 comprimé matin et soir au cours des repas" },
+      { id: Date.now() + 1, name: "Paracétamol", dosage: "1000mg", duration: "3 jours", posology: "1 comprimé en cas de douleur, max 3/jour" },
+      { id: Date.now() + 2, name: "Bain de bouche Eludril", dosage: "Flacon", duration: "7 jours", posology: "1 bain de bouche 2 fois par jour, après brossage" }
+    ]);
+  };
+
   const handleSave = async () => {
     if (!currentPatient || meds.length === 0) return;
     setSaving(true);
@@ -92,6 +101,13 @@ export function PrescriptionEditor() {
            <button className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded transition-colors">
             <History className="h-4 w-4" /> Modèles récents
           </button>
+          <button
+            onClick={autoPrescribe}
+            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-sm transition-colors shadow-md shadow-purple-900/20"
+          >
+            <Sparkles className="h-4 w-4" /> Copilot IA : Extraction / Implant
+          </button>
+          
           {currentPatient && meds.length > 0 ? (
             <PDFDownloadLink
               document={

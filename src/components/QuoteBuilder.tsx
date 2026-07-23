@@ -2,19 +2,22 @@
 
 import React, { useState, useRef } from "react";
 import { DENTAL_NOMENCLATURE, DentalProcedure } from "@/lib/pricing";
-import { Plus, Trash2, FileText, Download, CheckCircle2, Eraser, ShoppingCart, Save, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, FileText, Download, CheckCircle2, Eraser, ShoppingCart, Save, AlertTriangle, PenTool } from "lucide-react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { QuotePDF } from "./QuotePDF";
 import SignatureCanvas from "react-signature-canvas";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
+import { SignaturePadModal } from "./SignaturePadModal";
 
 export function QuoteBuilder() {
   const { currentPatient } = usePatient();
   const [selected, setSelected] = useState<(DentalProcedure & { qty: number })[]>([]);
   const sigCanvas = useRef<SignatureCanvas>(null);
   const [isSigned, setIsSigned] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [signatureData, setSignatureData] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -145,9 +148,15 @@ export function QuoteBuilder() {
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total à régler</p>
                 <p className="text-2xl font-bold text-white tracking-tight">{total.toLocaleString()} <span className="text-xs text-blue-400 ml-1">FCFA</span></p>
               </div>
-              
-              {selected.length > 0 && (
+                     {selected.length > 0 && (
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="h-10 px-4 rounded flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    <PenTool className="h-4 w-4" />
+                    Faire Signer
+                  </button>
                   <button
                     onClick={handleSave}
                     disabled={saving || !currentPatient}
@@ -160,7 +169,7 @@ export function QuoteBuilder() {
                     {saving ? "Enregistrement..." : saved ? "Devis Enregistré" : "Enregistrer"}
                   </button>
                   <PDFDownloadLink
-                    document={<QuotePDF items={selected.map(i => ({ label: i.label, qty: i.qty, price: i.price || 0 }))} total={total} patientName={currentPatient?.name || "Patient non sélectionné"} />}
+                    document={<QuotePDF items={selected.map(i => ({ label: i.label, qty: i.qty, price: i.price || 0 }))} total={total} patientName={currentPatient?.name || "Patient non sélectionné"} signatureBase64={signatureData} />}
                     fileName={`devis_${new Date().getTime()}.pdf`}
                   >
                     {/* @ts-ignore */}
@@ -179,29 +188,37 @@ export function QuoteBuilder() {
             </div>
           </div>
 
-          {/* SIGNATURE PANEL */}
-
-          {selected.length > 0 && (
-            <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Signature du Patient</h4>
-                <button onClick={clearSignature} className="text-slate-400 hover:text-rose-500" title="Effacer">
-                  <Eraser className="h-3.5 w-3.5" />
-                </button>
+          {/* SIGNATURE FEEDBACK PANEL */}
+          {signatureData && (
+            <div className="bg-emerald-50 rounded-lg border border-emerald-200 shadow-sm p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-emerald-100 text-emerald-600 p-2 rounded-full">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-emerald-900">Devis signé électroniquement</h4>
+                  <p className="text-xs text-emerald-700">La signature sera intégrée au PDF final.</p>
+                </div>
               </div>
-              <div className="border border-slate-100 rounded bg-slate-50 overflow-hidden h-28 relative border-dashed">
-                <SignatureCanvas 
-                  ref={sigCanvas}
-                  onBegin={() => setIsSigned(true)}
-                  canvasProps={{ className: "w-full h-full cursor-crosshair" }} 
-                />
-              </div>
-              <p className="text-[9px] text-slate-400 font-medium italic text-center">Valeur d'accord contractuel électronique.</p>
+              <button onClick={() => setSignatureData(null)} className="text-xs font-bold text-emerald-600 hover:text-emerald-800 uppercase underline">
+                Effacer
+              </button>
             </div>
           )}
+
         </div>
       </div>
+      
+      <SignaturePadModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSave={(dataUrl) => { setSignatureData(dataUrl); setIsSigned(true); }}
+        title="Signature du Devis"
+        subtitle="Veuillez signer dans le cadre ci-dessous pour validation."
+      />
     </div>
+  );
+} </div>
   );
 }
 
