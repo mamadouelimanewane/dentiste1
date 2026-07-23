@@ -51,8 +51,8 @@ export function StaffChatWidget() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="absolute bottom-16 right-0 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col mb-4"
-            style={{ height: "400px" }}
+            className="absolute bottom-16 right-0 w-[calc(100vw-3rem)] sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col mb-4"
+            style={{ height: "400px", maxHeight: "calc(100vh - 120px)" }}
           >
             {/* Header */}
             <div className="bg-slate-900 p-4 flex items-center justify-between">
