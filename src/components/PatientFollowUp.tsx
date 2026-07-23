@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Calendar, Archive, FileCheck, Star, ArrowRight, MessageSquare, Mic, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
+import { PatientImaging } from "./PatientImaging";
 
 export function PatientFollowUp() {
   const { currentPatient } = usePatient();
@@ -69,7 +70,11 @@ export function PatientFollowUp() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* IMAGING GALLERY */}
+      <PatientImaging />
+
+      {/* CLOTURE */}
       <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
         <div className="bg-[#0F172A] p-6 text-white flex justify-between items-center">
           <div className="flex items-center gap-2">

@@ -10,15 +10,14 @@ const ALL_PERMISSIONS: ModulePermissions = Object.fromEntries(
   MODULES.map((m) => [String(m.id), { view: true, manage: true }])
 );
 
+import { StaffChatWidget } from "@/components/StaffChatWidget";
+
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   if (!isDbConfigured) {
-    // Pas de base Neon branchée (dev/preview sans .env.local) : on laisse
-    // passer avec une identité de démonstration plutôt que de bloquer tout
-    // le monde derrière un login impossible à satisfaire.
     return (
       <AuthProvider
         user={{
@@ -31,6 +30,7 @@ export default async function AppLayout({
         }}
       >
         {children}
+        <StaffChatWidget />
       </AuthProvider>
     );
   }
@@ -58,6 +58,7 @@ export default async function AppLayout({
       }}
     >
       {children}
+      <StaffChatWidget />
     </AuthProvider>
   );
 }
