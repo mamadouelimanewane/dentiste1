@@ -5,6 +5,7 @@ import { Activity, ShieldCheck, Clock, Plus, Check } from "lucide-react";
 import { DENTAL_NOMENCLATURE, DentalProcedure } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
+import { Odontogram } from "@/components/Odontogram";
 
 // Standard FDI notation teeth
 const UPPER_TEETH = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -83,44 +84,13 @@ export function ProcedureExecution() {
           <span className="text-[9px] font-bold text-blue-200 uppercase">Cliquez sur une dent pour l'isoler</span>
         </div>
 
-        <div className="p-8 flex flex-col items-center gap-8 bg-slate-50/50">
-          {/* Upper Jaw */}
-          <div className="flex gap-1.5 justify-center flex-wrap max-w-2xl">
-            {UPPER_TEETH.map(t => (
-              <button
-                key={t}
-                onClick={() => toggleTooth(t)}
-                className={cn(
-                  "h-10 w-8 flex flex-col items-center justify-center rounded-t-xl border-x border-t transition-all text-[10px] font-black",
-                  selectedTooth === t
-                    ? "bg-blue-600 border-blue-700 text-white shadow-lg scale-110 -translate-y-1"
-                    : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600"
-                )}
-              >
-                {t}
-                <div className={cn("w-full h-1 mt-1 rounded-full", selectedTooth === t ? "bg-blue-300" : "bg-slate-100")} />
-              </button>
-            ))}
-          </div>
-
-          {/* Lower Jaw */}
-          <div className="flex gap-1.5 justify-center flex-wrap max-w-2xl">
-            {LOWER_TEETH.map(t => (
-              <button
-                key={t}
-                onClick={() => toggleTooth(t)}
-                className={cn(
-                  "h-10 w-8 flex flex-col items-center justify-center rounded-b-xl border-x border-b transition-all text-[10px] font-black",
-                  selectedTooth === t
-                    ? "bg-blue-600 border-blue-700 text-white shadow-lg scale-110 translate-y-1"
-                    : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600"
-                )}
-              >
-                <div className={cn("w-full h-1 mb-1 rounded-full", selectedTooth === t ? "bg-blue-300" : "bg-slate-100")} />
-                {t}
-              </button>
-            ))}
-          </div>
+        <div className="p-8 flex flex-col items-center gap-8 bg-slate-50/50 overflow-x-auto">
+          <Odontogram 
+            selectedTooth={selectedTooth} 
+            onSelectTooth={toggleTooth} 
+            // On peut dériver les états des dents à partir des actes (par exemple si un acte est "Carie", etc.)
+            // Pour l'instant on garde une dent saine par défaut.
+          />
         </div>
       </div>
 

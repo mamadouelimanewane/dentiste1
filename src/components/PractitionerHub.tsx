@@ -23,7 +23,7 @@ function statusLabel(appt: TodayAppointment): string {
   return "Prévu";
 }
 
-export function PractitionerHub() {
+export function PractitionerHub({ onNavigate }: { onNavigate?: (stepId: number) => void }) {
   const [isAgendaOpen, setIsAgendaOpen] = useState(false);
   const [todayAppointments, setTodayAppointments] = useState<TodayAppointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +55,12 @@ export function PractitionerHub() {
   const avgDuration = active.length
     ? Math.round(active.reduce((sum, a) => sum + (a.duration_minutes || 0), 0) / active.length)
     : null;
+
+  const handleToolClick = (stepId: number) => {
+    if (onNavigate) {
+      onNavigate(stepId);
+    }
+  };
 
   return (
     <>
@@ -125,12 +131,12 @@ export function PractitionerHub() {
 
           {/* Radio IA — lien vers le module, pas de fausse alerte patient */}
           <div className="pt-4 border-t border-slate-100">
-             <div className="flex items-start gap-3 bg-blue-50 p-4 rounded-sm border border-blue-100">
+             <div className="flex items-start gap-3 bg-blue-50 p-4 rounded-sm border border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleToolClick(14)}>
                <Activity className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                <div className="space-y-1.5">
                  <p className="text-xs font-black text-blue-900 uppercase tracking-tight">Radio IA</p>
                  <p className="text-xs font-medium text-slate-600 leading-relaxed">
-                   Module de démonstration — consultez l&apos;onglet &quot;Radio IA&quot; pour l&apos;analyse assistée de radiographies.
+                   Module de démonstration — cliquez pour l&apos;analyse assistée de radiographies.
                  </p>
                </div>
              </div>
@@ -144,12 +150,12 @@ export function PractitionerHub() {
             </h4>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: "Odontogramme", icon: Activity, color: "text-blue-600", bg: "bg-blue-50" },
-                { label: "Ordonnance", icon: Pill, color: "text-emerald-600", bg: "bg-emerald-50" },
-                { label: "Anesthésie", icon: Syringe, color: "text-rose-600", bg: "bg-rose-50" },
-                { label: "Protocoles", icon: BookOpen, color: "text-amber-600", bg: "bg-amber-50" },
+                { label: "Odontogramme", icon: Activity, color: "text-blue-600", bg: "bg-blue-50", stepId: 4 },
+                { label: "Ordonnance", icon: Pill, color: "text-emerald-600", bg: "bg-emerald-50", stepId: 17 },
+                { label: "Anesthésie", icon: Syringe, color: "text-rose-600", bg: "bg-rose-50", stepId: 5 },
+                { label: "Protocoles", icon: BookOpen, color: "text-amber-600", bg: "bg-amber-50", stepId: 5 },
               ].map((tool, idx) => (
-                <button key={idx} className="flex items-center gap-3 p-3 rounded-sm border border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all text-left group">
+                <button key={idx} onClick={() => handleToolClick(tool.stepId)} className="flex items-center gap-3 p-3 rounded-sm border border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all text-left group">
                   <div className={cn("p-2 rounded flex-shrink-0", tool.bg)}>
                     <tool.icon className={cn("h-4 w-4", tool.color)} />
                   </div>

@@ -1,61 +1,112 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Save, Zap, FileText, Check, StickyNote } from "lucide-react";
+import { Save, Zap, Check, StickyNote, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePatient } from "@/lib/context";
+import { useToast } from "@/lib/ToastContext";
 
 interface ClinicalNotesProps {
   phaseId: number;
 }
 
 export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
-  const [notes, setNotes] = useState<Record<number, string>>({});
+  const { currentPatient } = usePatient();
+  const { toast } = useToast();
+  
   const [currentNote, setCurrentNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success'>('idle');
 
+  // Load notes from DB
   useEffect(() => {
-    const saved = localStorage.getItem("dentiste_lite_notes");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setNotes(parsed);
-      setCurrentNote(parsed[phaseId] || "");
+    async function loadNotes() {
+      if (!currentPatient) {
+        setCurrentNote("");
+        return;
+      }
+      try {
+        const res = await fetch(`/api/clinical-notes?patientId=${currentPatient.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          // Find the latest note of this phase type (we can use phaseId as type)
+          const phaseNote = data.notes?.find((n: any) => n.type === `phase_${phaseId}`);
+          if (phaseNote) {
+            setCurrentNote(phaseNote.content);
+          } else {
+            setCurrentNote("");
+          }
+        }
+      } catch (err) {
+        console.error("Erreur chargement notes", err);
+      }
     }
-  }, [phaseId]);
+    loadNotes();
+  }, [phaseId, currentPatient]);
 
-  const saveNote = () => {
+  const saveNote = async () => {
+    if (!currentPatient) {
+      toast("Veuillez sélectionner ou créer un patient d'abord.", "error");
+      return;
+    }
+    if (!currentNote.trim()) {
+      toast("La note est vide.", "error");
+      return;
+    }
+
     setIsSaving(true);
-    const newNotes = { ...notes, [phaseId]: currentNote };
-    setNotes(newNotes);
-    localStorage.setItem("dentiste_lite_notes", JSON.stringify(newNotes));
-    
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      const res = await fetch("/api/clinical-notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: currentPatient.id,
+          content: currentNote,
+          type: `phase_${phaseId}`,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Erreur lors de la sauvegarde");
+      
       setStatus('success');
+      toast("Note clinique sauvegardée", "success");
       setTimeout(() => setStatus('idle'), 2000);
-    }, 800);
+    } catch (err) {
+      toast("Échec de la sauvegarde", "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <div className="bg-white border border-slate-200 shadow-sm rounded-sm overflow-hidden flex flex-col min-h-[350px]">
       {/* Header - Card Style */}
-      <div className="bg-[#1E3A8A] p-5 text-white flex justify-between items-center">
+      <div className="bg-[#0F172A] p-5 text-white flex justify-between items-center">
         <div className="flex items-center gap-2">
           <StickyNote className="h-5 w-5 text-blue-400" />
-          <h3 className="text-xs font-bold uppercase tracking-[0.2em]">Notes de Séance</h3>
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em]">Notes Cliniques</h3>
         </div>
-        <div className="h-8 w-8 border border-slate-700 rounded flex items-center justify-center">
-          <span className="text-xs font-bold text-slate-500">{phaseId}</span>
+        <div className="h-8 w-8 border border-slate-700 bg-slate-800 rounded flex items-center justify-center">
+          <span className="text-xs font-bold text-slate-400">{phaseId}</span>
         </div>
       </div>
 
-      <div className="flex-1 p-6 flex flex-col space-y-4">
+      <div className="flex-1 p-6 flex flex-col space-y-4 relative">
+        {!currentPatient && (
+          <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+            <AlertTriangle className="h-8 w-8 text-amber-500 mb-3" />
+            <p className="text-sm font-bold text-slate-700 uppercase tracking-widest">Aucun Patient Actif</p>
+            <p className="text-xs text-slate-500 mt-1">Créez ou sélectionnez un dossier patient pour ajouter des notes.</p>
+          </div>
+        )}
+
         <div className="flex-1 relative">
           <textarea
             value={currentNote}
             onChange={(e) => setCurrentNote(e.target.value)}
             placeholder="Observations cliniques..."
-            className="w-full h-full bg-slate-50 border-none rounded-none p-4 text-sm font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none resize-none leading-relaxed italic"
+            disabled={!currentPatient}
+            className="w-full h-full bg-slate-50 border-none rounded-none p-4 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none resize-none leading-relaxed italic"
           />
           {/* Subtle watermark style lines */}
           <div className="absolute inset-0 pointer-events-none opacity-[0.03] flex flex-col gap-[24px] p-4 pt-10">
@@ -65,17 +116,17 @@ export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
         
         <div className="flex justify-between items-center pt-2">
           <div className="flex items-center gap-1.5">
-            <Zap className="h-4 w-4 text-emerald-500" />
-            <span className="text-xs font-bold text-blue-700 uppercase tracking-widest">Auto-Archive</span>
+            <Zap className="h-4 w-4 text-blue-500" />
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Base de Données</span>
           </div>
           <button 
             onClick={saveNote}
-            disabled={isSaving}
+            disabled={isSaving || !currentPatient}
             className={cn(
-              "h-10 px-6 rounded-sm font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm",
+              "h-10 px-6 rounded-md font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm",
               status === 'success' 
                 ? "bg-emerald-600 text-white" 
-                : "bg-slate-900 text-white hover:bg-black disabled:opacity-50"
+                : "bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
             )}
           >
             {isSaving ? "Sync..." : status === 'success' ? "Archivé" : "Sauvegarder"}
@@ -86,5 +137,3 @@ export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
     </div>
   );
 }
-
-

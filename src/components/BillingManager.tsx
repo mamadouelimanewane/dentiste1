@@ -44,17 +44,28 @@ export function BillingManager() {
     loadActs();
   }, [loadActs]);
 
+  const [confirmPayment, setConfirmPayment] = useState(false);
+  const [coverageRate, setCoverageRate] = useState<number>(80);
+
   const total = executedActs.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const partMutuelle = Math.round(total * (coverageRate / 100));
+  const partPatient = total - partMutuelle;
+
   const isPaid = invoice?.status === "paid";
   const isPendingInsurance = invoice?.status === "pending" && paymentMethod === "insurance";
   const isSettled = isPaid || isPendingInsurance;
 
-  const handlePayment = async () => {
+  const handlePaymentClick = () => {
     if (total === 0 || !currentPatient) return;
     if (paymentMethod === "insurance" && !insuranceProvider.trim()) {
       setError("Indiquez le nom de l'assureur / mutuelle avant de transmettre la facture.");
       return;
     }
+    setConfirmPayment(true);
+  };
+
+  const handlePayment = async () => {
+    setConfirmPayment(false);
     setProcessing(true);
     setError(null);
     try {
@@ -92,7 +103,7 @@ export function BillingManager() {
           body: JSON.stringify({
             method: paymentMethod,
             ...(paymentMethod === "insurance"
-              ? { insuranceProvider: insuranceProvider.trim(), insurancePolicyNumber: insurancePolicyNumber.trim() }
+              ? { insuranceProvider: insuranceProvider.trim(), insurancePolicyNumber: insurancePolicyNumber.trim(), coverageRate }
               : {}),
           }),
         });
@@ -245,39 +256,86 @@ export function BillingManager() {
                   value={insuranceProvider}
                   onChange={(e) => setInsuranceProvider(e.target.value)}
                   placeholder="AXA, IPM, Gras Savoye..."
-                  className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
+                  className="w-full border border-slate-200 rounded px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
                 />
               </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">N° Police / Adhérent</label>
-                <input
-                  value={insurancePolicyNumber}
-                  onChange={(e) => setInsurancePolicyNumber(e.target.value)}
-                  className="w-full border border-slate-200 rounded px-3 py-2 text-sm"
-                />
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">N° Police / Adhérent</label>
+                  <input
+                    value={insurancePolicyNumber}
+                    onChange={(e) => setInsurancePolicyNumber(e.target.value)}
+                    className="w-full border border-slate-200 rounded px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div className="w-1/3">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Couverture (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={coverageRate}
+                    onChange={(e) => setCoverageRate(Number(e.target.value))}
+                    className="w-full border border-slate-200 rounded px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  />
+                </div>
               </div>
-              <p className="text-[10px] text-slate-400">
-                Une déclaration sera créée dans le module Mutuelles ; la facture restera en attente jusqu'au règlement effectif de l'assureur.
+              <div className="flex justify-between p-3 bg-blue-50 border border-blue-100 rounded text-xs">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">Part Mutuelle</span>
+                  <span className="font-bold text-blue-800">{partMutuelle.toLocaleString()} FCFA</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">Reste à Charge Patient</span>
+                  <span className="font-bold text-slate-900">{partPatient.toLocaleString()} FCFA</span>
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                Une déclaration de {partMutuelle.toLocaleString()} FCFA sera transmise à l'assureur. Le reste à charge de {partPatient.toLocaleString()} FCFA devra être réglé par le patient.
               </p>
             </div>
           )}
 
           <div className="pt-4 border-t border-slate-100">
-            <button
-              onClick={handlePayment}
-              disabled={total === 0 || isSettled || processing}
-              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-sm text-xs font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-200 disabled:opacity-50"
-            >
-              {isPaid
-                ? "Paiement Enregistré"
-                : isPendingInsurance
-                ? "Transmis à la Mutuelle"
-                : processing
-                ? "Traitement…"
-                : paymentMethod === "insurance"
-                ? `Transmettre ${total.toLocaleString()} FCFA à l'assureur`
-                : `Régler ${total.toLocaleString()} FCFA`}
-            </button>
+            {!confirmPayment ? (
+              <button
+                onClick={handlePaymentClick}
+                disabled={total === 0 || isSettled || processing}
+                className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-sm text-xs font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-200 disabled:opacity-50"
+              >
+                {isPaid
+                  ? "Paiement Enregistré"
+                  : isPendingInsurance
+                  ? "Transmis à la Mutuelle"
+                  : processing
+                  ? "Traitement…"
+                  : paymentMethod === "insurance"
+                  ? "Calculer et Préparer la Transmission"
+                  : `Régler ${total.toLocaleString()} FCFA`}
+              </button>
+            ) : (
+              <div className="space-y-4 p-4 border border-blue-200 bg-blue-50 rounded-sm">
+                <p className="text-xs font-bold text-blue-900 text-center">
+                  Veuillez confirmer l'encaissement de {paymentMethod === "insurance" ? partPatient.toLocaleString() : total.toLocaleString()} FCFA
+                  {paymentMethod === "insurance" && ` et la transmission de ${partMutuelle.toLocaleString()} FCFA à la mutuelle`}.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConfirmPayment(false)}
+                    className="flex-1 h-10 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-sm text-xs font-bold uppercase tracking-widest transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handlePayment}
+                    className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm text-xs font-bold uppercase tracking-widest transition-colors shadow-sm shadow-emerald-200 flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Confirmer
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

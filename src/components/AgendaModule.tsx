@@ -108,7 +108,7 @@ function practitionerColor(id: string | null, practitioners: Practitioner[]) {
 // ── Composant principal ───────────────────────────────────────────────────────
 
 export function AgendaModule() {
-  const { currentPatient } = usePatient();
+  const { currentPatient, setCurrentPatient } = usePatient();
   const [activeTab, setActiveTab] = useState<"Agenda" | "Attente">("Agenda");
   const [agendaView, setAgendaView] = useState<"team" | "week">("team");
   const [weekOffset, setWeekOffset] = useState(0);
@@ -655,9 +655,28 @@ export function AgendaModule() {
                     </p>
                   </div>
                   {appt.checked_in_at ? (
-                    <span className="flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
-                      <LogIn className="h-3.5 w-3.5" /> Arrivé {new Date(appt.checked_in_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
+                        <LogIn className="h-3.5 w-3.5" /> Arrivé {new Date(appt.checked_in_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      <button
+                        onClick={() => {
+                          const patientInfo = {
+                            id: appt.patient_id,
+                            name: appt.patient_name,
+                            phone: appt.patient_phone || "",
+                            idNumber: "—",
+                            birthDate: "",
+                            address: ""
+                          };
+                          // @ts-ignore
+                          currentPatient?.id !== appt.patient_id && setCurrentPatient?.(patientInfo);
+                        }}
+                        className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all shadow-sm"
+                      >
+                        Prendre en charge
+                      </button>
+                    </div>
                   ) : (
                     <button
                       onClick={() => runAction(appt, "check-in")}

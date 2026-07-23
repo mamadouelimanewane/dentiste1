@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from "react";
 import {
   User, Save, CheckCircle2, CreditCard, X, Copy, Check,
-  MessageCircle, Smartphone, AlertTriangle, ExternalLink, Sparkles
+  MessageCircle, Smartphone, AlertTriangle, ExternalLink, Sparkles, Pencil
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatient, mapDbPatientToContext } from "@/lib/context";
 import { motion, AnimatePresence } from "framer-motion";
+import { useToast } from "@/lib/ToastContext";
 
 interface WelcomeResult {
   link: string | null;
@@ -18,9 +19,13 @@ interface WelcomeResult {
 
 export function PatientRegistration() {
   const { currentPatient, setCurrentPatient } = usePatient();
+  const { toast } = useToast();
+  
   const [isSaved, setIsSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  
   const [welcomeModal, setWelcomeModal] = useState<{
     patientName: string;
     dossier: string;
@@ -29,62 +34,116 @@ export function PatientRegistration() {
   const [copied, setCopied] = useState(false);
 
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     birthDate: "",
     phone: "",
-    address: ""
+    email: "",
+    address: "",
+    mutuelle: "",
+    allergies: "",
   });
 
   useEffect(() => {
     if (currentPatient) {
+      // Split full name back into first and last name for display
+      const parts = currentPatient.name.split(" ");
+      const lastName = parts.pop() || "";
+      const firstName = parts.join(" ");
+
+      setFormData(prev => ({
+        ...prev,
+        firstName,
+        lastName,
+        birthDate: currentPatient.birthDate || "",
+        phone: currentPatient.phone || "",
+        address: currentPatient.address || "",
+        // Other fields not currently stored in Patient context, wait for backend support or just mock
+      }));
+      setIsEditing(false);
+    } else {
       setFormData({
-        name: currentPatient.name,
-        birthDate: currentPatient.birthDate,
-        phone: currentPatient.phone,
-        address: currentPatient.address,
+        firstName: "",
+        lastName: "",
+        birthDate: "",
+        phone: "",
+        email: "",
+        address: "",
+        mutuelle: "",
+        allergies: "",
       });
+      setIsEditing(true); // Auto-edit if no patient
     }
   }, [currentPatient]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentPatient) return;
     setSaving(true);
     setError(null);
+    
+    const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+
     try {
-      const res = await fetch("/api/patients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: formData.name,
-          birthDate: formData.birthDate || null,
-          phone: formData.phone,
-          address: formData.address,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Échec de la création du dossier.");
-      setCurrentPatient(mapDbPatientToContext(data.patient));
-      setIsSaved(true);
-
-      // Afficher la modale de bienvenue si un message a été tenté
-      if (data.welcome && (data.welcome.link || data.welcome.channels?.length > 0)) {
-        setWelcomeModal({
-          patientName: data.patient.full_name,
-          dossier: data.patient.dossier_number,
-          welcome: data.welcome,
+      if (currentPatient) {
+        // Mode UPDATE (si l'API supporte PATCH /api/patients/:id)
+        const res = await fetch(`/api/patients/${currentPatient.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            full_name: fullName,
+            birth_date: formData.birthDate || null,
+            phone: formData.phone,
+            address: formData.address,
+          }),
         });
-      }
+        
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Échec de la mise à jour du dossier.");
+        }
+        
+        const data = await res.json();
+        setCurrentPatient(mapDbPatientToContext(data));
+        toast("Fiche patient mise à jour avec succès", "success");
+        setIsEditing(false);
+      } else {
+        // Mode CREATION
+        const res = await fetch("/api/patients", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName,
+            birthDate: formData.birthDate || null,
+            phone: formData.phone,
+            address: formData.address,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Échec de la création du dossier.");
+        
+        setCurrentPatient(mapDbPatientToContext(data.patient));
+        setIsSaved(true);
+        toast("Dossier patient créé avec succès", "success");
 
-      setTimeout(() => setIsSaved(false), 3000);
+        if (data.welcome && (data.welcome.link || data.welcome.channels?.length > 0)) {
+          setWelcomeModal({
+            patientName: data.patient.full_name,
+            dossier: data.patient.dossier_number,
+            welcome: data.welcome,
+          });
+        }
+
+        setTimeout(() => setIsSaved(false), 3000);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue.");
+      toast(err instanceof Error ? err.message : "Erreur inconnue.", "error");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
@@ -97,122 +156,227 @@ export function PatientRegistration() {
 
   return (
     <>
-      <div className="bg-white border border-slate-200 shadow-sm rounded-sm max-w-2xl mx-auto overflow-hidden">
-        {/* Card Header - Business Card Style */}
-        <div className="bg-[#1E3A8A] p-6 text-white flex justify-between items-start">
+      <div className="bg-white border border-slate-200 shadow-sm rounded-sm max-w-3xl mx-auto overflow-hidden">
+        {/* Card Header */}
+        <div className="bg-[#0F172A] p-6 text-white flex justify-between items-start">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-blue-400" />
               <h3 className="text-xs font-bold uppercase tracking-[0.2em]">Fiche Identification</h3>
             </div>
-            <p className="text-[10px] text-slate-400 font-medium">Cabinet Dentaire Elite — Dossier Patient</p>
+            <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase mt-0.5">Elite ERP Dentaire — Dossier Patient</p>
           </div>
-          <div className="h-10 w-10 border border-slate-700 rounded flex items-center justify-center">
-            <User className="h-5 w-5 text-slate-400" />
+          <div className="flex items-center gap-3">
+            {currentPatient && !isEditing && (
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Modifier
+              </button>
+            )}
+            <div className="h-10 w-10 border border-slate-700 bg-slate-800 rounded flex items-center justify-center">
+              <User className="h-5 w-5 text-slate-400" />
+            </div>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8">
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm rounded-sm p-3">{error}</div>
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm rounded-sm p-3 flex items-start gap-2">
+              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+              <p>{error}</p>
+            </div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-            {/* Nom & Prénom */}
-            <div className="space-y-2 border-b-2 border-blue-100 pb-3">
-              <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Nom & Prénom</label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="Mamadou Diallo"
-                disabled={!!currentPatient}
-                className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none disabled:opacity-60"
-                required
-              />
-            </div>
 
-            {/* Date de Naissance */}
-            <div className="space-y-2 border-b-2 border-blue-100 pb-3">
-              <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Né(e) le</label>
-              <input
-                type="date"
-                name="birthDate"
-                value={formData.birthDate}
-                onChange={handleChange}
-                disabled={!!currentPatient}
-                className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 focus:ring-0 outline-none disabled:opacity-60"
-              />
-            </div>
+          {/* Section 1: Identité */}
+          <div className="mb-8">
+            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 border-b pb-2">Identité</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Prénom</label>
+                <input
+                  type="text"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  placeholder="Mamadou"
+                  disabled={!isEditing}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                  required
+                />
+              </div>
 
-            {/* Téléphone */}
-            <div className="space-y-2 border-b-2 border-blue-100 pb-3">
-              <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Contact / Téléphone</label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="+221 77 000 00 00"
-                disabled={!!currentPatient}
-                className="w-full bg-transparent border-none p-0 text-base font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0 outline-none disabled:opacity-60"
-              />
-            </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Nom</label>
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  placeholder="Diallo"
+                  disabled={!isEditing}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                  required
+                />
+              </div>
 
-            {/* N° Dossier (généré côté serveur) */}
-            <div className="space-y-2 border-b-2 border-blue-100 pb-3">
-              <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Référence ID / Dossier</label>
-              <p className="text-base font-bold text-slate-400">
-                {currentPatient?.idNumber || "Généré automatiquement à l'enregistrement"}
-              </p>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Né(e) le</label>
+                <input
+                  type="date"
+                  name="birthDate"
+                  value={formData.birthDate}
+                  onChange={handleChange}
+                  disabled={!isEditing}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Référence / Dossier</label>
+                <p className="text-sm font-black text-blue-600 py-2">
+                  {currentPatient?.idNumber || "Généré automatiquement"}
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Adresse */}
-          <div className="mt-8 space-y-2 border-b-2 border-blue-100 pb-3">
-            <label className="text-sm font-black text-blue-900 uppercase tracking-tight">Adresse de Résidence</label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              placeholder="Dakar, Plateau, Rue 12..."
-              disabled={!!currentPatient}
-              className="w-full bg-transparent border-none p-0 text-sm font-bold text-slate-900 placeholder:text-slate-200 focus:ring-0 outline-none disabled:opacity-60"
-            />
+          {/* Section 2: Contact */}
+          <div className="mb-8">
+            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 border-b pb-2">Contact & Localisation</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Téléphone</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="+221 77 000 00 00"
+                  disabled={!isEditing}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Email (Optionnel)</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="patient@email.com"
+                  disabled={!isEditing}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                />
+              </div>
+
+              <div className="md:col-span-2 space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Adresse de Résidence</label>
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Dakar, Plateau, Rue 12..."
+                  disabled={!isEditing}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Info envoi automatique */}
-          {!currentPatient && formData.phone && (
-            <div className="mt-6 flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded text-[10px] font-bold text-blue-700 uppercase tracking-widest">
-              <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
+          {/* Section 3: Médical & Administratif */}
+          <div className="mb-8">
+            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 border-b pb-2">Médical & Administratif</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Mutuelle / IPM</label>
+                <input
+                  type="text"
+                  name="mutuelle"
+                  value={formData.mutuelle}
+                  onChange={handleChange}
+                  placeholder="Ex: IPM Entreprise, AXA..."
+                  disabled={!isEditing}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest text-red-500">Allergies Connues</label>
+                <input
+                  type="text"
+                  name="allergies"
+                  value={formData.allergies}
+                  onChange={handleChange}
+                  placeholder="Ex: Pénicilline, Latex..."
+                  disabled={!isEditing}
+                  className="w-full bg-red-50 border border-red-200 rounded-md px-3 py-2 text-sm font-bold text-red-900 placeholder:text-red-300 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Info envoi automatique (uniquement création) */}
+          {!currentPatient && formData.phone && isEditing && (
+            <div className="mt-6 flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-100 rounded-lg text-xs font-bold text-blue-700">
+              <Sparkles className="h-4 w-4 flex-shrink-0" />
               Un SMS + WhatsApp de bienvenue avec le lien portail sera envoyé automatiquement
             </div>
           )}
 
-          <div className="mt-10 flex justify-between items-center">
+          {/* Actions */}
+          <div className="mt-8 pt-6 border-t border-slate-100 flex justify-between items-center">
             <div className="flex items-center gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
               <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Certifié Elite Pro</span>
             </div>
-            <button
-              type="submit"
-              disabled={saving || !!currentPatient}
-              className={cn(
-                "h-9 px-6 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 disabled:opacity-60",
-                isSaved || currentPatient
-                  ? "bg-emerald-600 text-white"
-                  : "bg-slate-900 text-white hover:bg-black"
-              )}
-            >
-              {isSaved || currentPatient ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
-              {saving ? "Enregistrement…" : isSaved || currentPatient ? "Dossier Créé" : "Enregistrer la Fiche"}
-            </button>
+            
+            {isEditing && (
+              <div className="flex items-center gap-3">
+                {currentPatient && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false);
+                      // Reset to patient context values
+                      const parts = currentPatient.name.split(" ");
+                      setFormData(prev => ({
+                        ...prev,
+                        firstName: parts.slice(0, -1).join(" ") || currentPatient.name,
+                        lastName: parts.length > 1 ? parts.pop() || "" : "",
+                        birthDate: currentPatient.birthDate || "",
+                        phone: currentPatient.phone || "",
+                        address: currentPatient.address || "",
+                      }));
+                    }}
+                    className="h-10 px-5 rounded-md text-xs font-bold text-slate-500 hover:bg-slate-100 transition-colors uppercase tracking-widest"
+                  >
+                    Annuler
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className={cn(
+                    "h-10 px-6 rounded-md text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 disabled:opacity-60",
+                    isSaved ? "bg-emerald-600 text-white" : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-200"
+                  )}
+                >
+                  {isSaved ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+                  {saving ? "Enregistrement…" : isSaved ? "Enregistré" : currentPatient ? "Sauvegarder" : "Créer le Dossier"}
+                </button>
+              </div>
+            )}
           </div>
         </form>
       </div>
 
-      {/* ── MODALE BIENVENUE ───────────────────────────────────────────── */}
+      {/* ── MODALE BIENVENUE (inchangée) ───────────────────────────────────────────── */}
       <AnimatePresence>
         {welcomeModal && (
           <motion.div

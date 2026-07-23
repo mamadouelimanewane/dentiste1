@@ -293,14 +293,34 @@ export default function Home() {
                 ) : (
                   <User className="h-3.5 w-3.5" />
                 )}
-                <span className="text-xs font-black uppercase tracking-wider">
+                <span className="text-xs font-black uppercase tracking-wider mr-2">
                   {currentPatient ? `Patient Actif : ${currentPatient.name}` : "Aucun Patient Sélectionné"}
                 </span>
+                {currentPatient?.allergies && (
+                  <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-red-100 bg-red-600/80 px-2 py-0.5 rounded-full" title={`Allergies: ${currentPatient.allergies}`}>
+                    <ShieldAlert className="h-3 w-3" />
+                    Alerte
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                // Example action: Jump to Nouv. Dossier or Consultation
+                // We'll set the step to "Nouv. Dossier" (id: 3)
+                const event = new CustomEvent('quick-action-emergency');
+                window.dispatchEvent(event);
+                alert("Accès Rapide : Fonctionnalité Urgence activée.");
+              }}
+              title="Accès Rapide / Urgence"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 transition-colors border border-rose-500/20"
+            >
+              <Zap className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest">Urgence</span>
+            </button>
             <div className="hidden md:flex flex-col text-right mr-2 border-l border-slate-200 pl-4">
               <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">{user.roleLabel}</span>
               <span className="text-sm font-black text-slate-900 tracking-tight">{user.fullName}</span>
@@ -392,7 +412,7 @@ export default function Home() {
 
               {currentStep !== 13 && (
                 <div className="space-y-6">
-                  {hasPermission(permissions, 5, 'view') && <PractitionerHub />}
+                  {hasPermission(permissions, 5, 'view') && <PractitionerHub onNavigate={(step) => setCurrentStep(step)} />}
                   {hasPermission(permissions, 5, 'view') && <ClinicalNotes phaseId={currentStep} />}
                 </div>
               )}
@@ -400,30 +420,6 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="absolute bottom-0 inset-x-0 glass-panel border-t-0 p-4 px-8 z-40 flex items-center justify-between lg:pl-80 lg:pr-12">
-          <button
-            onClick={prevStep}
-            disabled={currentIndex === 0}
-            className="flex items-center gap-2 px-5 h-11 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition-all micro-bounce"
-          >
-            <ChevronLeft className="h-4 w-4" /> Précédent
-          </button>
-
-          <div className="flex items-center gap-1.5">
-            {visibleSteps.map(s => (
-              <div key={s.id} className={cn("h-1.5 w-1.5 rounded-full", s.id === currentStep ? "bg-blue-600" : "bg-slate-200")} />
-            ))}
-          </div>
-
-          <button
-            onClick={nextStep}
-            disabled={currentIndex === visibleSteps.length - 1}
-            className="flex items-center gap-2 px-8 h-11 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-30 transition-all shadow-[0_8px_20px_-6px_rgba(37,99,235,0.6)] micro-bounce"
-          >
-            {currentIndex === visibleSteps.length - 1 ? "Terminer le parcours" : "Étape Suivante"}
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
       </div>
 
       {/* MODAL NOUVEAU DOSSIER */}

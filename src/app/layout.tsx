@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 
 import { PatientProvider } from "@/lib/context";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ToastProvider } from "@/lib/ToastContext";
 
 export default function RootLayout({
   children,
@@ -27,7 +28,9 @@ export default function RootLayout({
           themes={['light', 'dark', 'smart']}
         >
           <PatientProvider>
-            {children}
+            <ToastProvider>
+              {children}
+            </ToastProvider>
           </PatientProvider>
         </ThemeProvider>
       </body>

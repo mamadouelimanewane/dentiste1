@@ -9,6 +9,8 @@ interface Patient {
   phone: string;
   idNumber: string;
   address: string;
+  allergies?: string;
+  mutuelle?: string;
 }
 
 interface PatientContextType {
@@ -25,6 +27,8 @@ export function mapDbPatientToContext(row: {
   phone: string | null;
   dossier_number: string;
   address: string | null;
+  allergies?: string | null;
+  mutuelle?: string | null;
 }): Patient {
   return {
     id: row.id,
@@ -33,6 +37,8 @@ export function mapDbPatientToContext(row: {
     phone: row.phone || "",
     idNumber: row.dossier_number,
     address: row.address || "",
+    allergies: row.allergies || "",
+    mutuelle: row.mutuelle || "",
   };
 }
 
