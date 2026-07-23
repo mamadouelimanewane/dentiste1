@@ -93,10 +93,14 @@ export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
 
       <div className="flex-1 p-6 flex flex-col space-y-4 relative">
         {!currentPatient && (
-          <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
-            <AlertTriangle className="h-8 w-8 text-amber-500 mb-3" />
-            <p className="text-sm font-bold text-slate-700 uppercase tracking-widest">Aucun Patient Actif</p>
-            <p className="text-xs text-slate-500 mt-1">Créez ou sélectionnez un dossier patient pour ajouter des notes.</p>
+          <div className="absolute inset-0 z-10 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+            <div className="h-16 w-16 bg-blue-50 rounded-full flex items-center justify-center mb-4 border border-blue-100 shadow-sm">
+              <StickyNote className="h-8 w-8 text-blue-400" />
+            </div>
+            <p className="text-sm font-black text-slate-700 uppercase tracking-widest">Prêt à documenter ?</p>
+            <p className="text-xs text-slate-500 mt-2 max-w-xs leading-relaxed">
+              Sélectionnez un patient depuis l'agenda ou créez un nouveau dossier pour commencer à saisir vos observations cliniques.
+            </p>
           </div>
         )}
 

@@ -65,9 +65,14 @@ export function ProcedureExecution() {
 
   if (!currentPatient) {
     return (
-      <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
-        <Activity className="h-10 w-10 text-slate-200" />
-        <p className="text-sm text-slate-500">Sélectionnez un patient (étape Accueil) pour saisir des actes.</p>
+      <div className="bg-white/80 backdrop-blur-md rounded-2xl p-12 border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center space-y-4 min-h-[400px]">
+        <div className="h-20 w-20 bg-blue-50 rounded-full flex items-center justify-center mb-2 border border-blue-100 shadow-sm">
+          <Activity className="h-10 w-10 text-blue-400" />
+        </div>
+        <h2 className="text-lg font-black text-slate-800 tracking-tight">Espace Clinique</h2>
+        <p className="text-sm text-slate-500 max-w-sm leading-relaxed">
+          Sélectionnez un patient depuis l'agenda ou créez un nouveau dossier pour accéder à l'odontogramme et saisir des actes médicaux.
+        </p>
       </div>
     );
   }

@@ -204,7 +204,7 @@ export function PatientRegistration() {
                   onChange={handleChange}
                   placeholder="Mamadou"
                   disabled={!isEditing}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                   required
                 />
               </div>
@@ -218,7 +218,7 @@ export function PatientRegistration() {
                   onChange={handleChange}
                   placeholder="Diallo"
                   disabled={!isEditing}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                   required
                 />
               </div>
@@ -257,7 +257,7 @@ export function PatientRegistration() {
                   onChange={handleChange}
                   placeholder="+221 77 000 00 00"
                   disabled={!isEditing}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                 />
               </div>
 
@@ -270,7 +270,7 @@ export function PatientRegistration() {
                   onChange={handleChange}
                   placeholder="patient@email.com"
                   disabled={!isEditing}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                 />
               </div>
 
@@ -283,7 +283,7 @@ export function PatientRegistration() {
                   onChange={handleChange}
                   placeholder="Dakar, Plateau, Rue 12..."
                   disabled={!isEditing}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                 />
               </div>
             </div>
@@ -302,7 +302,7 @@ export function PatientRegistration() {
                   onChange={handleChange}
                   placeholder="Ex: IPM Entreprise, AXA..."
                   disabled={!isEditing}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                 />
               </div>
 
@@ -315,7 +315,7 @@ export function PatientRegistration() {
                   onChange={handleChange}
                   placeholder="Ex: Pénicilline, Latex..."
                   disabled={!isEditing}
-                  className="w-full bg-red-50 border border-red-200 rounded-md px-3 py-2 text-sm font-bold text-red-900 placeholder:text-red-300 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
+                  className="w-full bg-red-50 border border-red-200 rounded-xl px-4 py-3.5 text-sm font-bold text-red-900 placeholder:text-red-300 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all shadow-sm hover:border-red-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                 />
               </div>
             </div>

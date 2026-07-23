@@ -120,9 +120,14 @@ export function BillingManager() {
 
   if (!currentPatient) {
     return (
-      <div className="bg-white rounded-lg p-12 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
-        <FileText className="h-10 w-10 text-slate-200" />
-        <p className="text-sm text-slate-500">Sélectionnez un patient (étape Accueil) pour facturer.</p>
+      <div className="bg-white/80 backdrop-blur-md rounded-2xl p-12 border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center space-y-4 min-h-[400px]">
+        <div className="h-20 w-20 bg-blue-50 rounded-full flex items-center justify-center mb-2 border border-blue-100 shadow-sm">
+          <Receipt className="h-10 w-10 text-blue-400" />
+        </div>
+        <h2 className="text-lg font-black text-slate-800 tracking-tight">Prêt pour la Facturation</h2>
+        <p className="text-sm text-slate-500 max-w-sm leading-relaxed">
+          Sélectionnez un patient actif pour établir un devis, générer une note d'honoraires ou procéder à un encaissement.
+        </p>
       </div>
     );
   }
