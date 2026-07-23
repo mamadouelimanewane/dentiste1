@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
 import dynamic from "next/dynamic";
 import { DemoModeBadge } from "@/components/DemoModeBadge";
+import { QRCodeSVG } from "qrcode.react";
 
 const PDFDownloadLink = dynamic(
   () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
@@ -229,29 +230,45 @@ export function BillingManager() {
             <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm p-3">{error}</div>
           )}
 
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {[
               { id: "cash", label: "Espèces", icon: Banknote },
               { id: "card", label: "Carte Bancaire", icon: CreditCard },
-              { id: "insurance", label: "Prise en charge", icon: Shield },
-              { id: "mobile_money", label: "Mobile Money (Wave/OM)", icon: Smartphone },
+              { id: "insurance", label: "Mutuelle", icon: Shield },
+              { id: "mobile_money", label: "Wave / Orange", icon: Smartphone },
             ].map((method) => (
               <button
                 key={method.id}
                 onClick={() => setPaymentMethod(method.id as PaymentMethod)}
                 disabled={isSettled}
                 className={cn(
-                  "flex items-center gap-4 p-4 rounded-sm border transition-all disabled:opacity-50",
+                  "flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all disabled:opacity-50",
                   paymentMethod === method.id
-                    ? "bg-blue-50 border-blue-200 text-blue-900"
-                    : "bg-white border-slate-100 hover:border-slate-200 text-slate-600"
+                    ? "bg-blue-50 border-blue-600 text-blue-900 shadow-sm shadow-blue-100"
+                    : "bg-white border-slate-100 hover:border-slate-300 text-slate-500 hover:text-slate-700"
                 )}
               >
-                <method.icon className={cn("h-5 w-5", paymentMethod === method.id ? "text-blue-600" : "text-slate-400")} />
-                <span className="text-xs font-black uppercase tracking-tight">{method.label}</span>
+                <method.icon className={cn("h-6 w-6", paymentMethod === method.id ? "text-blue-600" : "text-slate-400")} />
+                <span className="text-[10px] font-black uppercase tracking-tight">{method.label}</span>
               </button>
             ))}
           </div>
+
+          {paymentMethod === "mobile_money" && !isSettled && (
+            <div className="flex items-center gap-6 p-4 bg-blue-50/50 border border-blue-100 rounded-xl">
+              <div className="bg-white p-2 rounded-lg shadow-sm border border-slate-100">
+                <QRCodeSVG value={`https://pay.wave.com/m/demo?amount=${total}`} size={80} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Scanner pour payer via Wave</h4>
+                <p className="text-xs text-slate-500 mt-1">Montant à régler : <span className="font-bold text-blue-600">{total.toLocaleString()} FCFA</span></p>
+                <div className="flex gap-2 mt-2">
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-[9px] font-bold uppercase rounded">Wave</span>
+                  <span className="px-2 py-1 bg-orange-100 text-orange-700 text-[9px] font-bold uppercase rounded">Orange Money</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {paymentMethod === "insurance" && !isSettled && (
             <div className="space-y-3 pt-2">

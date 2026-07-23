@@ -525,6 +525,21 @@ export function AgendaModule() {
                     ))}
                   </div>
 
+                  {/* Current Time Line */}
+                  <div className="absolute left-16 right-0 z-20 pointer-events-none" style={{
+                    top: `${Math.max(0, (new Date().getHours() + new Date().getMinutes()/60 - 8)) * 80}px`,
+                    display: new Date().getHours() >= 8 && new Date().getHours() < 20 ? 'block' : 'none'
+                  }}>
+                    <div className="flex items-center -ml-14">
+                      <div className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm relative z-30">
+                        {new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}
+                      </div>
+                      <div className="h-0.5 w-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] relative z-20">
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-red-500 rounded-full" />
+                      </div>
+                    </div>
+                  </div>
+
                   {agendaView === "week" ? weekDays.map((day, dayIdx) => (
                     <div key={dayIdx} className={cn("flex-1 border-r border-slate-100 last:border-r-0 relative group min-w-[120px]", day.isToday ? "bg-blue-50/20" : "")}>
                       {appointments.filter(a => new Date(a.scheduled_at).toDateString() === day.fullDate.toDateString()).map(appt => {
