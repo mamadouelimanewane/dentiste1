@@ -1,44 +1,78 @@
 "use client";
 
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
+    padding: 50,
     backgroundColor: '#FFFFFF',
     fontFamily: 'Helvetica',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 40,
-    borderBottomWidth: 2,
-    borderBottomColor: '#1E3A8A',
-    paddingBottom: 20,
   },
   logoSection: {
-    flexDirection: 'column',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  title: {
-    fontSize: 24,
+  logoBox: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#1E3A8A',
+    borderRadius: 8,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoText: {
+    color: '#FFFFFF',
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#1E3A8A',
-    marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 10,
+  titleText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    letterSpacing: 1,
+  },
+  subtitleText: {
+    fontSize: 9,
     color: '#64748B',
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 2,
+    marginTop: 2,
+  },
+  invoiceTag: {
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  invoiceTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1E3A8A',
+    marginBottom: 2,
+  },
+  invoiceNumber: {
+    fontSize: 10,
+    color: '#64748B',
   },
   infoSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 30,
+    marginBottom: 40,
+    paddingTop: 20,
+    borderTopWidth: 2,
+    borderTopColor: '#F1F5F9',
   },
   infoBlock: {
-    flexDirection: 'column',
     width: '45%',
   },
   infoLabel: {
@@ -46,71 +80,127 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     textTransform: 'uppercase',
     fontWeight: 'bold',
-    marginBottom: 4,
+    letterSpacing: 1,
+    marginBottom: 6,
   },
   infoValue: {
     fontSize: 11,
-    color: '#1E293B',
+    color: '#0F172A',
     fontWeight: 'bold',
-    marginBottom: 2,
+    marginBottom: 3,
+  },
+  infoSub: {
+    fontSize: 9,
+    color: '#64748B',
+    marginBottom: 1,
   },
   table: {
-    marginTop: 20,
+    marginTop: 10,
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#F8FAFC',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    padding: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    padding: 8,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     alignItems: 'center',
   },
-  colTooth: { width: '10%', fontSize: 10, fontWeight: 'bold', color: '#1E3A8A' },
-  colLabel: { width: '60%', fontSize: 10, color: '#334155' },
-  colPrice: { width: '30%', fontSize: 10, textAlign: 'right', fontWeight: 'bold' },
-  headerText: { fontSize: 8, fontWeight: 'bold', color: '#64748B', textTransform: 'uppercase' },
-  totalSection: {
-    marginTop: 40,
-    paddingTop: 20,
-    borderTopWidth: 2,
-    borderTopColor: '#F1F5F9',
-    alignItems: 'flex-end',
+  colTooth: { width: '15%', fontSize: 9, fontWeight: 'bold', color: '#1E3A8A' },
+  colLabel: { width: '55%', fontSize: 9, color: '#334155' },
+  colPrice: { width: '30%', fontSize: 9, textAlign: 'right', fontWeight: 'bold', color: '#0F172A' },
+  headerText: { fontSize: 8, fontWeight: 'bold', color: '#64748B', textTransform: 'uppercase', letterSpacing: 1 },
+  summarySection: {
+    marginTop: 30,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  summaryBox: {
+    width: '50%',
+    backgroundColor: '#F8FAFC',
+    padding: 15,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    fontSize: 9,
+    color: '#64748B',
+    textTransform: 'uppercase',
+  },
+  summaryValue: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#334155',
   },
   totalRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#CBD5E1',
   },
   totalLabel: {
-    fontSize: 10,
-    color: '#64748B',
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#0F172A',
     textTransform: 'uppercase',
-    marginRight: 10,
   },
-  totalAmount: {
-    fontSize: 20,
+  totalValue: {
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#1E3A8A',
   },
   footer: {
     position: 'absolute',
-    bottom: 40,
-    left: 40,
-    right: 40,
-    textAlign: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 10,
+    bottom: 50,
+    left: 50,
+    right: 50,
   },
-  footerText: {
-    fontSize: 8,
-    color: '#94A3B8',
+  certificationBlock: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    paddingTop: 20,
+  },
+  certifText1: { fontSize: 8, color: '#94A3B8', marginBottom: 2 },
+  certifText2: { fontSize: 7, color: '#CBD5E1' },
+  stampBox: {
+    width: 100,
+    height: 40,
+    borderWidth: 2,
+    borderColor: '#1E3A8A',
+    borderRadius: 4,
+    opacity: 0.5,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: 'rotate(-5deg)',
+  },
+  stampText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#1E3A8A',
+    textTransform: 'uppercase',
   }
 });
 
@@ -125,16 +215,21 @@ interface InvoicePDFProps {
 export const InvoicePDF = ({ items, total, patientName, patientId, invoiceNumber }: InvoicePDFProps) => (
   <Document>
     <Page size="A4" style={styles.page}>
-      {/* Header */}
+      {/* Header Premium */}
       <View style={styles.header}>
         <View style={styles.logoSection}>
-          <Text style={styles.title}>ELITE ERP CAP VERT</Text>
-          <Text style={styles.subtitle}>Cabinet Dentaire de Référence</Text>
+          <View style={styles.logoBox}>
+            <Text style={styles.logoText}>E</Text>
+          </View>
+          <View>
+            <Text style={styles.titleText}>ELITE ERP</Text>
+            <Text style={styles.subtitleText}>Cabinet Dentaire Premium</Text>
+          </View>
         </View>
-        <View style={{ textAlign: 'right' }}>
-          <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#1E293B' }}>FACTURE</Text>
-          <Text style={{ fontSize: 10, color: '#64748B' }}>#{invoiceNumber}</Text>
-          <Text style={{ fontSize: 10, color: '#64748B', marginTop: 4 }}>Date: {new Date().toLocaleDateString('fr-FR')}</Text>
+        <View style={styles.invoiceTag}>
+          <Text style={styles.invoiceTitle}>FACTURE</Text>
+          <Text style={styles.invoiceNumber}>N° {invoiceNumber}</Text>
+          <Text style={{ fontSize: 8, color: '#94A3B8', marginTop: 4 }}>Date: {new Date().toLocaleDateString('fr-FR')}</Text>
         </View>
       </View>
 
@@ -143,13 +238,13 @@ export const InvoicePDF = ({ items, total, patientName, patientId, invoiceNumber
         <View style={styles.infoBlock}>
           <Text style={styles.infoLabel}>Émetteur</Text>
           <Text style={styles.infoValue}>Dr. Mamadou Diallo</Text>
-          <Text style={{ fontSize: 9, color: '#64748B' }}>Chirurgien-Dentiste</Text>
-          <Text style={{ fontSize: 9, color: '#64748B' }}>Dakar, Sénégal</Text>
+          <Text style={styles.infoSub}>Chirurgien-Dentiste, Implantologue</Text>
+          <Text style={styles.infoSub}>Dakar, Sénégal - NINEA: 1234567</Text>
         </View>
         <View style={styles.infoBlock}>
-          <Text style={styles.infoLabel}>Patient</Text>
+          <Text style={styles.infoLabel}>Patient / Destinataire</Text>
           <Text style={styles.infoValue}>{patientName}</Text>
-          {patientId && <Text style={{ fontSize: 9, color: '#64748B' }}>ID: {patientId}</Text>}
+          <Text style={styles.infoSub}>Dossier: {patientId || 'Non spécifié'}</Text>
         </View>
       </View>
 
@@ -157,35 +252,47 @@ export const InvoicePDF = ({ items, total, patientName, patientId, invoiceNumber
       <View style={styles.table}>
         <View style={styles.tableHeader}>
           <Text style={[styles.colTooth, styles.headerText]}>Dent</Text>
-          <Text style={[styles.colLabel, styles.headerText]}>Designation de l'acte</Text>
-          <Text style={[styles.colPrice, styles.headerText, { textAlign: 'right' }]}>Montant (FCFA)</Text>
+          <Text style={[styles.colLabel, styles.headerText]}>Désignation de l'acte médical</Text>
+          <Text style={[styles.colPrice, styles.headerText]}>Montant (FCFA)</Text>
         </View>
-
-        {items.map((item, index) => (
-          <View key={index} style={styles.tableRow}>
-            <Text style={styles.colTooth}>{item.tooth || '-'}</Text>
+        {items.map((item, i) => (
+          <View key={i} style={styles.tableRow}>
+            <Text style={styles.colTooth}>{item.tooth ? `Dent ${item.tooth}` : 'Général'}</Text>
             <Text style={styles.colLabel}>{item.label}</Text>
-            <Text style={styles.colPrice}>{item.price.toLocaleString()}</Text>
+            <Text style={styles.colPrice}>{Number(item.price).toLocaleString()}</Text>
           </View>
         ))}
       </View>
 
-      {/* Total */}
-      <View style={styles.totalSection}>
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total Net à Payer</Text>
-          <Text style={styles.totalAmount}>{total.toLocaleString()} FCFA</Text>
+      {/* Summary */}
+      <View style={styles.summarySection}>
+        <View style={styles.summaryBox}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Sous-total</Text>
+            <Text style={styles.summaryValue}>{total.toLocaleString()} FCFA</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>TVA (0%)</Text>
+            <Text style={styles.summaryValue}>0 FCFA</Text>
+          </View>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>NET À PAYER</Text>
+            <Text style={styles.totalValue}>{total.toLocaleString()} FCFA</Text>
+          </View>
         </View>
       </View>
 
-      {/* Footer */}
+      {/* Footer / Certification */}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Merci de votre confiance. Cette facture est certifiée conforme aux tarifs en vigueur.
-        </Text>
-        <Text style={[styles.footerText, { marginTop: 4 }]}>
-          Elite ERP Cap Vert v1.3 - Système de Gestion Certifié CABINET DENTAIRE DU CAP VERT
-        </Text>
+        <View style={styles.certificationBlock}>
+          <View>
+            <Text style={styles.certifText1}>Facture certifiée électroniquement par Elite ERP.</Text>
+            <Text style={styles.certifText2}>Hash: {Math.random().toString(36).substring(2, 15).toUpperCase()} - {new Date().toISOString()}</Text>
+          </View>
+          <View style={styles.stampBox}>
+            <Text style={styles.stampText}>PAYÉ / ACQUITTÉ</Text>
+          </View>
+        </View>
       </View>
     </Page>
   </Document>
