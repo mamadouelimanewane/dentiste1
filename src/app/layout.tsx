@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 import { PatientProvider } from "@/lib/context";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/lib/ToastContext";
+import { GlobalShortcuts } from "@/components/GlobalShortcuts";
 
 export default function RootLayout({
   children,
@@ -29,6 +30,7 @@ export default function RootLayout({
         >
           <PatientProvider>
             <ToastProvider>
+              <GlobalShortcuts />
               {children}
             </ToastProvider>
           </PatientProvider>

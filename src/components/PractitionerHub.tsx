@@ -4,9 +4,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Activity, Calendar, X, Pill, Stethoscope, Syringe, BookOpen, ChevronRight, BrainCircuit } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { usePatient } from "@/lib/context";
 
 interface TodayAppointment {
   id: string;
+  patient_id?: string;
   patient_name: string;
   type: string | null;
   scheduled_at: string;
@@ -24,6 +26,7 @@ function statusLabel(appt: TodayAppointment): string {
 }
 
 export function PractitionerHub({ onNavigate }: { onNavigate?: (stepId: number) => void }) {
+  const { setCurrentPatient } = usePatient();
   const [isAgendaOpen, setIsAgendaOpen] = useState(false);
   const [todayAppointments, setTodayAppointments] = useState<TodayAppointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -221,35 +224,48 @@ export function PractitionerHub({ onNavigate }: { onNavigate?: (stepId: number) 
                      .map((apt) => {
                        const label = statusLabel(apt);
                        return (
-                         <div
-                           key={apt.id}
-                           className={cn(
-                             "flex items-center p-4 border rounded-md gap-6 transition-all",
-                             label === "En attente" ? "border-blue-300 bg-blue-50 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"
-                           )}
-                         >
-                           <div className="text-2xl font-black text-slate-800 w-20 tracking-tighter">
-                             {new Date(apt.scheduled_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                           </div>
-                           <div className="flex-1">
-                             <p className="text-base font-black text-slate-900 uppercase tracking-tight">{apt.patient_name}</p>
-                             <div className="flex items-center gap-2 mt-1">
-                               <Activity className="h-3.5 w-3.5 text-slate-400" />
-                               <p className="text-[11px] font-bold text-slate-500 uppercase">{apt.type || "Consultation"}</p>
-                             </div>
-                           </div>
-                           <div className="text-right flex-shrink-0 w-32">
-                             <span className={cn(
-                               "text-[10px] font-black uppercase px-3 py-1.5 rounded-sm tracking-widest inline-block text-center w-full",
-                               label === "Terminé" ? "bg-slate-100 text-slate-500" :
-                               label === "En attente" ? "bg-blue-600 text-white shadow-md shadow-blue-200" :
-                               "bg-slate-50 text-slate-400 border border-slate-100"
-                             )}>
-                               {label}
-                             </span>
-                           </div>
-                         </div>
-                       );
+                          <button
+                            key={apt.id}
+                            onClick={() => {
+                              if (setCurrentPatient) {
+                                setCurrentPatient({
+                                  id: apt.patient_id || apt.id,
+                                  name: apt.patient_name,
+                                  phone: "",
+                                  idNumber: "—",
+                                  birthDate: "",
+                                  address: ""
+                                });
+                              }
+                              setIsAgendaOpen(false);
+                            }}
+                            className={cn(
+                              "w-full text-left flex items-center p-4 border rounded-md gap-6 transition-all",
+                              label === "En attente" ? "border-blue-300 bg-blue-50 shadow-sm hover:bg-blue-100 cursor-pointer" : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50 cursor-pointer"
+                            )}
+                          >
+                            <div className="text-2xl font-black text-slate-800 w-20 tracking-tighter">
+                              {new Date(apt.scheduled_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-base font-black text-slate-900 uppercase tracking-tight">{apt.patient_name}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Activity className="h-3.5 w-3.5 text-slate-400" />
+                                <p className="text-[11px] font-bold text-slate-500 uppercase">{apt.type || "Consultation"}</p>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0 w-32">
+                              <span className={cn(
+                                "text-[10px] font-black uppercase px-3 py-1.5 rounded-sm tracking-widest inline-block text-center w-full",
+                                label === "Terminé" ? "bg-slate-100 text-slate-500" :
+                                label === "En attente" ? "bg-blue-600 text-white shadow-md shadow-blue-200" :
+                                "bg-slate-50 text-slate-400 border border-slate-100"
+                              )}>
+                                {label}
+                              </span>
+                            </div>
+                          </button>
+                        );
                      })
                  )}
               </div>
