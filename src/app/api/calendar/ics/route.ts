@@ -1,36 +1,47 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { formatToGoogleCalendarDate } from "@/lib/google-calendar";
+
+interface AppointmentRow {
+  id: string;
+  scheduled_at: string;
+  duration_minutes: number | null;
+  type: string | null;
+  status: string;
+  patient_name: string | null;
+  practitioner_name: string | null;
+}
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const practitionerId = searchParams.get("practitionerId");
 
-    const sql = getDb();
-    let query = `
-      SELECT 
-        a.id, a.scheduled_at, a.duration_minutes, a.type, a.status,
-        p.full_name as patient_name,
-        pr.full_name as practitioner_name
-      FROM appointments a
-      LEFT JOIN patients p ON a.patient_id = p.id
-      LEFT JOIN profiles pr ON a.practitioner_id = pr.id
-      WHERE a.status != 'cancelled'
-    `;
-    const params: any[] = [];
+    const appointments = (practitionerId
+      ? await sql`
+          SELECT 
+            a.id, a.scheduled_at, a.duration_minutes, a.type, a.status,
+            p.full_name as patient_name,
+            u.full_name as practitioner_name
+          FROM appointments a
+          LEFT JOIN patients p ON a.patient_id = p.id
+          LEFT JOIN users u ON a.practitioner_id = u.id
+          WHERE a.status != 'cancelled' AND a.practitioner_id = ${practitionerId}
+          ORDER BY a.scheduled_at DESC LIMIT 200
+        `
+      : await sql`
+          SELECT 
+            a.id, a.scheduled_at, a.duration_minutes, a.type, a.status,
+            p.full_name as patient_name,
+            u.full_name as practitioner_name
+          FROM appointments a
+          LEFT JOIN patients p ON a.patient_id = p.id
+          LEFT JOIN users u ON a.practitioner_id = u.id
+          WHERE a.status != 'cancelled'
+          ORDER BY a.scheduled_at DESC LIMIT 200
+        `) as unknown as AppointmentRow[];
 
-    if (practitionerId) {
-      query += ` AND a.practitioner_id = $1`;
-      params.push(practitionerId);
-    }
-
-    query += ` ORDER BY a.scheduled_at DESC LIMIT 200`;
-
-    const result = await sql.query(query, params);
-    const appointments = result.rows;
-
-    const eventsIcs = appointments.map((app) => {
+    const eventsIcs = appointments.map((app: AppointmentRow) => {
       const startDate = new Date(app.scheduled_at);
       const duration = app.duration_minutes || 30;
       const endDate = new Date(startDate.getTime() + duration * 60 * 1000);
