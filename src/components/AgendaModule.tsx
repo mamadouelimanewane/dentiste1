@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
 import { motion, AnimatePresence } from "framer-motion";
+import { createGoogleCalendarUrl, downloadIcsFile } from "@/lib/google-calendar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -415,6 +416,22 @@ export function AgendaModule() {
               </button>
             </div>
           )}
+
+          {/* Export / Synchronisation Google Calendar */}
+          <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="h-4 w-4 text-blue-600" />
+              <p className="text-[10px] font-black text-slate-800 uppercase tracking-wider">Sync Google Calendar</p>
+            </div>
+            <a
+              href="/api/calendar/ics"
+              target="_blank"
+              download="agenda-cabinet.ics"
+              className="w-full flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded transition-all"
+            >
+              Exporter Flux iCal (.ics)
+            </a>
+          </div>
 
           <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
             <div className="p-3 border-b border-slate-100 bg-[#0F172A] text-white flex items-center gap-2">
@@ -830,6 +847,39 @@ export function AgendaModule() {
                         Replanifier
                       </button>
                     </div>
+
+                    {/* Google Calendar Integrations */}
+                    <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                      <a
+                        href={createGoogleCalendarUrl({
+                          title: `RDV Dentaire - ${activeAppt.patient_name}`,
+                          startTime: activeAppt.scheduled_at,
+                          durationMinutes: activeAppt.duration_minutes || 30,
+                          patientName: activeAppt.patient_name,
+                          practitionerName: activeAppt.practitioner_name || undefined,
+                          description: `Soin: ${activeAppt.type || 'Consultation'}`
+                        })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-widest transition-colors shadow-sm"
+                      >
+                        <CalendarIcon className="h-4 w-4" /> Ajouter à Google Calendar
+                      </a>
+                      <button
+                        onClick={() => downloadIcsFile({
+                          title: `RDV Dentaire - ${activeAppt.patient_name}`,
+                          startTime: activeAppt.scheduled_at,
+                          durationMinutes: activeAppt.duration_minutes || 30,
+                          patientName: activeAppt.patient_name,
+                          practitionerName: activeAppt.practitioner_name || undefined,
+                          description: `Soin: ${activeAppt.type || 'Consultation'}`
+                        })}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold uppercase tracking-widest transition-colors"
+                      >
+                        Télécharger Fichier .ICS
+                      </button>
+                    </div>
+
                     <button onClick={() => runAction(activeAppt, "cancel")} className="w-full flex items-center gap-2 px-4 py-2.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold uppercase tracking-widest transition-colors">
                       <XCircle className="h-4 w-4" /> Annuler le rendez-vous
                     </button>
