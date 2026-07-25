@@ -72,6 +72,9 @@ export function BillingManager() {
     try {
       let currentInvoice = invoice;
       if (!currentInvoice) {
+        if (!currentPatient) {
+          throw new Error("Aucun patient sélectionné.");
+        }
         const res = await fetch("/api/invoices", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
