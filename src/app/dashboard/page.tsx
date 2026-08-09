@@ -352,15 +352,24 @@ export default function Home() {
         <div className="flex-1 overflow-y-auto p-6 lg:p-10 no-scrollbar">
           <div className="max-w-5xl mx-auto space-y-10 pb-24">
             {/* Phase Header */}
-            <div className="border-b border-foreground/10 pb-6">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Étape {currentStep}</span>
-                <div className="h-1.5 w-1.5 rounded-full bg-foreground/20" />
-                <span className="text-xs font-medium text-foreground/50 uppercase">{steps[currentStep-1].desc}</span>
+            <div className="border-b border-foreground/10 pb-6 flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Étape {currentStep}</span>
+                  <div className="h-1.5 w-1.5 rounded-full bg-foreground/20" />
+                  <span className="text-xs font-medium text-foreground/50 uppercase">{steps[currentStep-1].desc}</span>
+                </div>
+                <h2 className="text-2xl font-bold text-foreground tracking-tight">
+                  {steps[currentStep-1].fullTitle}
+                </h2>
               </div>
-              <h2 className="text-2xl font-bold text-foreground tracking-tight">
-                {steps[currentStep-1].fullTitle}
-              </h2>
+              <button
+                onClick={() => setShowResetModal(true)}
+                className="hidden sm:flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-500/30 transition-all micro-bounce"
+              >
+                <UserPlus className="h-4 w-4" />
+                Nouveau Dossier
+              </button>
             </div>
 
             {/* Content Layout */}
