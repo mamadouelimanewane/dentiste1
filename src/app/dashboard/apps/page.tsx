@@ -101,8 +101,8 @@ export default function DentalAppsHubPage() {
               </svg>
             </div>
             <div>
-              <p className="font-black text-white text-base leading-tight">Elite ERP Dentaire</p>
-              <p className="text-xs text-blue-300 font-medium tracking-widest uppercase">Cap Vert</p>
+              <p className="font-black text-white text-lg leading-tight">Elite ERP Dentaire</p>
+              <p className="text-sm text-blue-300 font-medium tracking-widest uppercase">Cap Vert</p>
             </div>
           </div>
 
@@ -111,9 +111,9 @@ export default function DentalAppsHubPage() {
             {currentPatient && (
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xs font-semibold text-emerald-300 mr-2">{currentPatient.name}</span>
+                <span className="text-sm font-semibold text-emerald-300 mr-2">{currentPatient.name}</span>
                 {currentPatient.allergies && (
-                  <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-red-100 bg-red-600/80 px-2 py-0.5 rounded-full" title={`Allergies: ${currentPatient.allergies}`}>
+                  <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-red-100 bg-red-600/80 px-2 py-0.5 rounded-full" title={`Allergies: ${currentPatient.allergies}`}>
                     <AlertTriangle className="h-3 w-3" />
                     Alerte
                   </span>
@@ -129,17 +129,17 @@ export default function DentalAppsHubPage() {
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 transition-colors border border-rose-500/20"
             >
               <Zap className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Urgence</span>
+              <span className="text-xs font-black uppercase tracking-widest">Urgence</span>
             </button>
 
             {user && (
               <div className="hidden sm:flex items-center gap-2 pr-3 border-r border-white/15">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-black">
+                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm font-black">
                   {user.fullName?.[0] ?? "?"}
                 </div>
                 <div className="leading-tight">
-                  <p className="text-sm font-semibold text-white">{user.fullName}</p>
-                  <p className="text-[10px] font-medium text-blue-300 uppercase tracking-widest">{user.roleLabel}</p>
+                  <p className="text-base font-semibold text-white">{user.fullName}</p>
+                  <p className="text-xs font-medium text-blue-300 uppercase tracking-widest">{user.roleLabel}</p>
                 </div>
               </div>
             )}
@@ -149,7 +149,7 @@ export default function DentalAppsHubPage() {
                 localStorage.setItem("dentiste_home_view", "workflow");
                 router.push("/dashboard");
               }}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-all hover:bg-white/5 bg-slate-800/50"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-base font-bold border transition-all hover:bg-white/5 bg-slate-800/50"
               style={{ color: "#e2e8f0", borderColor: "rgba(255,255,255,0.18)" }}
             >
               <LayoutGrid size={15} />
@@ -178,10 +178,10 @@ export default function DentalAppsHubPage() {
 
         <div className="relative max-w-6xl mx-auto px-6 py-12">
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <h1 className="font-black text-3xl sm:text-4xl tracking-tight mb-2 text-white">
+            <h1 className="font-black text-4xl sm:text-5xl tracking-tight mb-2 text-white">
               Portail des Modules
             </h1>
-            <p className="text-slate-400 font-medium">
+            <p className="text-slate-400 font-medium text-lg">
               Accédez instantanément à vos {DENTAL_TOTAL_MODULES} outils métiers.
             </p>
           </motion.div>
@@ -199,7 +199,7 @@ export default function DentalAppsHubPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Rechercher un module (ex: Agenda, Ordonnance...)"
-              className="w-full bg-transparent rounded-xl pl-12 pr-4 py-3 text-sm font-medium outline-none text-foreground placeholder:text-slate-400"
+              className="w-full bg-transparent rounded-xl pl-12 pr-4 py-3 text-base font-medium outline-none text-foreground placeholder:text-slate-400"
             />
           </div>
         </div>
@@ -211,7 +211,7 @@ export default function DentalAppsHubPage() {
             {/* Favoris */}
             {favorites.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
+                <h3 className="text-sm font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
                   <Star className="h-4 w-4" /> Mes Favoris
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -227,7 +227,7 @@ export default function DentalAppsHubPage() {
                           <ModIcon size={18} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold truncate text-foreground group-hover:text-amber-500 transition-colors">{mod.name}</p>
+                          <p className="text-base font-bold truncate text-foreground group-hover:text-amber-500 transition-colors">{mod.name}</p>
                         </div>
                         <Star className="h-4 w-4 fill-amber-400 text-amber-400" onClick={(e) => toggleFavorite(e, id)} />
                       </button>
@@ -240,7 +240,7 @@ export default function DentalAppsHubPage() {
             {/* Récents */}
             {recents.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-widest text-blue-500 flex items-center gap-2">
+                <h3 className="text-sm font-black uppercase tracking-widest text-blue-500 flex items-center gap-2">
                   <Clock className="h-4 w-4" /> Récemment Utilisés
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -253,7 +253,7 @@ export default function DentalAppsHubPage() {
                     return (
                       <button key={`recent-${id}`} onClick={() => handleOpenModule(id)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-slate-200/50 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
                         <ModIcon size={14} style={{ color: style.color }} />
-                        <span className="text-xs font-bold text-foreground">{mod.name}</span>
+                        <span className="text-sm font-bold text-foreground">{mod.name}</span>
                       </button>
                     );
                   })}
@@ -266,7 +266,7 @@ export default function DentalAppsHubPage() {
         {/* ── TOUS LES MODULES ─────────────────────────────────────── */}
         <div className="space-y-10">
           {filteredGroups.length === 0 && (
-            <p className="text-center py-16 text-slate-500 font-medium">
+            <p className="text-center py-16 text-slate-500 font-medium text-lg">
               Aucun module ne correspond à « {search} ».
             </p>
           )}
@@ -286,9 +286,9 @@ export default function DentalAppsHubPage() {
                     <CatIcon size={16} />
                   </div>
                   <div>
-                    <h2 className="text-lg font-black tracking-tight" style={{ color: style.color }}>{group.label}</h2>
+                    <h2 className="text-xl font-black tracking-tight" style={{ color: style.color }}>{group.label}</h2>
                   </div>
-                  <span className="ml-auto text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-500">
+                  <span className="ml-auto text-xs font-black px-2 py-0.5 rounded-full uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-500">
                     {group.modules.length} modules
                   </span>
                 </div>
@@ -324,14 +324,14 @@ export default function DentalAppsHubPage() {
 
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                            <p className="text-base font-black text-foreground truncate">{mod.name}</p>
+                            <p className="text-lg font-black text-foreground truncate">{mod.name}</p>
                             {mod.badge && (
-                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest" style={{ background: mod.badge === "IA" ? "#7c3aed" : "#2563eb", color: "white" }}>
+                              <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest" style={{ background: mod.badge === "IA" ? "#7c3aed" : "#2563eb", color: "white" }}>
                                 {mod.badge}
                               </span>
                             )}
                           </div>
-                          <p className="text-xs font-medium leading-relaxed text-slate-500 line-clamp-2">{mod.desc}</p>
+                          <p className="text-sm font-medium leading-relaxed text-slate-500 line-clamp-2">{mod.desc}</p>
                         </div>
                       </div>
                     );
