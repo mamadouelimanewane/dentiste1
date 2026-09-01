@@ -1,11 +1,25 @@
 import 'server-only';
+import { isWhatsAppConfigured } from '@/lib/integrations/whatsapp';
+import { isSmsConfigured } from '@/lib/integrations/sms';
 
 // Expose uniquement des booléens (jamais les valeurs des clés) pour que
 // l'UI puisse afficher un badge "Mode démo" sans jamais voir de secret.
+//
+// Ces indicateurs réutilisent les mêmes fonctions de détection que les
+// modules d'envoi : toute autre logique finirait par diverger. C'était le
+// cas auparavant — le statut ne testait que Meta pour WhatsApp (alors que
+// l'envoi passe aussi par 360dialog ou Twilio, donc il affichait "démo"
+// pendant que de vrais messages partaient) et ne testait que Twilio pour le
+// SMS (alors que l'envoi privilégie Termii, donc il affichait "configuré"
+// alors que les envois pouvaient échouer).
+//
+// Attention : ces booléens indiquent qu'un fournisseur est *paramétré*, pas
+// que ses identifiants sont valides. Une clé expirée reste "true" ici et ne
+// se révèle qu'à l'envoi (statut "failed" dans l'historique des messages).
 export function getIntegrationStatus() {
   return {
-    whatsapp: !!process.env.WHATSAPP_ACCESS_TOKEN && !!process.env.WHATSAPP_PHONE_NUMBER_ID,
-    sms: !!process.env.TWILIO_ACCOUNT_SID && !!process.env.TWILIO_AUTH_TOKEN,
+    whatsapp: isWhatsAppConfigured(),
+    sms: isSmsConfigured(),
     payments: !!process.env.CINETPAY_API_KEY && !!process.env.CINETPAY_SITE_ID,
     video: !!process.env.DAILY_API_KEY,
   };
