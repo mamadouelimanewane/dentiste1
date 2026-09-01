@@ -46,6 +46,27 @@ export async function GET(request: Request) {
   return NextResponse.json({ appointments });
 }
 
+// Un patient ne peut pas être dans deux fauteuils en même temps. Ce contrôle
+// est indépendant du praticien : hasConflict() ne teste que le praticien et
+// se désactive entièrement quand le rendez-vous n'est pas assigné (cas par
+// défaut dans l'agenda), ce qui laissait passer les doublons patient.
+async function hasPatientConflict(patientId: string, scheduledAt: string, durationMinutes: number) {
+  const start = new Date(scheduledAt);
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+
+  const rows = await sql`
+    select a.id, a.scheduled_at, a.type
+    from appointments a
+    where a.patient_id = ${patientId}
+      and a.status = 'scheduled'
+      and a.scheduled_at < ${end.toISOString()}
+      and (a.scheduled_at + (a.duration_minutes || ' minutes')::interval) > ${start.toISOString()}
+    limit 1
+  `;
+
+  return rows[0] || null;
+}
+
 async function hasConflict(practitionerId: string | null, scheduledAt: string, durationMinutes: number, excludeId?: string) {
   if (!practitionerId) return null;
   const start = new Date(scheduledAt);
@@ -135,6 +156,16 @@ export async function POST(request: Request) {
         occurrenceDate.setMinutes(occurrenceDate.getMinutes() + (durationMinutes * pIdx));
       }
       const occurrenceIso = occurrenceDate.toISOString();
+
+      const patientConflict = await hasPatientConflict(pId, occurrenceIso, durationMinutes);
+      if (patientConflict) {
+        skipped.push({
+          scheduledAt: occurrenceIso,
+          reason: 'conflit_patient',
+          conflictWith: patient?.full_name as string | undefined,
+        });
+        continue;
+      }
 
       const conflict = await hasConflict(practitionerId || null, occurrenceIso, durationMinutes);
       if (conflict) {
