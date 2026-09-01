@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
 import { SignaturePadModal } from "./SignaturePadModal";
+import { ActCatalogPicker } from "@/components/ActCatalogPicker";
 
 export function QuoteBuilder() {
   const { currentPatient } = usePatient();
@@ -77,24 +78,8 @@ export function QuoteBuilder() {
             <span className="text-[9px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded uppercase">Tarif Conventionnel</span>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
-            {DENTAL_NOMENCLATURE.map(p => (
-              <div 
-                key={p.id} 
-                className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded hover:border-blue-200 hover:bg-blue-50/30 transition-all group"
-              >
-                <div>
-                  <p className="text-xs font-semibold text-slate-900">{p.label}</p>
-                  <p className="text-[10px] font-bold text-blue-600 uppercase">{p.price?.toLocaleString()} FCFA</p>
-                </div>
-                <button 
-                  onClick={() => add(p)} 
-                  className="h-8 w-8 flex items-center justify-center rounded bg-slate-50 border border-slate-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all text-slate-500"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
+          <div className="flex-1 min-h-0">
+            <ActCatalogPicker onPick={add} ctaLabel="Ajouter au devis" />
           </div>
         </div>
 

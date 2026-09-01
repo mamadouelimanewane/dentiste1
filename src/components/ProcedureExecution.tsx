@@ -6,6 +6,7 @@ import { DENTAL_NOMENCLATURE, DentalProcedure } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
 import { Odontogram } from "@/components/Odontogram";
+import { ActCatalogPicker } from "@/components/ActCatalogPicker";
 
 // Standard FDI notation teeth
 const UPPER_TEETH = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -155,20 +156,8 @@ export function ProcedureExecution() {
                {selectedTooth ? `Cible: Dent ${selectedTooth}` : "Cible Générale"}
              </span>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[400px] p-2 space-y-1">
-            {DENTAL_NOMENCLATURE.map(p => (
-              <button
-                key={p.id}
-                onClick={() => addAct(p)}
-                className="w-full text-left p-3 rounded-sm hover:bg-blue-50 transition-colors group border border-transparent hover:border-blue-100 flex justify-between items-center"
-              >
-                <div>
-                  <p className="text-xs font-bold text-slate-900 uppercase tracking-tight">{p.label}</p>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase">{p.category}</p>
-                </div>
-                <Plus className="h-4 w-4 text-slate-300 group-hover:text-blue-600" />
-              </button>
-            ))}
+          <div className="flex-1 min-h-0 max-h-[420px]">
+            <ActCatalogPicker onPick={addAct} ctaLabel="Enregistrer l'acte" />
           </div>
         </div>
 
