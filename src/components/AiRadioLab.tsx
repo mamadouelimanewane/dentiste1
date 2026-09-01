@@ -1,281 +1,205 @@
 "use client";
 
-import React, { useState } from "react";
-import { 
-  Brain, 
-  Activity, 
-  UploadCloud, 
-  ShieldCheck, 
-  Search, 
-  Image as ImageIcon, 
-  FileText, 
-  ChevronRight, 
+import React, { useState, useEffect, useCallback } from "react";
+import {
   Scan,
-  Zap,
-  Eye,
-  EyeOff,
-  Filter,
-  Download,
-  AlertCircle,
-  CheckCircle2,
-  Maximize2
+  Image as ImageIcon,
+  Maximize2,
+  X,
+  AlertTriangle,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Contrast,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePatient } from "@/lib/context";
 
+interface ImageRecord {
+  id: string;
+  blob_url: string;
+  type: string;
+  notes: string | null;
+  created_at: string;
+}
+
+const FILTRES = ["Toutes", "Panoramique", "Intra-orale", "Céphalométrique", "Esthétique"];
+
+// Visionneuse de clichés. Ce module affichait auparavant de faux résultats
+// d'analyse ("DENT 46 - CARIE (98%)", scores de fiabilité, recommandations
+// diagnostiques) alors qu'aucun traitement d'image n'était effectué : les
+// superpositions étaient codées en dur et s'affichaient quel que soit le
+// cliché. Aucune aide au diagnostic n'est proposée ici — uniquement la
+// consultation des radiographies réellement importées pour le patient.
 export function AiRadioLab() {
-  const [selectedImage, setSelectedImage] = useState<string | null>("1");
-  const [language, setLanguage] = useState<"FR" | "WO">("FR");
-  const [showOverlays, setShowOverlays] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<"all" | "caries" | "perio" | "bone">("all");
+  const { currentPatient } = usePatient();
+  const [images, setImages] = useState<ImageRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [filtre, setFiltre] = useState("Toutes");
+  const [selected, setSelected] = useState<ImageRecord | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [contraste, setContraste] = useState(100);
 
-  const scans = [
-    { id: 1, type: "PANO", title: "Panoramique Patient Jean V.", date: "24 Jan 2026", status: "analysed", reliability: 98 },
-    { id: 2, type: "CBCT", title: "CBCT 3D - Secteur 4", date: "20 Jan 2026", status: "analysed", reliability: 94 },
-    { id: 3, type: "RX", title: "Rétro-alvéolaire 36-37", date: "15 Jan 2026", status: "analysed", reliability: 99 }
-  ];
+  const load = useCallback((patientId: string) => {
+    setLoading(true);
+    fetch(`/api/patient-images?patientId=${patientId}`)
+      .then((r) => r.json())
+      .then((d) => setImages(d.images || []))
+      .catch(() => setImages([]))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const findings = [
-    { id: "f1", type: "caries", tooth: "46", severity: "high", desc: "Carie occlusale profonde avec suspicion d'atteinte pulpaire.", status: "confirmed" },
-    { id: "f2", type: "perio", tooth: "36", severity: "medium", desc: "Lésion péri-apicale suspectée (ostéite).", status: "pending" },
-    { id: "f3", type: "bone", tooth: "Secteur 2", severity: "low", desc: "Légère résorption osseuse horizontale.", status: "dismissed" }
-  ];
+  useEffect(() => {
+    if (currentPatient) load(currentPatient.id);
+    else setImages([]);
+  }, [currentPatient, load]);
+
+  const resetVue = () => {
+    setZoom(1);
+    setContraste(100);
+  };
+
+  if (!currentPatient) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-sm p-12 flex flex-col items-center justify-center text-center min-h-[400px]">
+        <Scan className="h-12 w-12 text-slate-300 mb-4" />
+        <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Visionneuse de Clichés</h2>
+        <p className="text-sm text-slate-500 mt-2">Sélectionnez un patient pour consulter ses radiographies.</p>
+      </div>
+    );
+  }
+
+  const affichees = filtre === "Toutes" ? images : images.filter((i) => i.type === filtre);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700">
-      {/* ELITE HEADER */}
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* HEADER */}
       <div className="bg-white border border-slate-200 rounded-sm p-5 flex flex-col md:flex-row items-center justify-between shadow-sm gap-4">
         <div className="flex items-center gap-5">
-          <div className="h-12 w-12 bg-slate-900 text-emerald-400 rounded flex items-center justify-center shadow-xl shadow-slate-900/10 border border-slate-800">
-            <Brain className="h-7 w-7" />
+          <div className="h-12 w-12 bg-slate-900 text-sky-400 rounded flex items-center justify-center shadow-xl border border-slate-800">
+            <Scan className="h-7 w-7" />
           </div>
           <div>
-            <h2 className="text-base font-black text-slate-900 uppercase tracking-tighter">Advanced Neural Imaging</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <Zap className="h-3 w-3 text-emerald-500 fill-current" />
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Diagnostic Assisté par IA Core v4.2</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all">
-            <Download className="h-4 w-4" /> Exporter DICOM
-          </button>
-          <button className="flex items-center gap-2 bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-slate-900/20">
-            <UploadCloud className="h-4 w-4 text-emerald-400" /> Nouvel Examen
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* SIDEBAR - HISTORY */}
-        <div className="lg:col-span-1 space-y-4">
-           <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col h-full">
-              <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Historique Radio</h4>
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              </div>
-              <div className="p-2 space-y-1">
-                 {scans.map((scan) => (
-                   <button 
-                    key={scan.id}
-                    onClick={() => setSelectedImage(scan.id.toString())}
-                    className={cn(
-                      "w-full text-left p-3 rounded-sm border transition-all flex items-center gap-3 group relative overflow-hidden",
-                      selectedImage === scan.id.toString() 
-                        ? "bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/20" 
-                        : "bg-white border-transparent hover:bg-slate-50 text-slate-600"
-                    )}
-                   >
-                     <div className={cn(
-                       "h-9 w-9 rounded flex items-center justify-center font-black text-[9px] border transition-colors",
-                       selectedImage === scan.id.toString() ? "bg-slate-800 border-slate-700 text-emerald-400" : "bg-slate-100 border-slate-200 text-slate-500"
-                     )}>
-                       {scan.type}
-                     </div>
-                     <div className="flex-1 min-w-0">
-                       <p className="text-[10px] font-black uppercase truncate tracking-tight">{scan.title}</p>
-                       <p className={cn("text-[9px] font-bold mt-0.5", selectedImage === scan.id.toString() ? "text-slate-400" : "text-slate-400")}>{scan.date}</p>
-                     </div>
-                     {selectedImage === scan.id.toString() && (
-                       <motion.div layoutId="active-indicator" className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-400" />
-                     )}
-                   </button>
-                 ))}
-              </div>
-           </div>
-        </div>
-
-        {/* MAIN VIEWER */}
-        <div className="lg:col-span-3 space-y-6">
-          <div className="bg-slate-950 border border-slate-800 rounded-sm shadow-2xl overflow-hidden relative min-h-[500px] flex items-center justify-center group">
-            {/* TOOLBAR OVERLAY */}
-            <div className="absolute top-4 inset-x-4 flex items-center justify-between z-20">
-               <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md p-1.5 rounded-sm border border-white/10">
-                  <button 
-                    onClick={() => setShowOverlays(!showOverlays)}
-                    className={cn("p-2 rounded-sm transition-all", showOverlays ? "bg-emerald-500 text-white" : "text-slate-400 hover:text-white")}
-                  >
-                    {showOverlays ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                  </button>
-                  <div className="w-px h-4 bg-white/10 mx-1" />
-                  {["all", "caries", "perio", "bone"].map((f) => (
-                    <button 
-                      key={f}
-                      onClick={() => setActiveFilter(f as any)}
-                      className={cn(
-                        "px-3 py-1.5 text-[9px] font-black uppercase rounded-sm transition-all",
-                        activeFilter === f ? "bg-white/20 text-white" : "text-slate-500 hover:text-white"
-                      )}
-                    >
-                      {f === "all" ? "Neural All" : f}
-                    </button>
-                  ))}
-               </div>
-               <button className="p-2 bg-black/60 backdrop-blur-md rounded-sm border border-white/10 text-slate-400 hover:text-white transition-all">
-                  <Maximize2 className="h-4 w-4" />
-               </button>
-            </div>
-
-            {/* VIEWER CONTENT */}
-            <div className="relative w-full h-full flex items-center justify-center p-12">
-               <div className="w-full h-80 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-sm border border-white/5 relative overflow-hidden flex items-center justify-center">
-                  <Scan className="h-48 w-48 text-emerald-500/10 animate-pulse" />
-                  
-                  <AnimatePresence>
-                    {showOverlays && selectedImage === "1" && (
-                      <>
-                        <motion.div 
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="absolute top-[30%] left-[25%] w-16 h-16 border-2 border-emerald-500 bg-emerald-500/10 rounded-sm"
-                        >
-                           <div className="absolute -top-6 left-0 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-sm flex items-center gap-1 shadow-lg shadow-emerald-900/50">
-                              <Zap className="h-2 w-2 fill-current" /> DENT 46 - CARIE (98%)
-                           </div>
-                        </motion.div>
-                        <motion.div 
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 0.2 }}
-                          className="absolute bottom-[20%] right-[30%] w-20 h-12 border-2 border-amber-500 bg-amber-500/10 rounded-sm"
-                        >
-                           <div className="absolute -top-6 left-0 bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-sm flex items-center gap-1 shadow-lg shadow-amber-900/50">
-                              <AlertCircle className="h-2 w-2" /> DENT 36 - LÉSION (85%)
-                           </div>
-                        </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
-               </div>
-            </div>
-
-            {/* STATUS BAR */}
-            <div className="absolute bottom-4 left-4 flex items-center gap-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 bg-black/40 backdrop-blur-sm px-4 py-2 rounded-sm">
-               <div className="flex items-center gap-1.5"><Activity className="h-3 w-3 text-emerald-500" /> GPU Acceleré</div>
-               <div className="flex items-center gap-1.5"><ShieldCheck className="h-3 w-3 text-blue-500" /> DICOM v3.0 Confirme</div>
-            </div>
-          </div>
-
-          {/* REPORT SECTION */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-             {/* FINDINGS TABLE */}
-             <div className="md:col-span-2 bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                   <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-blue-600" />
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rapport d'Intelligence</h4>
-                   </div>
-                   <div className="flex bg-white border border-slate-200 p-0.5 rounded-sm">
-                      <button 
-                        onClick={() => setLanguage("FR")}
-                        className={cn("px-2 py-1 text-[8px] font-black uppercase rounded-sm transition-all", language === "FR" ? "bg-slate-900 text-white" : "text-slate-400")}
-                      >
-                        Français
-                      </button>
-                      <button 
-                        onClick={() => setLanguage("WO")}
-                        className={cn("px-2 py-1 text-[8px] font-black uppercase rounded-sm transition-all", language === "WO" ? "bg-blue-600 text-white" : "text-slate-400")}
-                      >
-                        Wolof
-                      </button>
-                   </div>
-                </div>
-                <div className="overflow-x-auto">
-                   <table className="w-full text-left">
-                      <thead className="bg-slate-50/50 border-b border-slate-100">
-                         <tr className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                            <th className="p-3">Localisation</th>
-                            <th className="p-3">Observation Neural</th>
-                            <th className="p-3">Sévérité</th>
-                            <th className="p-3 text-right">Action Praticien</th>
-                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50">
-                         {findings.map((f, i) => (
-                           <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                              <td className="p-3 font-black text-slate-900 text-[10px]">DENT {f.tooth}</td>
-                              <td className="p-3">
-                                 <p className="text-[10px] font-bold text-slate-600">
-                                   {language === "FR" ? f.desc : "Gaanaay gu nekk ci bëñ bi."}
-                                 </p>
-                              </td>
-                              <td className="p-3">
-                                 <span className={cn(
-                                   "text-[8px] font-black uppercase px-1.5 py-0.5 rounded-sm tracking-tighter",
-                                   f.severity === "high" ? "bg-rose-100 text-rose-700" : 
-                                   f.severity === "medium" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
-                                 )}>
-                                   {f.severity}
-                                 </span>
-                              </td>
-                              <td className="p-3 text-right">
-                                 <div className="flex justify-end gap-1">
-                                    <button className="p-1.5 rounded-sm bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
-                                       <CheckCircle2 className="h-3 w-3" />
-                                    </button>
-                                    <button className="p-1.5 rounded-sm bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all shadow-sm">
-                                       <Activity className="h-3 w-3" />
-                                    </button>
-                                 </div>
-                              </td>
-                           </tr>
-                         ))}
-                      </tbody>
-                   </table>
-                </div>
-             </div>
-
-             {/* DIAGNOSTIC SUMMARY */}
-             <div className="bg-[#0F172A] text-white rounded-sm shadow-xl p-5 relative overflow-hidden flex flex-col justify-between">
-                <div className="relative z-10 space-y-4">
-                   <div className="flex items-center justify-between">
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Conclusion Automatique</h4>
-                      <button className="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all">
-                         <Zap className="h-3 w-3 fill-current" /> Synthèse Vocale Neural
-                      </button>
-                   </div>
-                   <p className="text-sm font-medium text-slate-300 leading-relaxed italic">
-                     "L'analyse neurale indique un besoin prioritaire d'intervention sur le secteur 4. Suspicion de pathologie apicale sur 36 nécessitant une confirmation clinique."
-                   </p>
-                   <div className="pt-4 border-t border-slate-800">
-                      <div className="flex justify-between items-center mb-1">
-                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Confiance IA</span>
-                         <span className="text-[10px] font-black text-emerald-400">97.8%</span>
-                      </div>
-                      <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
-                         <div className="h-full bg-emerald-500 w-[97%]" />
-                      </div>
-                   </div>
-                </div>
-                <button className="w-full mt-6 py-3 bg-white text-slate-900 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-400/10">
-                   Valider le Plan
-                </button>
-             </div>
+            <h2 className="text-base font-black text-slate-900 uppercase tracking-tighter">Visionneuse de Clichés</h2>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">
+              {currentPatient.name} · {images.length} cliché(s)
+            </p>
           </div>
         </div>
       </div>
+
+      {/* AVERTISSEMENT HONNETE */}
+      <div className="bg-amber-50 border border-amber-200 rounded-sm p-4 flex items-start gap-3">
+        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+        <p className="text-xs text-amber-900 leading-relaxed">
+          <strong>Aucune analyse automatisée n&apos;est réalisée.</strong> Ce module sert uniquement à
+          consulter les clichés importés dans le dossier du patient (module Imagerie). L&apos;interprétation
+          radiologique et le diagnostic relèvent exclusivement du praticien.
+        </p>
+      </div>
+
+      {/* FILTRES */}
+      <div className="flex gap-2 p-2 bg-slate-100/50 rounded-lg overflow-x-auto no-scrollbar">
+        {FILTRES.map((f) => (
+          <button
+            key={f}
+            onClick={() => setFiltre(f)}
+            className={cn(
+              "px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all whitespace-nowrap",
+              filtre === f ? "bg-white text-sky-700 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+            )}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      {/* GALERIE */}
+      {loading && <p className="text-xs text-slate-400 text-center py-10">Chargement des clichés...</p>}
+      {!loading && affichees.length === 0 && (
+        <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-12 text-center">
+          <ImageIcon className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+          <p className="text-sm font-bold text-slate-700">Aucun cliché pour ce patient</p>
+          <p className="text-xs text-slate-400 mt-1">
+            Importez une radiographie depuis le module Imagerie pour la consulter ici.
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {affichees.map((img) => (
+          <div
+            key={img.id}
+            onClick={() => { setSelected(img); resetVue(); }}
+            className="group bg-slate-900 rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl hover:border-sky-300 transition-all cursor-pointer"
+          >
+            <div className="relative h-56 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={img.blob_url} alt={img.notes || img.type} className="w-full h-full object-contain" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                <span className="text-white text-xs font-bold flex items-center gap-1">
+                  <Maximize2 className="h-4 w-4" /> Agrandir
+                </span>
+              </div>
+              <div className="absolute top-3 left-3 bg-white/90 text-slate-900 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded">
+                {img.type}
+              </div>
+            </div>
+            <div className="p-4 bg-white">
+              <p className="text-sm font-bold text-slate-800 line-clamp-1">{img.notes || "Sans légende"}</p>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                {new Date(img.created_at).toLocaleDateString("fr-FR")}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* VISIONNEUSE PLEIN ECRAN */}
+      <AnimatePresence>
+        {selected && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/95 flex flex-col"
+          >
+            <div className="flex justify-between items-center p-4 text-white gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-bold truncate">{selected.notes || "Sans légende"}</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest">
+                  {selected.type} · {new Date(selected.created_at).toLocaleDateString("fr-FR")}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} title="Dézoomer"
+                  className="p-2 bg-white/10 hover:bg-white/20 rounded-lg"><ZoomOut className="h-5 w-5" /></button>
+                <button onClick={() => setZoom((z) => Math.min(4, z + 0.25))} title="Zoomer"
+                  className="p-2 bg-white/10 hover:bg-white/20 rounded-lg"><ZoomIn className="h-5 w-5" /></button>
+                <button onClick={() => setContraste((c) => (c >= 200 ? 60 : c + 35))} title="Contraste"
+                  className="p-2 bg-white/10 hover:bg-white/20 rounded-lg"><Contrast className="h-5 w-5" /></button>
+                <button onClick={resetVue} title="Réinitialiser"
+                  className="p-2 bg-white/10 hover:bg-white/20 rounded-lg"><RotateCcw className="h-5 w-5" /></button>
+                <button onClick={() => setSelected(null)} title="Fermer"
+                  className="p-2 bg-white/10 hover:bg-white/20 rounded-lg"><X className="h-5 w-5" /></button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={selected.blob_url}
+                alt={selected.notes || selected.type}
+                style={{ transform: `scale(${zoom})`, filter: `contrast(${contraste}%)` }}
+                className="max-w-full max-h-full object-contain transition-transform duration-150"
+              />
+            </div>
+            <p className="text-center text-[10px] text-slate-500 uppercase tracking-widest pb-4">
+              Zoom {Math.round(zoom * 100)}% · Contraste {contraste}% — outils d&apos;affichage uniquement
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

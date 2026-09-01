@@ -92,7 +92,7 @@ export function SmileDesignStudio() {
                          ))}
                       </div>
                    </div>
-                   <p className="absolute top-6 right-6 bg-amber-500 text-white px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] rounded-sm shadow-xl border border-amber-400">Rendu IA Elite</p>
+                   <p className="absolute top-6 right-6 bg-amber-500 text-white px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] rounded-sm shadow-xl border border-amber-400">Aperçu simulé</p>
                 </div>
 
                 {/* SLIDER HANDLE */}
@@ -150,7 +150,7 @@ export function SmileDesignStudio() {
                 <div className="max-w-xs space-y-2">
                    <h3 className="text-sm font-black text-white uppercase tracking-[0.2em]">Capture de Portrait</h3>
                    <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                     Importez un cliché haute résolution pour une analyse biométrique et esthétique.
+                     Importez un cliché pour préparer une simulation esthétique à présenter au patient.
                    </p>
                 </div>
 
@@ -161,7 +161,7 @@ export function SmileDesignStudio() {
                 >
                   <span className="relative z-10 flex items-center gap-3">
                     {isSimulating ? <Sparkles className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                    {isSimulating ? "Traitement Neural..." : "Lancer le Smile Studio"}
+                    {isSimulating ? "Préparation..." : "Lancer le Smile Studio"}
                   </span>
                   <AnimatePresence>
                     {isSimulating && (
@@ -217,7 +217,7 @@ export function SmileDesignStudio() {
                     <span className="text-[10px] font-bold text-slate-500 uppercase pb-1.5">Score Confiance</span>
                  </div>
                  <p className="text-[11px] text-slate-400 leading-relaxed font-medium italic">
-                    "L'alignement neural et la correction chromatique suggèrent une amélioration significative de la ligne de sourire."
+                    "Simulation visuelle destinée à illustrer un projet esthétique au patient — elle ne constitue ni une analyse automatisée ni un engagement sur le résultat clinique."
                  </p>
                  <button className="w-full mt-2 py-3 bg-white text-slate-900 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] hover:bg-amber-400 transition-all shadow-xl">
                     Valider le Design
