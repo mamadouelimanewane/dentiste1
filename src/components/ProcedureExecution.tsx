@@ -24,6 +24,7 @@ export function ProcedureExecution() {
   const { currentPatient } = usePatient();
   const [executedActs, setExecutedActs] = useState<ExecutedAct[]>([]);
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
+  const [historyActs, setHistoryActs] = useState<ExecutedAct[]>([]);
 
   const loadActs = useCallback(async () => {
     if (!currentPatient) return;
@@ -32,9 +33,38 @@ export function ProcedureExecution() {
     if (res.ok) setExecutedActs(data.acts);
   }, [currentPatient]);
 
+  // Historique complet (y compris les actes déjà facturés) : sert à colorer
+  // l'odontogramme. Auparavant aucun état n'était transmis, donc toutes les
+  // dents s'affichaient comme saines quel que soit le passé du patient.
+  const loadHistory = useCallback(async () => {
+    if (!currentPatient) return;
+    const res = await fetch(`/api/executed-acts?patientId=${currentPatient.id}`);
+    const data = await res.json();
+    if (res.ok) setHistoryActs(data.acts || []);
+  }, [currentPatient]);
+
   useEffect(() => {
     loadActs();
-  }, [loadActs]);
+    loadHistory();
+  }, [loadActs, loadHistory]);
+
+  // État des dents déduit uniquement des actes réellement enregistrés — on
+  // ne marque jamais une carie "supposée", seulement ce qui a été fait :
+  // extraction => dent absente, restauration/prothèse => dent soignée.
+  const toothStates = React.useMemo(() => {
+    const states: Record<number, "healthy" | "caries" | "filled" | "missing"> = {};
+    for (const act of historyActs) {
+      if (!act.tooth) continue;
+      const label = (act.label || "").toLowerCase();
+      const extraction = /extraction|germectomie|avulsion/.test(label);
+      if (extraction) {
+        states[act.tooth] = "missing";
+      } else if (states[act.tooth] !== "missing") {
+        states[act.tooth] = "filled";
+      }
+    }
+    return states;
+  }, [historyActs]);
 
   const addAct = async (procedure: DentalProcedure) => {
     if (!currentPatient) return;
@@ -89,13 +119,27 @@ export function ProcedureExecution() {
           <span className="text-[9px] font-bold text-blue-200 uppercase">Cliquez sur une dent pour l'isoler</span>
         </div>
 
-        <div className="p-8 flex flex-col items-center gap-8 bg-slate-50/50 overflow-x-auto">
-          <Odontogram 
-            selectedTooth={selectedTooth} 
-            onSelectTooth={toggleTooth} 
-            // On peut dériver les états des dents à partir des actes (par exemple si un acte est "Carie", etc.)
-            // Pour l'instant on garde une dent saine par défaut.
+        <div className="p-8 flex flex-col items-center gap-6 bg-slate-50/50 overflow-x-auto">
+          <Odontogram
+            selectedTooth={selectedTooth}
+            onSelectTooth={toggleTooth}
+            toothStates={toothStates}
           />
+          <div className="flex items-center gap-5 flex-wrap justify-center">
+            <span className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+              <span className="h-3 w-3 rounded-sm border border-slate-300 bg-white" /> Aucun acte enregistré
+            </span>
+            <span className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+              <span className="h-3 w-3 rounded-sm border border-slate-300 bg-[#bfdbfe]" /> Dent soignée
+            </span>
+            <span className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+              <span className="h-3 w-3 rounded-sm border border-slate-300 bg-slate-100" /> Extraite
+            </span>
+          </div>
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center max-w-lg">
+            État reconstitué à partir des actes enregistrés dans ce logiciel — il ne remplace pas
+            l&apos;examen clinique et ne reflète pas les soins réalisés ailleurs.
+          </p>
         </div>
       </div>
 
