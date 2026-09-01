@@ -1,8 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { STAFF_COOKIE_NAME, verifyStaffSessionToken } from '@/lib/auth';
 
-const PUBLIC_PATHS = ['/', '/login'];
-const PUBLIC_PREFIXES = ['/api/whatsapp/webhook', '/api/payments/webhook'];
+const PUBLIC_PATHS = ['/', '/login', '/mentions-legales', '/confidentialite', '/portail'];
+const PUBLIC_PREFIXES = [
+  '/api/whatsapp/webhook',
+  '/api/payments/webhook',
+  // Prise de RDV en ligne par un patient anonyme (page /portail). Écriture
+  // limitée par IP côté route, pas de lecture de données exposée ici.
+  '/api/public/',
+  '/api/clinic-settings/public',
+];
 
 export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;

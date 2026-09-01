@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { formatToGoogleCalendarDate } from "@/lib/google-calendar";
 
+// Flux iCal toujours calculé à la demande : la route lit request.url et doit
+// refléter l'agenda en temps réel, jamais une version figée au build.
+export const dynamic = "force-dynamic";
+
 interface AppointmentRow {
   id: string;
   scheduled_at: string;

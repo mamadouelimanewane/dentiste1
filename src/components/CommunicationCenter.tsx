@@ -1,195 +1,333 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { Search, Send, MessageCircle, MessageSquare, User } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Search, Send, MessageCircle, MessageSquare, User, AlertTriangle, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface Contact {
-  id: string;
-  name: string;
-  phone: string;
-  lastMessage: string;
-  time: string;
+interface Thread {
+  patient_id: string;
+  full_name: string;
+  phone: string | null;
+  last_message: string;
+  last_direction: "inbound" | "outbound";
+  last_channel: "whatsapp" | "sms" | "portal";
+  created_at: string;
 }
 
 interface Message {
   id: string;
-  sender: "Moi" | "Contact";
-  text: string;
-  time: string;
-  channel?: "whatsapp" | "sms";
+  patient_id: string;
+  phone: string | null;
+  channel: "whatsapp" | "sms" | "portal";
+  direction: "inbound" | "outbound";
+  body: string;
+  status: string;
+  media_url: string | null;
+  created_at: string;
 }
 
-// Données fictives pour la démonstration
-const DEMO_CONTACTS: Contact[] = [
-  { id: "1", name: "Mamadou Dia", phone: "221770000001", lastMessage: "Je voudrais un rendez-vous...", time: "14:20" },
-  { id: "2", name: "Aïssatou Sow", phone: "221770000002", lastMessage: "Merci pour les soins d'hier !", time: "10:12" },
-  { id: "3", name: "Fatou Diop", phone: "221770000003", lastMessage: "Est-ce que je peux avoir mon ordo ?", time: "Hier" },
-];
+interface PatientHit {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  dossier_number: string;
+}
 
-const DEMO_MESSAGES: Record<string, Message[]> = {
-  "1": [
-    { id: "m1", sender: "Contact", text: "Bonjour, je voudrais un rendez-vous mardi prochain pour un détartrage s'il vous plaît.", time: "14:20" },
-  ],
-  "2": [
-    { id: "m2", sender: "Contact", text: "Merci pour les soins d'hier, je n'ai plus mal !", time: "10:12" },
-    { id: "m3", sender: "Moi", text: "C'est une excellente nouvelle Aïssatou. Bonne journée !", time: "10:15", channel: "whatsapp" },
-  ],
-  "3": [
-    { id: "m4", sender: "Contact", text: "Est-ce que je peux avoir mon ordonnance par WhatsApp ?", time: "Hier" },
-  ]
-};
+function formatTime(iso: string) {
+  const d = new Date(iso);
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  return sameDay
+    ? d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+}
 
 export function CommunicationCenter() {
-  const [contacts] = useState<Contact[]>(DEMO_CONTACTS);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [loadingThreads, setLoadingThreads] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeContactId, setActiveContactId] = useState<string>("1");
-  const [messages, setMessages] = useState<Record<string, Message[]>>(DEMO_MESSAGES);
+  const [activePatientId, setActivePatientId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [inputText, setInputText] = useState("");
   const [channel, setChannel] = useState<"whatsapp" | "sms">("whatsapp");
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [patientQuery, setPatientQuery] = useState("");
+  const [patientHits, setPatientHits] = useState<PatientHit[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const activeContact = contacts.find((c) => c.id === activeContactId);
-  const activeMessages = messages[activeContactId] || [];
-
-  const filteredContacts = contacts.filter(
-    (c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.phone.includes(search)
-  );
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const loadThreads = useCallback(() => {
+    setLoadingThreads(true);
+    fetch("/api/messages/threads")
+      .then((res) => res.json())
+      .then((data) => setThreads(data.threads || []))
+      .catch(() => setError("Impossible de charger les conversations."))
+      .finally(() => setLoadingThreads(false));
+  }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [activeMessages]);
+    loadThreads();
+  }, [loadThreads]);
+
+  const loadMessages = useCallback((patientId: string) => {
+    setLoadingMessages(true);
+    fetch(`/api/messages/threads?patientId=${patientId}`)
+      .then((res) => res.json())
+      .then((data) => setMessages(data.messages || []))
+      .catch(() => setError("Impossible de charger le fil de discussion."))
+      .finally(() => setLoadingMessages(false));
+  }, []);
+
+  useEffect(() => {
+    if (activePatientId) loadMessages(activePatientId);
+  }, [activePatientId, loadMessages]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Recherche de patient pour démarrer une nouvelle conversation.
+  useEffect(() => {
+    if (!showNew || !patientQuery.trim()) {
+      setPatientHits([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      fetch(`/api/patients?q=${encodeURIComponent(patientQuery)}`)
+        .then((res) => res.json())
+        .then((data) => setPatientHits(data.patients || []))
+        .catch(() => setPatientHits([]));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [patientQuery, showNew]);
+
+  const activeThread = threads.find((t) => t.patient_id === activePatientId);
+  const activePhone = activeThread?.phone || messages.find((m) => m.phone)?.phone || null;
+
+  const filteredThreads = threads.filter(
+    (t) =>
+      t.full_name.toLowerCase().includes(search.toLowerCase()) ||
+      (t.phone || "").includes(search)
+  );
+
+  const startConversation = (p: PatientHit) => {
+    if (!threads.find((t) => t.patient_id === p.id)) {
+      setThreads((prev) => [
+        {
+          patient_id: p.id,
+          full_name: p.full_name,
+          phone: p.phone,
+          last_message: "",
+          last_direction: "outbound",
+          last_channel: "whatsapp",
+          created_at: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
+    }
+    setActivePatientId(p.id);
+    setShowNew(false);
+    setPatientQuery("");
+  };
 
   const handleSendMessage = async () => {
-    if (!inputText.trim() || !activeContact) return;
+    const text = inputText.trim();
+    if (!text || !activePatientId || !activePhone || sending) return;
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      sender: "Moi",
-      text: inputText.trim(),
-      time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      channel,
-    };
-
-    setMessages((prev) => ({
-      ...prev,
-      [activeContactId]: [...(prev[activeContactId] || []), newMessage],
-    }));
-    setInputText("");
     setSending(true);
-
+    setError(null);
     try {
-      await fetch("/api/messages/send", {
+      const res = await fetch("/api/messages/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: activeContact.phone,
-          message: newMessage.text,
-          channel: channel,
+          patientId: activePatientId,
+          phone: activePhone,
+          message: text,
+          channel,
         }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de l'envoi.");
+      setInputText("");
+      loadMessages(activePatientId);
+      loadThreads();
     } catch (e) {
-      console.error("Erreur d'envoi", e);
+      setError(e instanceof Error ? e.message : "Erreur inconnue.");
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex h-[700px]">
-      
-      {/* ── COLONNE GAUCHE : CONTACTS ── */}
-      <div className="w-1/3 border-r border-slate-200 flex flex-col bg-slate-50/50">
+    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col md:flex-row h-[700px]">
+      {/* ── COLONNE GAUCHE : CONVERSATIONS RÉELLES ── */}
+      <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col bg-slate-50/50 max-h-64 md:max-h-none">
         <div className="p-4 border-b border-slate-200 bg-white">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Messages</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-slate-800">Messages</h2>
+            <button
+              onClick={() => setShowNew((v) => !v)}
+              title="Nouvelle conversation"
+              className="h-8 w-8 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              {showNew ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            </button>
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Rechercher un patient..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              placeholder={showNew ? "Chercher un patient..." : "Filtrer les conversations..."}
+              value={showNew ? patientQuery : search}
+              onChange={(e) => (showNew ? setPatientQuery(e.target.value) : setSearch(e.target.value))}
               className="w-full bg-slate-100 border-transparent focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-lg py-2 pl-9 pr-4 text-sm outline-none transition-all"
             />
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {filteredContacts.map((contact) => (
-            <div
-              key={contact.id}
-              onClick={() => setActiveContactId(contact.id)}
-              className={cn(
-                "p-4 border-b border-slate-100 cursor-pointer transition-colors hover:bg-slate-100",
-                activeContactId === contact.id ? "bg-blue-50/50 border-l-4 border-l-blue-600" : "border-l-4 border-l-transparent"
+          {showNew ? (
+            <>
+              {patientHits.map((p) => (
+                <div
+                  key={p.id}
+                  onClick={() => startConversation(p)}
+                  className="p-4 border-b border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors"
+                >
+                  <p className="font-semibold text-slate-900 text-sm">{p.full_name}</p>
+                  <p className="text-xs text-slate-500">
+                    {p.dossier_number} · {p.phone || "Aucun numéro"}
+                  </p>
+                </div>
+              ))}
+              {patientQuery && patientHits.length === 0 && (
+                <p className="p-4 text-sm text-slate-500 text-center">Aucun patient trouvé.</p>
               )}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-slate-900">{contact.name}</span>
-                <span className="text-xs text-slate-500">{contact.time}</span>
-              </div>
-              <p className="text-sm text-slate-500 truncate">{contact.lastMessage}</p>
-            </div>
-          ))}
-          {filteredContacts.length === 0 && (
-            <p className="p-4 text-sm text-slate-500 text-center">Aucun contact trouvé.</p>
+              {!patientQuery && (
+                <p className="p-4 text-sm text-slate-500 text-center">
+                  Cherchez un patient pour démarrer une conversation.
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              {loadingThreads && <p className="p-4 text-sm text-slate-400 text-center">Chargement...</p>}
+              {!loadingThreads && filteredThreads.length === 0 && (
+                <p className="p-4 text-sm text-slate-500 text-center">
+                  Aucune conversation. Utilisez « + » pour écrire à un patient.
+                </p>
+              )}
+              {filteredThreads.map((t) => (
+                <div
+                  key={t.patient_id}
+                  onClick={() => setActivePatientId(t.patient_id)}
+                  className={cn(
+                    "p-4 border-b border-slate-100 cursor-pointer transition-colors hover:bg-slate-100",
+                    activePatientId === t.patient_id
+                      ? "bg-blue-50/50 border-l-4 border-l-blue-600"
+                      : "border-l-4 border-l-transparent"
+                  )}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-slate-900">{t.full_name}</span>
+                    <span className="text-xs text-slate-500">{formatTime(t.created_at)}</span>
+                  </div>
+                  <p className="text-sm text-slate-500 truncate">
+                    {t.last_direction === "outbound" && <span className="text-slate-400">Vous : </span>}
+                    {t.last_message || "—"}
+                  </p>
+                </div>
+              ))}
+            </>
           )}
         </div>
       </div>
 
-      {/* ── COLONNE DROITE : CONVERSATION ── */}
-      <div className="w-2/3 flex flex-col bg-white">
-        {activeContact ? (
+      {/* ── COLONNE DROITE : FIL RÉEL ── */}
+      <div className="w-full md:w-2/3 flex flex-col bg-white min-h-0">
+        {activePatientId ? (
           <>
-            {/* Header de la conversation */}
             <div className="p-4 border-b border-slate-200 flex items-center gap-3">
               <div className="h-10 w-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-600">
                 <User className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900">{activeContact.name}</h3>
-                <p className="text-xs text-slate-500">{activeContact.phone}</p>
+                <h3 className="font-bold text-slate-900">{activeThread?.full_name || "Patient"}</h3>
+                <p className="text-xs text-slate-500">{activePhone || "Aucun numéro enregistré"}</p>
               </div>
             </div>
 
-            {/* Zone de messages */}
+            {error && (
+              <div className="mx-4 mt-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-3">
+                {error}
+              </div>
+            )}
+
             <div className="flex-1 p-6 overflow-y-auto bg-slate-50/30 space-y-4">
-              {activeMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={cn(
-                    "flex flex-col max-w-[75%]",
-                    msg.sender === "Moi" ? "ml-auto items-end" : "mr-auto items-start"
-                  )}
-                >
+              {loadingMessages && <p className="text-sm text-slate-400 text-center">Chargement...</p>}
+              {!loadingMessages && messages.length === 0 && (
+                <p className="text-sm text-slate-400 text-center">
+                  Aucun message échangé avec ce patient pour l&apos;instant.
+                </p>
+              )}
+              {messages.map((msg) => {
+                const isMine = msg.direction === "outbound";
+                return (
                   <div
+                    key={msg.id}
                     className={cn(
-                      "px-4 py-2.5 rounded-2xl shadow-sm",
-                      msg.sender === "Moi" 
-                        ? "bg-blue-600 text-white rounded-br-sm" 
-                        : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm"
+                      "flex flex-col max-w-[75%]",
+                      isMine ? "ml-auto items-end" : "mr-auto items-start"
                     )}
                   >
-                    <p className="text-sm">{msg.text}</p>
+                    <div
+                      className={cn(
+                        "px-4 py-2.5 rounded-2xl shadow-sm",
+                        isMine
+                          ? "bg-blue-600 text-white rounded-br-sm"
+                          : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm"
+                      )}
+                    >
+                      <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
+                      {msg.media_url && (
+                        <a
+                          href={msg.media_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn("text-xs underline", isMine ? "text-blue-100" : "text-blue-600")}
+                        >
+                          Pièce jointe
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-400">
+                      <span>{formatTime(msg.created_at)}</span>
+                      {msg.channel === "whatsapp" && <MessageCircle className="h-3 w-3" />}
+                      {msg.channel === "sms" && <MessageSquare className="h-3 w-3" />}
+                      {isMine && msg.status === "failed" && (
+                        <span className="text-rose-500 font-bold">échec</span>
+                      )}
+                      {isMine && msg.status === "simulated" && (
+                        <span className="text-amber-500 font-bold">simulé</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 mt-1 text-xs text-slate-400">
-                    <span>{msg.time}</span>
-                    {msg.sender === "Moi" && msg.channel === "whatsapp" && <MessageCircle className="h-3 w-3" />}
-                    {msg.sender === "Moi" && msg.channel === "sms" && <MessageSquare className="h-3 w-3" />}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Zone de saisie */}
             <div className="p-4 border-t border-slate-200 bg-white">
-              <div className="flex items-center gap-4 bg-slate-100 rounded-xl p-2 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 border border-transparent transition-all">
+              {!activePhone && (
+                <div className="mb-3 flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                  Ce patient n&apos;a pas de numéro enregistré — impossible de lui écrire.
+                </div>
+              )}
+              <div className="flex items-center gap-4 bg-slate-100 rounded-xl p-2 focus-within:ring-2 focus-within:ring-blue-500/20 border border-transparent transition-all">
                 <div className="flex bg-white rounded-lg p-0.5 shadow-sm">
                   <button
                     onClick={() => setChannel("whatsapp")}
@@ -212,19 +350,20 @@ export function CommunicationCenter() {
                     <MessageSquare className="h-4 w-4" />
                   </button>
                 </div>
-                
+
                 <input
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                  disabled={!activePhone}
                   placeholder={`Message via ${channel === "whatsapp" ? "WhatsApp" : "SMS"}...`}
-                  className="flex-1 bg-transparent border-none outline-none text-sm px-2 text-slate-800 placeholder:text-slate-400"
+                  className="flex-1 bg-transparent border-none outline-none text-sm px-2 text-slate-800 placeholder:text-slate-400 disabled:cursor-not-allowed"
                 />
-                
+
                 <button
                   onClick={handleSendMessage}
-                  disabled={sending || !inputText.trim()}
+                  disabled={sending || !inputText.trim() || !activePhone}
                   className="h-10 w-10 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg flex items-center justify-center transition-colors shadow-md shadow-blue-500/20"
                 >
                   <Send className="h-4 w-4" />
@@ -233,7 +372,7 @@ export function CommunicationCenter() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-6 text-center">
             <MessageSquare className="h-12 w-12 mb-4 opacity-20" />
             <p>Sélectionnez une conversation</p>
           </div>
