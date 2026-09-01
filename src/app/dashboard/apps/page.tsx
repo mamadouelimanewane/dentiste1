@@ -4,10 +4,10 @@ import React, { useState, useMemo, useEffect } from "react";
 import { ArrowRight, Search, LayoutGrid, Sparkles, LogOut, Star, Clock, AlertTriangle, Zap } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useAuth } from "@/lib/auth-context";
+import { hasPermission } from "@/lib/modules";
 import {
   DENTAL_MODULE_GROUPS,
   DENTAL_CATEGORY_STYLE,
-  DENTAL_TOTAL_MODULES,
   type DentalCategoryKey,
   type DentalModule,
 } from "@/lib/dentalModules";
@@ -59,12 +59,25 @@ export default function DentalAppsHubPage() {
     router.push("/dashboard");
   };
 
-  const allModules = useMemo(() => DENTAL_MODULE_GROUPS.flatMap(g => g.modules), []);
+  // Le portail listait les 24 modules à tous les rôles : une assistante y
+  // voyait "Comptabilité" ou "Super Admin", et cliquer dessus la renvoyait
+  // silencieusement à l'étape Accueil (le module absent de ses droits
+  // n'existe pas dans la vue workflow). On n'affiche donc que ses modules.
+  const authorizedGroups = useMemo(
+    () =>
+      DENTAL_MODULE_GROUPS.map(g => ({
+        ...g,
+        modules: g.modules.filter(m => hasPermission(user.permissions, m.id, 'view')),
+      })).filter(g => g.modules.length > 0),
+    [user.permissions]
+  );
+
+  const allModules = useMemo(() => authorizedGroups.flatMap(g => g.modules), [authorizedGroups]);
 
   const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return DENTAL_MODULE_GROUPS;
-    return DENTAL_MODULE_GROUPS
+    if (!q) return authorizedGroups;
+    return authorizedGroups
       .map(g => ({
         ...g,
         modules: g.modules.filter(
@@ -75,7 +88,7 @@ export default function DentalAppsHubPage() {
         ),
       }))
       .filter(g => g.modules.length > 0);
-  }, [search]);
+  }, [search, authorizedGroups]);
 
   const categoryKeys = Object.keys(DENTAL_CATEGORY_STYLE) as DentalCategoryKey[];
 
@@ -182,7 +195,7 @@ export default function DentalAppsHubPage() {
               Portail des Modules
             </h1>
             <p className="text-slate-400 font-medium text-lg">
-              Accédez instantanément à vos {DENTAL_TOTAL_MODULES} outils métiers.
+              Accédez instantanément à vos {allModules.length} outils métiers.
             </p>
           </motion.div>
         </div>
