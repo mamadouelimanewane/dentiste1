@@ -9,8 +9,13 @@ export const dynamic = 'force-dynamic';
 const MAX_SIZE_BYTES = 15 * 1024 * 1024; // 15 Mo
 const ALLOWED_TYPES = ['Panoramique', 'Intra-orale', 'Esthétique', 'Céphalométrique'];
 
+// Module 14 (Imagerie) et non 5 (Réalisation) : les clichés sont des
+// données de santé. Le rôle comptable dispose du module 5 en lecture pour
+// facturer les actes, ce qui lui donnait aussi accès aux radiographies —
+// contraire au principe du minimum nécessaire. Module 14 = admin et
+// praticiens uniquement.
 export async function GET(request: Request) {
-  const { error, status } = await requirePermission(5, 'view');
+  const { error, status } = await requirePermission(14, 'view');
   if (error) return NextResponse.json({ error }, { status });
 
   const { searchParams } = new URL(request.url);
@@ -30,7 +35,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { session, error, status } = await requirePermission(5, 'manage');
+  const { session, error, status } = await requirePermission(14, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const formData = await request.formData();
@@ -78,7 +83,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const { session, error, status } = await requirePermission(5, 'manage');
+  const { session, error, status } = await requirePermission(14, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const { searchParams } = new URL(request.url);

@@ -24,15 +24,29 @@ export function PatientImaging() {
   const [selectedImage, setSelectedImage] = useState<ImageRecord | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [forbidden, setForbidden] = useState(false);
   const [uploadType, setUploadType] = useState(TYPES[1]);
   const [uploadNotes, setUploadNotes] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback((patientId: string) => {
     setLoading(true);
+    setForbidden(false);
     fetch(`/api/patient-images?patientId=${patientId}`)
-      .then((res) => res.json())
-      .then((data) => setImages(data.images || []))
+      .then(async (res) => {
+        // Les clichés sont réservés aux rôles cliniques : un rôle sans le
+        // module Imagerie doit voir un message clair plutôt qu'une galerie
+        // vide laissant croire que le patient n'a aucune radiographie.
+        if (res.status === 403) {
+          setForbidden(true);
+          setImages([]);
+          return null;
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data) setImages(data.images || []);
+      })
       .catch(() => setError("Impossible de charger les clichés."))
       .finally(() => setLoading(false));
   }, []);
@@ -89,6 +103,19 @@ export function PatientImaging() {
         <Camera className="h-12 w-12 text-blue-200 mb-4" />
         <h2 className="text-lg font-black text-slate-800">Galerie d&apos;Imagerie</h2>
         <p className="text-sm text-slate-500 mt-2">Veuillez sélectionner un patient pour voir ses radiographies.</p>
+      </div>
+    );
+  }
+
+  if (forbidden) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-sm p-12 flex flex-col items-center justify-center text-center min-h-[300px]">
+        <ImageIcon className="h-10 w-10 text-slate-300 mb-4" />
+        <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight">Accès restreint</h2>
+        <p className="text-xs text-slate-500 mt-2 max-w-sm">
+          Les clichés du patient sont des données de santé, réservées aux praticiens et à
+          l&apos;administration. Votre rôle ne dispose pas du module Imagerie.
+        </p>
       </div>
     );
   }
