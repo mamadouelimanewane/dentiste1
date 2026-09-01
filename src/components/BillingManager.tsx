@@ -43,6 +43,7 @@ export function BillingManager() {
   const [insuranceProvider, setInsuranceProvider] = useState("");
   const [insurancePolicyNumber, setInsurancePolicyNumber] = useState("");
   const [pendingInvoices, setPendingInvoices] = useState<PendingInvoice[]>([]);
+  const [allActs, setAllActs] = useState<(ExecutedAct & { invoice_id: string | null })[]>([]);
   const [settlingId, setSettlingId] = useState<string | null>(null);
 
   const loadActs = useCallback(async () => {
@@ -52,16 +53,21 @@ export function BillingManager() {
     if (res.ok) setExecutedActs(data.acts);
   }, [currentPatient]);
 
-  // Factures déjà émises mais non soldées. Sans cela, un patient qui repasse
-  // payer plus tard était impossible à encaisser : ses actes étant déjà
-  // rattachés à une facture, l'écran affichait "Régler 0 FCFA".
+  // Historique complet des factures du patient. Sans cela : (1) un patient
+  // qui repasse payer plus tard était impossible à encaisser (ses actes
+  // étant déjà rattachés à une facture, l'écran affichait "Régler 0 FCFA"),
+  // (2) rééditer le PDF d'une facture déjà émise était impossible, alors
+  // qu'un duplicata est une demande courante au comptoir.
   const loadPendingInvoices = useCallback(async () => {
     if (!currentPatient) return;
-    const res = await fetch(`/api/invoices?patientId=${currentPatient.id}`);
-    const data = await res.json();
-    if (res.ok) {
-      setPendingInvoices((data.invoices || []).filter((i: PendingInvoice) => i.status === "pending"));
-    }
+    const [invRes, actsRes] = await Promise.all([
+      fetch(`/api/invoices?patientId=${currentPatient.id}`),
+      fetch(`/api/executed-acts?patientId=${currentPatient.id}`),
+    ]);
+    const invData = await invRes.json();
+    const actsData = await actsRes.json();
+    if (invRes.ok) setPendingInvoices(invData.invoices || []);
+    if (actsRes.ok) setAllActs(actsData.acts || []);
   }, [currentPatient]);
 
   useEffect(() => {
@@ -189,44 +195,83 @@ export function BillingManager() {
     {/* Factures émises non soldées : permet d'encaisser un patient qui
         revient payer après coup, cas impossible auparavant. */}
     {pendingInvoices.length > 0 && (
-      <div className="bg-white border border-amber-200 rounded-sm shadow-sm overflow-hidden">
-        <div className="bg-amber-50 border-b border-amber-200 px-5 py-3 flex items-center gap-2">
-          <Receipt className="h-4 w-4 text-amber-600" />
-          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-900">
-            Factures en attente de règlement ({pendingInvoices.length})
+      <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
+        <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 flex items-center gap-2">
+          <Receipt className="h-4 w-4 text-slate-600" />
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">
+            Factures du patient ({pendingInvoices.length})
           </h3>
         </div>
         <div className="divide-y divide-slate-100">
-          {pendingInvoices.map((inv) => (
-            <div key={inv.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-black text-slate-900">{inv.invoice_number}</p>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  {new Date(inv.created_at).toLocaleDateString("fr-FR")}
-                  {inv.payment_method === "insurance" && " · transmise à la mutuelle"}
-                </p>
+          {pendingInvoices.map((inv) => {
+            const impayee = inv.status === "pending";
+            const lignes = allActs
+              .filter((a) => a.invoice_id === inv.id)
+              .map((a) => ({ label: a.label, tooth: a.tooth, price: Number(a.price) }));
+            return (
+              <div key={inv.id} className={cn("p-4 flex flex-col md:flex-row md:items-center justify-between gap-3", impayee && "bg-amber-50/40")}>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-black text-slate-900">{inv.invoice_number}</p>
+                    <span className={cn(
+                      "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded",
+                      impayee ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                    )}>
+                      {impayee ? (inv.payment_method === "insurance" ? "Chez la mutuelle" : "Impayée") : "Réglée"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                    {new Date(inv.created_at).toLocaleDateString("fr-FR")} · {lignes.length} acte(s)
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-lg font-black text-slate-900">
+                    {Number(inv.total).toLocaleString("fr-FR")} <span className="text-xs text-slate-400">FCFA</span>
+                  </span>
+                  <PDFDownloadLink
+                    document={
+                      <InvoicePDF
+                        items={lignes}
+                        total={Number(inv.total)}
+                        patientName={currentPatient?.name || "Patient"}
+                        patientId={currentPatient?.idNumber}
+                        invoiceNumber={inv.invoice_number}
+                      />
+                    }
+                    fileName={`${inv.invoice_number}.pdf`}
+                  >
+                    {/* @ts-ignore */}
+                    {({ loading }) => (
+                      <button
+                        disabled={loading}
+                        className="h-9 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        <Download className="h-3.5 w-3.5" /> {loading ? "..." : "PDF"}
+                      </button>
+                    )}
+                  </PDFDownloadLink>
+                  {impayee && (
+                    <>
+                      <button
+                        onClick={() => settleExistingInvoice(inv, "cash")}
+                        disabled={settlingId === inv.id}
+                        className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors"
+                      >
+                        {settlingId === inv.id ? "..." : "Encaisser espèces"}
+                      </button>
+                      <button
+                        onClick={() => settleExistingInvoice(inv, "card")}
+                        disabled={settlingId === inv.id}
+                        className="h-9 px-4 bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors"
+                      >
+                        Carte
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-lg font-black text-slate-900">
-                  {Number(inv.total).toLocaleString("fr-FR")} <span className="text-xs text-slate-400">FCFA</span>
-                </span>
-                <button
-                  onClick={() => settleExistingInvoice(inv, "cash")}
-                  disabled={settlingId === inv.id}
-                  className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors"
-                >
-                  {settlingId === inv.id ? "..." : "Encaisser espèces"}
-                </button>
-                <button
-                  onClick={() => settleExistingInvoice(inv, "card")}
-                  disabled={settlingId === inv.id}
-                  className="h-9 px-4 bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors"
-                >
-                  Carte
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     )}
