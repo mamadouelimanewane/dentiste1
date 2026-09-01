@@ -297,11 +297,23 @@ export default function Home() {
                   {currentPatient ? `Patient Actif : ${currentPatient.name}` : "Aucun Patient Sélectionné"}
                 </span>
                 {currentPatient?.allergies && (
-                  <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-red-100 bg-red-600/80 px-2 py-0.5 rounded-full" title={`Allergies: ${currentPatient.allergies}`}>
+                  <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-red-100 bg-red-600/80 px-2 py-0.5 rounded-full" title={`Allergies : ${currentPatient.allergies}`}>
                     <ShieldAlert className="h-3 w-3" />
-                    Alerte
+                    {currentPatient.allergies}
                   </span>
                 )}
+                {/* Points de vigilance du questionnaire d'arrivée : visibles
+                    partout, y compris en consultation et en réalisation. */}
+                {currentPatient?.vigilances?.map((v) => (
+                  <span
+                    key={v}
+                    title="Antécédent signalé lors de l'accueil"
+                    className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-amber-950 bg-amber-300 px-2 py-0.5 rounded-full"
+                  >
+                    <ShieldAlert className="h-3 w-3" />
+                    {v}
+                  </span>
+                ))}
               </div>
             </div>
           </div>

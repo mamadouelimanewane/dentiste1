@@ -11,6 +11,10 @@ interface Patient {
   address: string;
   allergies?: string;
   mutuelle?: string;
+  // Points de vigilance saisis au module Arrivée : ils doivent suivre le
+  // patient dans tout le logiciel (anesthésie, prescription), pas rester
+  // confinés à l'écran où ils ont été saisis.
+  vigilances?: string[];
 }
 
 interface PatientContextType {
@@ -29,7 +33,22 @@ export function mapDbPatientToContext(row: {
   address: string | null;
   allergies?: string | null;
   mutuelle?: string | null;
+  medical_history?: { answers?: Record<string, boolean>; notes?: string } | null;
 }): Patient {
+  const LIBELLES: Record<string, string> = {
+    heart: "Cardiaque",
+    bp: "Hypertension",
+    diabetes: "Diabète",
+    allergy: "Allergie déclarée",
+    blood: "Coagulation",
+    pregnancy: "Grossesse",
+    meds: "Traitement en cours",
+  };
+  const reponses = row.medical_history?.answers || {};
+  const vigilances = Object.keys(reponses)
+    .filter((k) => reponses[k])
+    .map((k) => LIBELLES[k] || k);
+
   return {
     id: row.id,
     name: row.full_name,
@@ -39,6 +58,7 @@ export function mapDbPatientToContext(row: {
     address: row.address || "",
     allergies: row.allergies || "",
     mutuelle: row.mutuelle || "",
+    vigilances,
   };
 }
 
