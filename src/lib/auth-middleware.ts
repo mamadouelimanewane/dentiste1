@@ -5,6 +5,9 @@ const PUBLIC_PATHS = ['/', '/login', '/mentions-legales', '/confidentialite', '/
 const PUBLIC_PREFIXES = [
   '/api/whatsapp/webhook',
   '/api/payments/webhook',
+  // Callback de statut Twilio : appelé par Twilio sans session, protégé par
+  // vérification de la signature X-Twilio-Signature côté route.
+  '/api/twilio/status',
   // Prise de RDV en ligne par un patient anonyme (page /portail). Écriture
   // limitée par IP côté route, pas de lecture de données exposée ici.
   '/api/public/',

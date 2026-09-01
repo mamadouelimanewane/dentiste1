@@ -50,6 +50,11 @@ async function logMessage(params: {
 // message que l'API Cloud Meta ci-dessous mais authentifié par une simple
 // clé d'API (header D360-API-KEY) sur un compte WhatsApp Business réel —
 // pas de Sandbox, pas de code "join" à envoyer.
+function statusCallbackUrl() {
+  const base = process.env.NEXT_PUBLIC_APP_URL;
+  return base ? `${base}/api/twilio/status` : null;
+}
+
 async function sendVia360dialog(phone: string, body: string): Promise<SendResult> {
   try {
     const res = await fetch('https://waba-v2.360dialog.io/messages', {
@@ -118,6 +123,11 @@ async function sendViaTwilio(phone: string, body: string): Promise<SendResult> {
           To: `whatsapp:${phone}`,
           From: `whatsapp:${TWILIO_WHATSAPP_FROM}`,
           Body: body,
+          // Indispensable avec le Sandbox WhatsApp : Twilio accepte la
+          // requête puis rejette la livraison (erreur 63015) si le
+          // destinataire n'a pas rejoint le Sandbox. Sans ce callback, le
+          // message restait affiché comme "envoyé".
+          ...(statusCallbackUrl() ? { StatusCallback: statusCallbackUrl()! } : {}),
         }),
       }
     );

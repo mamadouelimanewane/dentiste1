@@ -57,6 +57,14 @@ function toE164(phone: string) {
   return phone.startsWith('+') ? phone : `+${phone.replace(/^0+/, '')}`;
 }
 
+// URL publique du callback de statut Twilio. Absente en développement local
+// (pas d'URL joignable depuis l'extérieur) : l'envoi fonctionne alors sans
+// mise à jour de statut.
+function statusCallbackUrl() {
+  const base = process.env.NEXT_PUBLIC_APP_URL;
+  return base ? `${base}/api/twilio/status` : null;
+}
+
 async function sendViaTermii(to: string, body: string): Promise<SendResult> {
   const res = await fetch('https://api.ng.termii.com/api/sms/send', {
     method: 'POST',
@@ -173,7 +181,15 @@ async function sendViaTwilio(to: string, body: string): Promise<SendResult> {
         Authorization: `Basic ${Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64')}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({ To: to, From: TWILIO_FROM_NUMBER!, Body: body }),
+      body: new URLSearchParams({
+        To: to,
+        From: TWILIO_FROM_NUMBER!,
+        Body: body,
+        // Twilio accepte la requête puis peut échouer ensuite (numéro
+        // invalide, opérateur qui bloque) : ce callback met à jour le
+        // statut réel du message en base.
+        ...(statusCallbackUrl() ? { StatusCallback: statusCallbackUrl()! } : {}),
+      }),
     }
   );
 
