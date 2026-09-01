@@ -24,6 +24,15 @@ interface ExecutedAct {
 
 type PaymentMethod = "cash" | "card" | "insurance" | "mobile_money";
 
+interface PendingInvoice {
+  id: string;
+  invoice_number: string;
+  total: string | number;
+  status: string;
+  payment_method: string | null;
+  created_at: string;
+}
+
 export function BillingManager() {
   const { currentPatient } = usePatient();
   const [executedActs, setExecutedActs] = useState<ExecutedAct[]>([]);
@@ -33,6 +42,8 @@ export function BillingManager() {
   const [error, setError] = useState<string | null>(null);
   const [insuranceProvider, setInsuranceProvider] = useState("");
   const [insurancePolicyNumber, setInsurancePolicyNumber] = useState("");
+  const [pendingInvoices, setPendingInvoices] = useState<PendingInvoice[]>([]);
+  const [settlingId, setSettlingId] = useState<string | null>(null);
 
   const loadActs = useCallback(async () => {
     if (!currentPatient) return;
@@ -41,9 +52,46 @@ export function BillingManager() {
     if (res.ok) setExecutedActs(data.acts);
   }, [currentPatient]);
 
+  // Factures déjà émises mais non soldées. Sans cela, un patient qui repasse
+  // payer plus tard était impossible à encaisser : ses actes étant déjà
+  // rattachés à une facture, l'écran affichait "Régler 0 FCFA".
+  const loadPendingInvoices = useCallback(async () => {
+    if (!currentPatient) return;
+    const res = await fetch(`/api/invoices?patientId=${currentPatient.id}`);
+    const data = await res.json();
+    if (res.ok) {
+      setPendingInvoices((data.invoices || []).filter((i: PendingInvoice) => i.status === "pending"));
+    }
+  }, [currentPatient]);
+
   useEffect(() => {
     loadActs();
-  }, [loadActs]);
+    loadPendingInvoices();
+  }, [loadActs, loadPendingInvoices]);
+
+  const settleExistingInvoice = async (inv: PendingInvoice, method: PaymentMethod) => {
+    setSettlingId(inv.id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/invoices/${inv.id}/settle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          method,
+          ...(method === "insurance"
+            ? { insuranceProvider: insuranceProvider.trim() || "Mutuelle", insurancePolicyNumber: insurancePolicyNumber.trim() }
+            : {}),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec du règlement.");
+      await loadPendingInvoices();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setSettlingId(null);
+    }
+  };
 
   const [confirmPayment, setConfirmPayment] = useState(false);
   const [coverageRate, setCoverageRate] = useState<number>(80);
@@ -137,6 +185,52 @@ export function BillingManager() {
   }
 
   return (
+    <div className="space-y-6">
+    {/* Factures émises non soldées : permet d'encaisser un patient qui
+        revient payer après coup, cas impossible auparavant. */}
+    {pendingInvoices.length > 0 && (
+      <div className="bg-white border border-amber-200 rounded-sm shadow-sm overflow-hidden">
+        <div className="bg-amber-50 border-b border-amber-200 px-5 py-3 flex items-center gap-2">
+          <Receipt className="h-4 w-4 text-amber-600" />
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-900">
+            Factures en attente de règlement ({pendingInvoices.length})
+          </h3>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {pendingInvoices.map((inv) => (
+            <div key={inv.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-slate-900">{inv.invoice_number}</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  {new Date(inv.created_at).toLocaleDateString("fr-FR")}
+                  {inv.payment_method === "insurance" && " · transmise à la mutuelle"}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-lg font-black text-slate-900">
+                  {Number(inv.total).toLocaleString("fr-FR")} <span className="text-xs text-slate-400">FCFA</span>
+                </span>
+                <button
+                  onClick={() => settleExistingInvoice(inv, "cash")}
+                  disabled={settlingId === inv.id}
+                  className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors"
+                >
+                  {settlingId === inv.id ? "..." : "Encaisser espèces"}
+                </button>
+                <button
+                  onClick={() => settleExistingInvoice(inv, "card")}
+                  disabled={settlingId === inv.id}
+                  className="h-9 px-4 bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors"
+                >
+                  Carte
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Left: Invoice Summary */}
       <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col">
@@ -396,6 +490,7 @@ export function BillingManager() {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }
