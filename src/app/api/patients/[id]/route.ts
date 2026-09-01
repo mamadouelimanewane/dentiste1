@@ -11,7 +11,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 
   const rows = await sql`
     select id, dossier_number, full_name, birth_date, phone, address, national_id,
-           allergies, mutuelle, status, created_at
+           allergies, mutuelle, medical_history, status, created_at
     from patients
     where id = ${params.id}
     limit 1
@@ -48,6 +48,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     mutuelle,
   } = body as Record<string, string | null | undefined>;
 
+  // Antécédents médicaux (module Arrivée) : objet libre {reponses, observations}
+  const medicalHistory = (body as Record<string, unknown>).medical_history;
+
   if (fullName !== undefined && !String(fullName).trim()) {
     return NextResponse.json({ error: 'Le nom ne peut pas être vide.' }, { status: 400 });
   }
@@ -60,6 +63,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       address = coalesce(${address ?? null}, address),
       allergies = coalesce(${allergies ?? null}, allergies),
       mutuelle = coalesce(${mutuelle ?? null}, mutuelle),
+      medical_history = coalesce(${medicalHistory ? JSON.stringify(medicalHistory) : null}::jsonb, medical_history),
       updated_at = now()
     where id = ${params.id}
     returning id, dossier_number, full_name, birth_date, phone, address, national_id,
