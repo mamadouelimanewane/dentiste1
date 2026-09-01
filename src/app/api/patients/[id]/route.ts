@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { requirePermission } from '@/lib/permissions';
+import { requirePermission, getRoleById } from '@/lib/permissions';
+import { getStaffSession } from '@/lib/session';
+import { hasPermission } from '@/lib/modules';
 import { recordAudit } from '@/lib/audit';
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
@@ -25,9 +27,16 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 // Correction d'un dossier existant (faute de frappe, changement de numéro,
 // ajout d'allergies découvertes en consultation...). Chaque champ est
 // optionnel : seuls ceux fournis sont écrasés.
+// Accessible à l'accueil (module 1) comme au praticien (module 3) : une
+// allergie découverte au fauteuil doit pouvoir être consignée immédiatement
+// par le soignant, sans passer par la réception.
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  const { session, error, status } = await requirePermission(1, 'manage');
-  if (error) return NextResponse.json({ error }, { status });
+  const session = await getStaffSession();
+  if (!session) return NextResponse.json({ error: 'Non authentifié.' }, { status: 401 });
+  const role = await getRoleById(session.roleId);
+  if (!role || (!hasPermission(role.permissions, 1, 'manage') && !hasPermission(role.permissions, 3, 'manage'))) {
+    return NextResponse.json({ error: 'Rôle non autorisé.' }, { status: 403 });
+  }
 
   const body = await request.json();
   const {
@@ -62,7 +71,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   await recordAudit({
-    actorId: session!.userId,
+    actorId: session.userId,
     action: 'Modification dossier patient',
     entityTable: 'patients',
     entityId: params.id,
