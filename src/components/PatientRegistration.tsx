@@ -85,7 +85,7 @@ export function PatientRegistration() {
 
     try {
       if (currentPatient) {
-        // Mode UPDATE (si l'API supporte PATCH /api/patients/:id)
+        // Mode UPDATE — PATCH /api/patients/:id
         const res = await fetch(`/api/patients/${currentPatient.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -94,16 +94,18 @@ export function PatientRegistration() {
             birth_date: formData.birthDate || null,
             phone: formData.phone,
             address: formData.address,
+            allergies: formData.allergies,
+            mutuelle: formData.mutuelle,
           }),
         });
-        
+
         if (!res.ok) {
           const data = await res.json();
           throw new Error(data.error || "Échec de la mise à jour du dossier.");
         }
-        
+
         const data = await res.json();
-        setCurrentPatient(mapDbPatientToContext(data));
+        setCurrentPatient(mapDbPatientToContext(data.patient));
         toast("Fiche patient mise à jour avec succès", "success");
         setIsEditing(false);
       } else {
@@ -116,6 +118,8 @@ export function PatientRegistration() {
             birthDate: formData.birthDate || null,
             phone: formData.phone,
             address: formData.address,
+            allergies: formData.allergies,
+            mutuelle: formData.mutuelle,
           }),
         });
         const data = await res.json();

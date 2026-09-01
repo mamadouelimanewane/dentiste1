@@ -43,11 +43,13 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();
-  const { fullName, birthDate, phone, address } = body as {
+  const { fullName, birthDate, phone, address, allergies, mutuelle } = body as {
     fullName?: string;
     birthDate?: string;
     phone?: string;
     address?: string;
+    allergies?: string;
+    mutuelle?: string;
   };
 
   if (!fullName) {
@@ -55,9 +57,10 @@ export async function POST(request: Request) {
   }
 
   const rows = await sql`
-    insert into patients (full_name, birth_date, phone, address, created_by)
-    values (${fullName}, ${birthDate || null}, ${phone || null}, ${address || null}, ${session!.userId})
-    returning id, dossier_number, full_name, birth_date, phone, address, status, created_at
+    insert into patients (full_name, birth_date, phone, address, allergies, mutuelle, created_by)
+    values (${fullName}, ${birthDate || null}, ${phone || null}, ${address || null},
+            ${allergies || null}, ${mutuelle || null}, ${session!.userId})
+    returning id, dossier_number, full_name, birth_date, phone, address, allergies, mutuelle, status, created_at
   `;
 
   const patient = rows[0];
