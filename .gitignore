@@ -36,3 +36,4 @@ next-env.d.ts
 .env*
 sauvegardes/
 identifiants-*.txt
+identifiants-admin-*.txt
