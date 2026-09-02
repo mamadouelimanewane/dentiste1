@@ -80,6 +80,27 @@ export function InsuranceManager() {
     }
   };
 
+  const [majEnCours, setMajEnCours] = useState<string | null>(null);
+  const [erreurMaj, setErreurMaj] = useState<string | null>(null);
+
+  const changerStatut = async (id: string, status: Claim["status"]) => {
+    setMajEnCours(id);
+    try {
+      const res = await fetch("/api/insurance-claims", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de la mise à jour.");
+      setClaims((prev) => prev.map((c) => (c.id === id ? data.claim : c)));
+    } catch (e) {
+      setErreurMaj(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setMajEnCours(null);
+    }
+  };
+
   const pendingCount = claims.filter((c) => c.status === "pending" || c.status === "submitted").length;
   const paidTotal = claims.filter((c) => c.status === "paid").reduce((sum, c) => sum + Number(c.amount), 0);
   const rate = claims.length > 0 ? Math.round((claims.filter((c) => c.status === "paid" || c.status === "approved").length / claims.length) * 100) : 0;
@@ -134,7 +155,13 @@ export function InsuranceManager() {
       <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
         <div className="p-4">
           <div className="overflow-x-auto">
+            {erreurMaj && (
+              <p className="m-3 p-2 bg-rose-50 border border-rose-200 rounded-sm text-[11px] text-rose-700">
+                {erreurMaj}
+              </p>
+            )}
             <table className="w-full text-left">
+              <caption className="sr-only">Demandes de prise en charge</caption>
               <thead>
                 <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
                   <th className="p-3">Patient</th>
@@ -142,6 +169,7 @@ export function InsuranceManager() {
                   <th className="p-3">Montant</th>
                   <th className="p-3">Date</th>
                   <th className="p-3 text-center">Statut</th>
+                  <th className="p-3">Faire évoluer</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -170,6 +198,23 @@ export function InsuranceManager() {
                       <span className={cn("px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest", STATUS_BADGE[claim.status])}>
                         {STATUS_LABEL[claim.status]}
                       </span>
+                    </td>
+                    {/* Aucune action n'existait : une demande restait « en
+                        attente » à vie, et les indicateurs de cet écran ne
+                        pouvaient jamais dépasser zéro. */}
+                    <td className="p-3">
+                      <select
+                        value={claim.status}
+                        disabled={majEnCours === claim.id}
+                        onChange={(e) => changerStatut(claim.id, e.target.value as Claim["status"])}
+                        className="px-2 py-1 rounded-sm text-[9px] font-bold uppercase tracking-widest border border-slate-200 bg-white text-slate-700 cursor-pointer disabled:opacity-50"
+                      >
+                        {(Object.keys(STATUS_LABEL) as Claim["status"][]).map((st) => (
+                          <option key={st} value={st}>
+                            {STATUS_LABEL[st]}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                   </tr>
                 ))}

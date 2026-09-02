@@ -45,3 +45,50 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ claim: rows[0] });
 }
+
+const STATUTS = ['pending', 'submitted', 'approved', 'rejected', 'paid'] as const;
+type Statut = (typeof STATUTS)[number];
+
+// Faire évoluer une demande de prise en charge.
+//
+// Seules la création et la lecture existaient : une demande restait
+// indéfiniment « en attente », `resolved_at` n'était jamais renseignée et les
+// créances mutuelles ne pouvaient que croître. L'écran affichait par ailleurs
+// un « taux d'acceptation » et un « total remboursé » qui ne pouvaient
+// structurellement jamais dépasser zéro, faute de statut atteignable.
+export async function PATCH(request: Request) {
+  const { session, error, status } = await requirePermission(9, 'manage');
+  if (error) return NextResponse.json({ error }, { status });
+
+  const body = await request.json();
+  const { id, status: nouveauStatut } = body as { id?: string; status?: Statut };
+
+  if (!id || !nouveauStatut) {
+    return NextResponse.json({ error: 'id et status sont requis.' }, { status: 400 });
+  }
+  if (!STATUTS.includes(nouveauStatut)) {
+    return NextResponse.json(
+      { error: `Statut invalide. Valeurs acceptées : ${STATUTS.join(', ')}.` },
+      { status: 400 }
+    );
+  }
+
+  // Une demande soldée (payée ou refusée) porte sa date de résolution ; les
+  // statuts intermédiaires la remettent à null si l'on revient en arrière.
+  const resolue = nouveauStatut === 'paid' || nouveauStatut === 'rejected';
+
+  const rows = await sql`
+    update insurance_claims
+    set status = ${nouveauStatut},
+        submitted_at = coalesce(submitted_at, case when ${nouveauStatut} <> 'pending' then now() end),
+        resolved_at = case when ${resolue} then now() else null end
+    where id = ${id}
+    returning *
+  `;
+
+  if (rows.length === 0) {
+    return NextResponse.json({ error: 'Demande introuvable.' }, { status: 404 });
+  }
+
+  return NextResponse.json({ claim: rows[0] });
+}

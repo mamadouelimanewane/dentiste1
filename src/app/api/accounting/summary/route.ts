@@ -45,7 +45,11 @@ export async function GET(request: Request) {
       with parts as (
         select invoice_id, sum(amount)::numeric as part_mutuelle
         from insurance_claims
-        where status = 'pending' and invoice_id is not null
+        -- Tant que l'organisme n'a ni payé ni refusé, la part reste due par
+        -- lui : une demande transmise ou acceptée est toujours une créance.
+        -- Une demande refusée retombe à la charge du patient, une demande
+        -- payée sort des créances.
+        where status in ('pending', 'submitted', 'approved') and invoice_id is not null
         group by invoice_id
       ),
       f as (
@@ -73,7 +77,8 @@ export async function GET(request: Request) {
              i.created_at, i.paid_at, p.full_name as patient_name,
              coalesce((
                select sum(c.amount) from insurance_claims c
-               where c.invoice_id = i.id and c.status = 'pending'
+               where c.invoice_id = i.id
+                 and c.status in ('pending', 'submitted', 'approved')
              ), 0)::numeric as part_mutuelle
       from invoices i
       join patients p on p.id = i.patient_id
