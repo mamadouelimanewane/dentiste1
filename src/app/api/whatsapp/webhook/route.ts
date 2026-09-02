@@ -4,6 +4,7 @@ import { sql } from '@/lib/db';
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const APP_SECRET = process.env.WHATSAPP_APP_SECRET;
+const BUSINESS_ACCOUNT_ID = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
 
 // Statuts renvoyés par Meta sur l'événement "statuses" du webhook.
 const STATUS_MAP: Record<string, string> = {
@@ -66,12 +67,20 @@ export async function POST(request: Request) {
 
   const payload = JSON.parse(rawBody);
 
+  // L'app Meta du cabinet est aussi rattachée au compte WhatsApp "bac à
+  // sable" de Meta (numéro de test américain). Sans ce filtre, les messages
+  // envoyés à ce numéro de test atterriraient dans la messagerie des vrais
+  // patients. On n'accepte donc que le compte WhatsApp Business du cabinet.
+  const entries = (payload?.entry || []).filter(
+    (entry: any) => !BUSINESS_ACCOUNT_ID || String(entry?.id) === BUSINESS_ACCOUNT_ID
+  );
+
   // Accusés de livraison Meta. Sans ce traitement, l'application marquait
   // "sent" dès que Meta acceptait la requête : or Meta accepte puis rejette
   // de façon asynchrone (typiquement 131047, hors fenêtre de 24h sans
   // modèle approuvé). Le cabinet croyait donc ses rappels distribués.
   const statuses =
-    payload?.entry?.flatMap((entry: any) =>
+    entries.flatMap((entry: any) =>
       entry?.changes?.flatMap((change: any) => change?.value?.statuses || [])
     ) || [];
 
@@ -90,7 +99,7 @@ export async function POST(request: Request) {
   }
 
   const messages =
-    payload?.entry?.flatMap((entry: any) =>
+    entries.flatMap((entry: any) =>
       entry?.changes?.flatMap((change: any) => change?.value?.messages || [])
     ) || [];
 
