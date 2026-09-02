@@ -89,7 +89,11 @@ export async function GET(request: Request) {
       group by 1
       order by 1
     `,
-    sql`select coalesce(avg(total), 0)::numeric as avg from invoices where status = 'paid' and paid_at >= ${start} and paid_at <= ${now}`,
+    // Le panier moyen ne portait que sur les factures encaissées, alors que
+    // le chiffre d'affaires affiché juste à côté compte les factures émises :
+    // un cabinet ayant facturé 120 000 F sans encaissement lisait
+    // « Panier Moyen : 0 F ». Même population que le CA.
+    sql`select coalesce(avg(total), 0)::numeric as avg from invoices where status in ('paid','pending') and created_at >= ${start} and created_at <= ${now}`,
     sql`select count(*)::int as count from executed_acts where performed_at >= ${start} and performed_at <= ${now}`,
   ]);
 
