@@ -8,6 +8,16 @@ import { cn } from "@/lib/utils";
 
 const initialState: { error: string | null } = { error: null };
 
+// La page de connexion affichait en clair « admin@elite.com / admin123 », et
+// ces identifiants ouvraient une session ADMINISTRATEUR complète : toute
+// personne atteignant l'URL prenait le contrôle du cabinet et de l'ensemble
+// des dossiers médicaux. Le raccourci de démonstration n'apparaît désormais
+// que si NEXT_PUBLIC_DEMO_LOGIN vaut "true" — jamais sur l'instance d'un
+// cabinet réel.
+const DEMO_LOGIN = process.env.NEXT_PUBLIC_DEMO_LOGIN === "true";
+const DEMO_EMAIL = process.env.NEXT_PUBLIC_DEMO_EMAIL || "";
+const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD || "";
+
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
@@ -41,8 +51,8 @@ export default function LoginForm() {
       const emailInput = formRef.current.querySelector('input[name="email"]') as HTMLInputElement;
       const passInput = formRef.current.querySelector('input[name="password"]') as HTMLInputElement;
       if (emailInput && passInput) {
-        emailInput.value = "admin@elite.com";
-        passInput.value = "admin123";
+        emailInput.value = DEMO_EMAIL;
+        passInput.value = DEMO_PASSWORD;
       }
       formRef.current.requestSubmit();
     }
@@ -71,9 +81,15 @@ export default function LoginForm() {
             <label className="text-sm font-bold text-slate-300" htmlFor="password">
               Mot de passe
             </label>
-            <a href="#" className="text-xs font-bold text-blue-500 hover:text-blue-400">
-              Oublié ?
-            </a>
+            {/* Le lien renvoyait vers "#" : un utilisateur ayant perdu son mot
+                de passe cliquait sans que rien ne se produise. Aucune
+                procédure de récupération n'existe — on le dit clairement. */}
+            <span
+              className="text-xs font-medium text-slate-500"
+              title="Aucune récupération automatique : contactez l'administrateur du cabinet."
+            >
+              Oublié ? Contactez l&apos;administrateur
+            </span>
           </div>
           <div className="relative">
             <input
@@ -106,6 +122,8 @@ export default function LoginForm() {
       <div className="space-y-4 pt-2">
         <SubmitButton />
 
+        {DEMO_LOGIN && (
+        <>
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-slate-700" />
@@ -126,8 +144,10 @@ export default function LoginForm() {
           Connexion Rapide (Démo)
         </button>
         <p className="text-center text-[10px] font-medium text-slate-600 mt-2">
-          admin@elite.com / admin123
+          {DEMO_EMAIL} / {DEMO_PASSWORD}
         </p>
+        </>
+        )}
       </div>
     </form>
   );
