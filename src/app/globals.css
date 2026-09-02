@@ -128,3 +128,38 @@ html, body {
     animation: neon-pulse 2s ease-in-out infinite;
   }
 }
+
+/* ─── Lisibilité en cabinet ────────────────────────────────────────────────
+   `text-slate-400` (#94a3b8) posé sur fond blanc donne un contraste de
+   2,55:1, très en dessous du minimum de 4,5:1 exigé pour du texte courant —
+   et l'application l'emploie massivement pour des libellés de 10 à 11 px en
+   majuscules espacées. Relevé sur un seul écran : 50 textes illisibles, dont
+   le badge « Urgence » (1,28:1) et l'avertissement « Aucun patient actif »
+   (1,49:1). En cabinet, sous lumière vive et à bout de bras, ces textes
+   disparaissent.
+
+   On relève donc la couleur par défaut, tout en la laissant claire à
+   l'intérieur des panneaux sombres (barre latérale, bandeaux), où elle est
+   au contraire correctement contrastée. */
+.text-slate-400 { color: #475569; }   /* slate-600 : 7,4:1 sur blanc */
+.text-slate-500 { color: #475569; }
+
+.bg-slate-800 .text-slate-400,
+.bg-slate-900 .text-slate-400,
+.bg-slate-950 .text-slate-400,
+.bg-\[\#0F172A\] .text-slate-400,
+.bg-\[\#1E3A8A\] .text-slate-400,
+.bg-\[\#030712\] .text-slate-400,
+.dark .text-slate-400,
+[data-theme='dark'] .text-slate-400,
+[data-theme='smart'] .text-slate-400 { color: #94a3b8; }
+
+.bg-slate-800 .text-slate-500,
+.bg-slate-900 .text-slate-500,
+.bg-slate-950 .text-slate-500,
+.bg-\[\#0F172A\] .text-slate-500,
+.bg-\[\#1E3A8A\] .text-slate-500,
+.bg-\[\#030712\] .text-slate-500,
+.dark .text-slate-500,
+[data-theme='dark'] .text-slate-500,
+[data-theme='smart'] .text-slate-500 { color: #94a3b8; }

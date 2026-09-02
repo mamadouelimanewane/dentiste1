@@ -363,16 +363,19 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Ce bouton émettait un événement `quick-action-emergency` que
+                personne n'écoutait, puis annonçait « Fonctionnalité Urgence
+                activée ». Sur un bouton d'urgence, annoncer une action qui
+                n'a pas lieu est le pire des défauts : il ouvre désormais
+                réellement l'écran d'accueil, où l'on enregistre un patient
+                qui se présente en urgence. */}
             <button
               onClick={() => {
-                // Example action: Jump to Nouv. Dossier or Consultation
-                // We'll set the step to "Nouv. Dossier" (id: 3)
-                const event = new CustomEvent('quick-action-emergency');
-                window.dispatchEvent(event);
-                alert("Accès Rapide : Fonctionnalité Urgence activée.");
+                setCurrentStep(1);
+                if (window.innerWidth < 1024) setIsSidebarOpen(false);
               }}
-              title="Accès Rapide / Urgence"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 transition-colors border border-rose-500/20"
+              title="Urgence — ouvrir l'écran d'enregistrement"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white transition-colors border border-rose-700 shadow-sm"
             >
               <Zap className="h-3.5 w-3.5" />
               <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest">Urgence</span>

@@ -42,9 +42,11 @@ export function GlobalShortcuts() {
       // Ctrl + E : Urgence / Action Rapide
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") {
         e.preventDefault();
-        const event = new CustomEvent('quick-action-emergency');
-        window.dispatchEvent(event);
-        toast("Menu d'accès rapide activé", "success");
+        // L'événement n'était écouté nulle part : le raccourci annonçait un
+        // menu qui ne s'ouvrait jamais. On ouvre l'écran d'accueil, où se
+        // fait l'enregistrement d'un patient qui arrive en urgence.
+        router.push("/dashboard");
+        toast("Urgence — écran d'enregistrement", "success");
       }
     };
 
