@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { bornerTexte, validerEcheance } from '@/lib/validation';
 import { requirePermission } from '@/lib/permissions';
 import { recordAudit } from '@/lib/audit';
 
@@ -35,9 +36,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'patientId, actLabel et labName sont requis.' }, { status: 400 });
   }
 
+  const acte = bornerTexte(actLabel, 200);
+  const labo = bornerTexte(labName, 150);
+  if (!acte || !labo) {
+    return NextResponse.json({ error: "La prestation et le laboratoire sont requis." }, { status: 400 });
+  }
+  const echeance = validerEcheance(expectedDelivery);
+  if (!echeance.ok) return NextResponse.json({ error: echeance.erreur }, { status: 400 });
+
   const rows = await sql`
     insert into lab_orders (patient_id, act_label, teinte, lab_name, expected_delivery, created_by)
-    values (${patientId}, ${actLabel}, ${teinte || null}, ${labName}, ${expectedDelivery || null}, ${session!.userId})
+    values (${patientId}, ${acte}, ${bornerTexte(teinte, 20)}, ${labo}, ${echeance.valeur}, ${session!.userId})
     returning *
   `;
 

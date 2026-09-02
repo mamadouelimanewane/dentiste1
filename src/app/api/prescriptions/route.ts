@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { validerListe } from '@/lib/validation';
 import { requirePermission } from '@/lib/permissions';
 
 export async function GET(request: Request) {
@@ -37,6 +38,11 @@ export async function POST(request: Request) {
   if (!patientId || !medications?.length) {
     return NextResponse.json({ error: 'patientId et au moins un médicament sont requis.' }, { status: 400 });
   }
+
+  // Sans plafond, une requête forgée fait grossir indéfiniment le champ
+  // JSONB et rend l'ordonnance illisible à l'impression.
+  const liste = validerListe(medications, { max: 30, nom: 'médicament' });
+  if (!liste.ok) return NextResponse.json({ error: liste.erreur }, { status: 400 });
 
   const rows = await sql`
     insert into prescriptions (patient_id, practitioner_id, medications)

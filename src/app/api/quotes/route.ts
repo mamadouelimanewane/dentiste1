@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { validerListe, validerMontant, validerQuantite } from '@/lib/validation';
 import { requirePermission } from '@/lib/permissions';
 import { recordAudit } from '@/lib/audit';
 
@@ -36,9 +37,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'patientId et items (non vide) sont requis.' }, { status: 400 });
   }
 
+  // Le total était repris tel quel du client : un prix négatif produisait un
+  // devis à montant négatif. On borne les lignes et on recalcule le total à
+  // partir d'elles, plutôt que de faire confiance à la valeur envoyée.
+  const lignes = validerListe(items, { max: 60, nom: 'acte' });
+  if (!lignes.ok) return NextResponse.json({ error: lignes.erreur }, { status: 400 });
+
+  let totalCalcule = 0;
+  for (const brut of lignes.valeur as { label?: string; qty?: number; price?: number }[]) {
+    const prix = validerMontant(brut?.price, { obligatoire: false });
+    if (!prix.ok) return NextResponse.json({ error: prix.erreur }, { status: 400 });
+    const qte = validerQuantite(brut?.qty ?? 1);
+    if (!qte.ok) return NextResponse.json({ error: qte.erreur }, { status: 400 });
+    totalCalcule += prix.valeur * qte.valeur;
+  }
+
   const rows = await sql`
     insert into quotes (patient_id, practitioner_id, items, total, signed, created_by)
-    values (${patientId}, ${session!.userId}, ${JSON.stringify(items)}::jsonb, ${total || 0}, ${!!signed}, ${session!.userId})
+    values (${patientId}, ${session!.userId}, ${JSON.stringify(lignes.valeur)}::jsonb, ${totalCalcule}, ${!!signed}, ${session!.userId})
     returning *
   `;
 

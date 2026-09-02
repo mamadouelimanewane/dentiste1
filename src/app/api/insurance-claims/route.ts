@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { validerMontant, bornerTexte } from '@/lib/validation';
 import { requirePermission } from '@/lib/permissions';
 
 export async function GET() {
@@ -37,9 +38,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'patientId, provider et amount sont requis.' }, { status: 400 });
   }
 
+  // Un montant négatif corrompait directement les créances mutuelles.
+  const montant = validerMontant(amount, { obligatoire: false });
+  if (!montant.ok) return NextResponse.json({ error: montant.erreur }, { status: 400 });
+
+  const organisme = bornerTexte(provider, 150);
+  if (!organisme) {
+    return NextResponse.json({ error: "Le nom de l'organisme est requis." }, { status: 400 });
+  }
+
   const rows = await sql`
     insert into insurance_claims (patient_id, invoice_id, provider, policy_number, claim_type, amount, created_by)
-    values (${patientId}, ${invoiceId || null}, ${provider}, ${policyNumber || null}, ${claimType || null}, ${amount}, ${session!.userId})
+    values (${patientId}, ${invoiceId || null}, ${organisme}, ${bornerTexte(policyNumber, 60)}, ${bornerTexte(claimType, 60)}, ${montant.valeur}, ${session!.userId})
     returning *
   `;
 

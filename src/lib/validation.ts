@@ -208,3 +208,37 @@ export function validerCreneau(
 
   return { ok: true, debut: d.toISOString(), duree: n };
 }
+
+// Bornes sur les listes envoyées par le client (médicaments d'une ordonnance,
+// lignes d'un devis). Sans plafond, une requête forgée peut faire grossir
+// indéfiniment un champ JSONB et rendre le dossier illisible.
+export function validerListe(
+  valeur: unknown,
+  { max, nom }: { max: number; nom: string }
+): { ok: true; valeur: unknown[] } | { ok: false; erreur: string } {
+  if (!Array.isArray(valeur) || valeur.length === 0) {
+    return { ok: false, erreur: `Au moins un ${nom} est requis.` };
+  }
+  if (valeur.length > max) {
+    return { ok: false, erreur: `Trop de ${nom}s (maximum ${max}).` };
+  }
+  return { ok: true, valeur };
+}
+
+// Date d'échéance (livraison labo, etc.) : lisible et à moins de 2 ans.
+export function validerEcheance(
+  valeur: unknown
+): { ok: true; valeur: string | null } | { ok: false; erreur: string } {
+  const brut = String(valeur ?? '').trim();
+  if (!brut) return { ok: true, valeur: null };
+  const d = new Date(brut);
+  if (Number.isNaN(d.getTime())) {
+    return { ok: false, erreur: 'Date prévisionnelle invalide.' };
+  }
+  const limite = new Date();
+  limite.setFullYear(limite.getFullYear() + 2);
+  if (d > limite) {
+    return { ok: false, erreur: "Date trop lointaine. Vérifiez l'année saisie." };
+  }
+  return { ok: true, valeur: brut };
+}
