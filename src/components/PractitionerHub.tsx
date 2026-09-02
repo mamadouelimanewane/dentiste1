@@ -28,6 +28,18 @@ function statusLabel(appt: TodayAppointment): string {
 export function PractitionerHub({ onNavigate }: { onNavigate?: (stepId: number) => void }) {
   const { setCurrentPatient } = usePatient();
   const [isAgendaOpen, setIsAgendaOpen] = useState(false);
+  // Horloge réelle, rafraîchie chaque minute.
+  const [heure, setHeure] = useState(() =>
+    new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+  );
+
+  useEffect(() => {
+    const t = setInterval(
+      () => setHeure(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })),
+      60_000
+    );
+    return () => clearInterval(t);
+  }, []);
   const [todayAppointments, setTodayAppointments] = useState<TodayAppointment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -88,9 +100,12 @@ export function PractitionerHub({ onNavigate }: { onNavigate?: (stepId: number) 
             </div>
 
             <div className="flex items-center gap-4 text-right">
+              {/* Auparavant une météo codée en dur ("28°C Ensoleillé"), affichée
+                  telle quelle sous la pluie comme à minuit. Remplacée par
+                  l'heure, qui est exacte et sert réellement en consultation. */}
               <div className="hidden sm:block">
-                <p className="text-sm font-bold text-white">28°C</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ensoleillé</p>
+                <p className="text-sm font-bold text-white">{heure}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Heure locale</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-amber-400 to-orange-300 shadow-[0_0_20px_rgba(251,191,36,0.3)] flex-shrink-0 relative overflow-hidden">
                 <div className="absolute inset-0 bg-white/20 blur-sm rounded-full" />
@@ -152,14 +167,15 @@ export function PractitionerHub({ onNavigate }: { onNavigate?: (stepId: number) 
             </div>
           </div>
 
-          {/* Radio IA — lien vers le module, pas de fausse alerte patient */}
+          {/* Imagerie — lien vers le module, pas de fausse alerte patient */}
           <div className="pt-4 border-t border-slate-100">
              <div className="flex items-start gap-3 bg-blue-50 p-4 rounded-sm border border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleToolClick(14)}>
                <Activity className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                <div className="space-y-1.5">
-                 <p className="text-xs font-black text-blue-900 uppercase tracking-tight">Radio IA</p>
+                 <p className="text-xs font-black text-blue-900 uppercase tracking-tight">Imagerie</p>
                  <p className="text-xs font-medium text-slate-600 leading-relaxed">
-                   Module de démonstration — cliquez pour l&apos;analyse assistée de radiographies.
+                   Consulter les clichés du dossier patient. Aucune analyse automatisée :
+                   l&apos;interprétation relève du praticien.
                  </p>
                </div>
              </div>

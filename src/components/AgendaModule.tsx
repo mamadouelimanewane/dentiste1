@@ -115,6 +115,7 @@ export function AgendaModule() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [dayOffset, setDayOffset] = useState(0);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [weekAppointments, setWeekAppointments] = useState<Appointment[]>([]);
   const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
   const [selectedPractitioner, setSelectedPractitioner] = useState<string>("all");
   const [loading, setLoading] = useState(true);
@@ -165,6 +166,28 @@ export function AgendaModule() {
   const monthLabel = weekStart.toLocaleString("fr-FR", { month: "long", year: "numeric" });
   const teamDayLabel = activeDate.toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
+  // Les compteurs « Cette semaine » et la liste hebdomadaire affichaient
+  // `appointments`, qui ne contient que la fenêtre visible : en vue « équipe »
+  // (une seule journée), le cabinet lisait « 0 RDV cette semaine » alors que
+  // la semaine était chargée. On charge donc la semaine séparément de la vue.
+  const loadWeekAppointments = useCallback(async () => {
+    const monday = new Date();
+    const jour = (monday.getDay() + 6) % 7; // lundi = 0
+    monday.setDate(monday.getDate() - jour);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 7);
+    try {
+      const params = new URLSearchParams({ from: monday.toISOString(), to: sunday.toISOString() });
+      if (selectedPractitioner !== "all") params.set("practitionerId", selectedPractitioner);
+      const res = await fetch(`/api/appointments?${params}`);
+      const data = await res.json();
+      if (res.ok) setWeekAppointments(data.appointments || []);
+    } catch {
+      /* le compteur reste sur sa dernière valeur connue */
+    }
+  }, [selectedPractitioner]);
+
   const loadAppointments = useCallback(async () => {
     setLoading(true);
     const from = agendaView === "week" ? new Date(weekStart) : new Date(activeDate);
@@ -194,6 +217,10 @@ export function AgendaModule() {
   }, [loadAppointments]);
 
   useEffect(() => {
+    loadWeekAppointments();
+  }, [loadWeekAppointments]);
+
+  useEffect(() => {
     setQuickMessage("");
     setQuickMessageSent(false);
   }, [activeAppt?.id]);
@@ -211,6 +238,7 @@ export function AgendaModule() {
     setConflictSkipped(skipped);
     setShowModal(false);
     loadAppointments();
+    loadWeekAppointments();
   };
 
   const runAction = async (appt: Appointment, action: "check-in" | "complete" | "cancel" | "no-show") => {
@@ -384,7 +412,7 @@ export function AgendaModule() {
             <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-4 text-center">
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cette semaine</p>
               <div className="flex items-end gap-1 justify-center text-blue-900">
-                <span className="text-2xl font-black">{appointments.length}</span>
+                <span className="text-2xl font-black">{weekAppointments.length}</span>
                 <span className="text-[10px] font-bold mb-1">RDV</span>
               </div>
             </div>
@@ -439,10 +467,10 @@ export function AgendaModule() {
               <h4 className="text-[10px] font-bold uppercase tracking-widest">RDV de la semaine</h4>
             </div>
             <div className="divide-y divide-slate-50 max-h-48 overflow-y-auto">
-              {!loading && appointments.length === 0 && (
+              {!loading && weekAppointments.length === 0 && (
                 <p className="p-4 text-[10px] text-slate-400 text-center uppercase tracking-widest">Aucun RDV</p>
               )}
-              {appointments.map(appt => {
+              {weekAppointments.map(appt => {
                 const colors = practitionerColor(appt.practitioner_id, practitioners);
                 return (
                   <button
