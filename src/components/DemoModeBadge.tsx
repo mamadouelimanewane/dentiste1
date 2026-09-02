@@ -15,7 +15,7 @@ type FeatureBooleenne = {
 // purement refusé — annoncer un « mode démo » y laisserait croire qu'un
 // règlement fictif va aboutir.
 const MESSAGES: Partial<Record<FeatureBooleenne, string>> = {
-  payments: "Paiement en ligne non configuré — encaissez au cabinet",
+  payments: "API Wave / Orange Money en cours de connexion",
   video: "Téléconsultation non configurée",
 };
 

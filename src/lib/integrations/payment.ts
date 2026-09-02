@@ -97,7 +97,7 @@ async function initiateWave(params: {
 // Vérifie l'état d'une session auprès de Wave. Utilisé après notification :
 // on ne fait jamais confiance au seul contenu reçu.
 export async function verifyWaveSession(sessionId: string): Promise<{ paid: boolean; error?: string }> {
-  if (!isWaveConfigured()) return { paid: false, error: 'Wave non configuré.' };
+  if (!isWaveConfigured()) return { paid: false, error: 'API Wave en cours de connexion.' };
   try {
     const res = await fetch(`https://api.wave.com/v1/checkout/sessions/${sessionId}`, {
       headers: { Authorization: `Bearer ${WAVE_API_KEY}` },
@@ -213,9 +213,9 @@ export async function initiatePayment(params: {
   description: string;
 }): Promise<InitiateResult> {
   if (params.provider === 'wave') {
-    if (!isWaveConfigured()) return { error: "Wave n'est pas configuré." };
+    if (!isWaveConfigured()) return { error: 'API Wave en cours de connexion.' };
     return initiateWave(params);
   }
-  if (!isOrangeMoneyConfigured()) return { error: "Orange Money n'est pas configuré." };
+  if (!isOrangeMoneyConfigured()) return { error: 'API Orange Money en cours de connexion.' };
   return initiateOrangeMoney(params);
 }

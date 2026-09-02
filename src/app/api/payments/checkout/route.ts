@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Aucun moyen de paiement en ligne n'est configuré. Encaissez le règlement au cabinet (espèces, Wave, Orange Money) puis enregistrez-le depuis la facture.",
+          "API Wave et Orange Money en cours de connexion. En attendant, encaissez le règlement au cabinet puis enregistrez-le depuis la facture.",
       },
       { status: 503 }
     );
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const choisi = provider || disponibles[0];
   if (!disponibles.includes(choisi)) {
     return NextResponse.json(
-      { error: `${choisi === 'wave' ? 'Wave' : 'Orange Money'} n'est pas configuré.` },
+      { error: `API ${choisi === 'wave' ? 'Wave' : 'Orange Money'} en cours de connexion.` },
       { status: 503 }
     );
   }

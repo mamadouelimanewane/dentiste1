@@ -453,6 +453,12 @@ export function BillingManager() {
                     </p>
                   </div>
                 </div>
+              ) : fournisseursDisponibles.length === 0 ? (
+                <p className="text-[11px] text-amber-800 leading-relaxed bg-amber-50 border border-amber-200 rounded-sm p-2">
+                  <strong>API Wave et Orange Money en cours de connexion.</strong> En attendant,
+                  encaissez le règlement au cabinet et enregistrez-le avec le mode correspondant
+                  (espèces, carte, mutuelle).
+                </p>
               ) : (
                 <p className="text-[11px] text-slate-600 leading-relaxed">
                   Validez pour créer le lien de paiement. Si le patient règle en espèces ou
