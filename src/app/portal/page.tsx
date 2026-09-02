@@ -16,7 +16,9 @@ export default async function PortalHomePage() {
   const appointments = await sql`
     select id, scheduled_at, type, status, daily_room_url
     from appointments
-    where patient_id = ${patientId} and scheduled_at >= now()
+    where patient_id = ${patientId}
+      and scheduled_at >= now()
+      and status = 'scheduled'
     order by scheduled_at asc
     limit 5
   `;
@@ -36,7 +38,7 @@ export default async function PortalHomePage() {
           className="bg-white border border-slate-200 rounded p-5 shadow-sm hover:border-blue-300 transition-colors"
         >
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Documents</p>
-          <p className="text-sm font-bold text-slate-900 mt-1">Ordonnances, devis, radios</p>
+          <p className="text-sm font-bold text-slate-900 mt-1">Ordonnances, devis, fichiers</p>
         </Link>
         <div className="bg-white border border-slate-200 rounded p-5 shadow-sm">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rendez-vous à venir</p>

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { PORTAL_COOKIE_NAME, verifyPortalSessionToken } from "@/lib/portal-session";
 import { PortalPatientProvider } from "@/lib/portal-context";
+import { PortalLogoutButton } from "./PortalLogoutButton";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
@@ -32,9 +33,12 @@ export default async function PortalLayout({ children }: { children: React.React
           <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Espace Patient</p>
           <h1 className="text-lg font-black">Cabinet Dentaire du Cap Vert</h1>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-bold">{patient.full_name}</p>
-          <p className="text-[10px] text-slate-400">{patient.dossier_number}</p>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-sm font-bold">{patient.full_name}</p>
+            <p className="text-[10px] text-slate-400">{patient.dossier_number}</p>
+          </div>
+          <PortalLogoutButton />
         </div>
       </header>
       <PortalPatientProvider patient={patient as any}>

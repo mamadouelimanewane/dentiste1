@@ -16,6 +16,9 @@ interface PortalMessage {
 
 export default function PortalMessagesPage() {
   const [messages, setMessages] = useState<PortalMessage[]>([]);
+  // Sans cet état, l'écran affichait "Aucun message pour l'instant" pendant le
+  // chargement : le patient pouvait croire que le cabinet ne lui a rien envoyé.
+  const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -25,9 +28,13 @@ export default function PortalMessagesPage() {
   const chunksRef = useRef<Blob[]>([]);
 
   const load = async () => {
-    const res = await fetch("/api/portal/messages");
-    const data = await res.json();
-    if (res.ok) setMessages(data.messages);
+    try {
+      const res = await fetch("/api/portal/messages");
+      const data = await res.json();
+      if (res.ok) setMessages(data.messages);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -101,9 +108,11 @@ export default function PortalMessagesPage() {
         <h2 className="text-sm font-black text-slate-900">Messagerie avec le cabinet</h2>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#F8FAFC]">
-        {messages.length === 0 && (
+        {loading ? (
+          <p className="text-sm text-slate-400 text-center mt-10">Chargement de vos messages...</p>
+        ) : messages.length === 0 ? (
           <p className="text-sm text-slate-400 text-center mt-10">Aucun message pour l'instant.</p>
-        )}
+        ) : null}
         {messages.map((m) => (
           <div
             key={m.id}
