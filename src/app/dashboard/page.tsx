@@ -258,7 +258,7 @@ export default function Home() {
                           : [...prev, groupe.label]
                       )
                     }
-                    className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-black text-slate-500/80 uppercase tracking-widest hover:text-slate-300 transition-colors"
+                    className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-white transition-colors"
                   >
                     <span>{groupe.label}</span>
                     <ChevronDown

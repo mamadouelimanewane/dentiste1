@@ -159,7 +159,7 @@ html, body {
 .bg-slate-900 .text-slate-500,
 .bg-slate-950 .text-slate-500,
 .bg-\[\#0F172A\] .text-slate-500,
-.bg-\[\#1E3A8A\] .text-slate-500,
+
 .bg-\[\#030712\] .text-slate-500,
 .glass-dark .text-slate-500,
 .dark .text-slate-500,
@@ -171,3 +171,7 @@ html, body {
 .bg-\[\#1E3A8A\] .text-slate-600,
 .bg-slate-900 .text-slate-600,
 .glass-dark .text-slate-600 { color: #cbd5e1; }
+
+/* Sur le bandeau bleu nuit du recapitulatif, #94a3b8 plafonne a 4,0:1.
+   Les libelles monetaires doivent rester nets. */
+.bg-\[\#1E3A8A\] .text-slate-500 { color: #cbd5e1; }
