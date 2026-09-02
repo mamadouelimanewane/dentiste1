@@ -26,6 +26,14 @@ interface Summary {
   };
   journal: JournalLine[];
   nbFactures: number;
+  impayees: {
+    id: string;
+    numero: string;
+    patient: string;
+    total: number;
+    statut: string;
+    emiseLe: string;
+  }[];
 }
 
 const JOURNAUX = [
@@ -123,12 +131,46 @@ export function AccountingDashboard() {
       </div>
 
       {data && data.kpis.facturesImpayees > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-sm p-4 flex items-start gap-3">
-          <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-          <p className="text-xs font-medium text-amber-800">
-            {data.kpis.facturesImpayees} facture(s) non soldée(s) sur la période — dont{' '}
-            {fcfa(data.kpis.creancesMutuelles)} en attente de règlement par les mutuelles.
-          </p>
+        <div className="bg-white border border-amber-200 rounded-sm shadow-sm overflow-hidden">
+          <div className="bg-amber-50 border-b border-amber-200 p-4 flex items-start gap-3">
+            <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <p className="text-xs font-medium text-amber-900">
+              {data.kpis.facturesImpayees} facture(s) non soldée(s) sur la période — dont{' '}
+              {fcfa(data.kpis.creancesMutuelles)} en attente de règlement par les mutuelles.
+            </p>
+          </div>
+          {/* Le détail manquait : seul le nombre était affiché, obligeant à
+              ouvrir chaque dossier patient pour savoir qui devait quoi. */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  <th className="px-4 py-2.5">Facture</th>
+                  <th className="px-4 py-2.5">Patient</th>
+                  <th className="px-4 py-2.5">Émise le</th>
+                  <th className="px-4 py-2.5">État</th>
+                  <th className="px-4 py-2.5 text-right">Montant dû</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {(data.impayees || []).map((f) => (
+                  <tr key={f.id} className="text-xs hover:bg-slate-50">
+                    <td className="px-4 py-2.5 font-bold text-slate-900">{f.numero}</td>
+                    <td className="px-4 py-2.5 text-slate-700">{f.patient}</td>
+                    <td className="px-4 py-2.5 text-slate-500">
+                      {new Date(f.emiseLe).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+                        {f.statut === 'insurance' ? 'Chez la mutuelle' : 'Impayée'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-black text-slate-900">{fcfa(f.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

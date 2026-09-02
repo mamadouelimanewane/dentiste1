@@ -138,5 +138,18 @@ export async function GET(request: Request) {
     },
     journal: journal.slice(0, 400),
     nbFactures: invoiceRows.length,
+    // Le tableau de bord annonçait « N facture(s) non soldée(s) » sans jamais
+    // dire lesquelles : le comptable devait ouvrir les dossiers un par un
+    // pour savoir qui devait de l'argent au cabinet.
+    impayees: invoiceRows
+      .filter((i: any) => i.status !== 'paid')
+      .map((i: any) => ({
+        id: i.id,
+        numero: i.invoice_number,
+        patient: i.patient_name,
+        total: Number(i.total),
+        statut: i.status,
+        emiseLe: i.created_at,
+      })),
   });
 }
