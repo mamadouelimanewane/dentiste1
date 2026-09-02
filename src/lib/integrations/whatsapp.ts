@@ -80,6 +80,50 @@ async function sendVia360dialog(phone: string, body: string): Promise<SendResult
   }
 }
 
+// Modèle approuvé utilisé pour les messages à l'initiative du cabinet
+// (rappels de rendez-vous). Meta refuse tout texte libre envoyé hors de la
+// fenêtre de 24h suivant le dernier message du patient (erreur 131047) :
+// un rappel de rendez-vous, par définition non sollicité, tombe toujours
+// dans ce cas. Tant qu'aucun modèle n'est renseigné, l'envoi retombe sur du
+// texte libre — qui ne sera distribué que si le patient a écrit récemment.
+const REMINDER_TEMPLATE = process.env.WHATSAPP_REMINDER_TEMPLATE;
+const REMINDER_TEMPLATE_LANG = process.env.WHATSAPP_REMINDER_TEMPLATE_LANG || 'fr';
+
+export function isWhatsAppTemplateConfigured() {
+  return isMetaConfigured() && !!REMINDER_TEMPLATE;
+}
+
+async function sendTemplateViaMeta(phone: string, params: string[]): Promise<SendResult> {
+  try {
+    const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: phone,
+        type: 'template',
+        template: {
+          name: REMINDER_TEMPLATE,
+          language: { code: REMINDER_TEMPLATE_LANG },
+          components: params.length
+            ? [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text })) }]
+            : [],
+        },
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { simulated: false, error: data?.error?.message || 'Échec envoi modèle WhatsApp (Meta).' };
+    }
+    return { simulated: false, providerMessageId: data?.messages?.[0]?.id };
+  } catch (e) {
+    return { simulated: false, error: e instanceof Error ? e.message : 'Erreur réseau (Meta).' };
+  }
+}
+
 async function sendViaMeta(phone: string, body: string): Promise<SendResult> {
   try {
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
@@ -205,15 +249,22 @@ export async function sendWhatsAppMessage(params: {
   phone: string;
   body: string;
   sentBy?: string | null;
+  // Renseigné par les envois à l'initiative du cabinet (rappels) : les
+  // valeurs qui alimentent les variables du modèle approuvé, dans l'ordre.
+  templateParams?: string[];
 }): Promise<SendResult> {
-  const { patientId, phone, body, sentBy } = params;
+  const { patientId, phone, body, sentBy, templateParams } = params;
 
   if (!isWhatsAppConfigured()) {
     await logMessage({ patientId, phone, body, status: 'simulated', sentBy });
     return { simulated: true };
   }
 
-  const result = isD360Configured()
+  const useTemplate = !!templateParams && isWhatsAppTemplateConfigured() && !isD360Configured();
+
+  const result = useTemplate
+    ? await sendTemplateViaMeta(phone, templateParams!)
+    : isD360Configured()
     ? await sendVia360dialog(phone, body)
     : isMetaConfigured()
     ? await sendViaMeta(phone, body)

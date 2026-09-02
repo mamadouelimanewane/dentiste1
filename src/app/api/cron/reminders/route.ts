@@ -66,7 +66,14 @@ export async function GET(request: Request) {
       minute: '2-digit',
     });
     const body = `Bonjour ${appt.full_name}, rappel de votre rendez-vous ${appt.type || ''} le ${when} au Cabinet Dentaire du Cap Vert.`;
-    const result = await sendWhatsAppMessage({ patientId: appt.patient_id, phone: appt.phone, body });
+    // Rappel à l'initiative du cabinet : hors fenêtre de 24h, Meta n'accepte
+    // qu'un modèle approuvé. Variables du modèle : nom, puis date/heure.
+    const result = await sendWhatsAppMessage({
+      patientId: appt.patient_id,
+      phone: appt.phone,
+      body,
+      templateParams: [appt.full_name, when],
+    });
     if (!result.error) {
       await sql`update appointments set reminder_sent_at = ${now.toISOString()} where id = ${appt.id}`;
       results.appointmentReminders++;

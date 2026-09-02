@@ -5,6 +5,14 @@ import { sql } from '@/lib/db';
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const APP_SECRET = process.env.WHATSAPP_APP_SECRET;
 
+// Statuts renvoyés par Meta sur l'événement "statuses" du webhook.
+const STATUS_MAP: Record<string, string> = {
+  sent: 'sent',
+  delivered: 'delivered',
+  read: 'read',
+  failed: 'failed',
+};
+
 // Vérification du webhook exigée par Meta lors de sa configuration.
 export async function GET(request: Request) {
   if (!VERIFY_TOKEN) {
@@ -57,6 +65,29 @@ export async function POST(request: Request) {
   }
 
   const payload = JSON.parse(rawBody);
+
+  // Accusés de livraison Meta. Sans ce traitement, l'application marquait
+  // "sent" dès que Meta acceptait la requête : or Meta accepte puis rejette
+  // de façon asynchrone (typiquement 131047, hors fenêtre de 24h sans
+  // modèle approuvé). Le cabinet croyait donc ses rappels distribués.
+  const statuses =
+    payload?.entry?.flatMap((entry: any) =>
+      entry?.changes?.flatMap((change: any) => change?.value?.statuses || [])
+    ) || [];
+
+  for (const st of statuses) {
+    const mapped = STATUS_MAP[st.status] || null;
+    if (!mapped || !st.id) continue;
+    const detail = st.errors?.[0]
+      ? `${st.errors[0].code} ${st.errors[0].title || st.errors[0].message || ''}`.trim()
+      : null;
+    await sql`
+      update patient_messages
+      set status = ${mapped},
+          error_detail = coalesce(${detail}, error_detail)
+      where provider_message_id = ${st.id}
+    `;
+  }
 
   const messages =
     payload?.entry?.flatMap((entry: any) =>
