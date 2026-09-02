@@ -15,6 +15,20 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     permissions?: Record<string, { view?: boolean; manage?: boolean }>;
   };
 
+  // « Gérer » sans « consulter » n'a pas de sens : un rôle qui peut créer ou
+  // modifier doit pouvoir lire. La combinaison existait en base (Accueil et
+  // Comptable sur les Mutuelles) et ne tenait que parce que la route de
+  // lecture exigeait 'manage' au lieu de 'view' comme partout ailleurs —
+  // aligner la route aurait supprimé leur accès sans prévenir.
+  const permissionsNormalisees = permissions
+    ? Object.fromEntries(
+        Object.entries(permissions).map(([moduleId, droits]) => [
+          moduleId,
+          droits?.manage ? { ...droits, view: true } : droits,
+        ])
+      )
+    : undefined;
+
   if (manageRoles === false) {
     const others = await sql`
       select count(*)::int as count from roles where manage_roles = true and id != ${params.id}
@@ -32,7 +46,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       label = coalesce(${label ?? null}, label),
       is_practitioner = coalesce(${isPractitioner ?? null}, is_practitioner),
       manage_roles = coalesce(${manageRoles ?? null}, manage_roles),
-      permissions = coalesce(${permissions ? JSON.stringify(permissions) : null}, permissions),
+      permissions = coalesce(${permissionsNormalisees ? JSON.stringify(permissionsNormalisees) : null}, permissions),
       updated_at = now()
     where id = ${params.id}
     returning *
