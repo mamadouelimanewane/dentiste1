@@ -1,6 +1,7 @@
 import 'server-only';
 import { isWhatsAppConfigured } from '@/lib/integrations/whatsapp';
 import { isSmsConfigured } from '@/lib/integrations/sms';
+import { isPaymentConfigured, availableProviders } from '@/lib/integrations/payment';
 
 // Expose uniquement des booléens (jamais les valeurs des clés) pour que
 // l'UI puisse afficher un badge "Mode démo" sans jamais voir de secret.
@@ -20,7 +21,9 @@ export function getIntegrationStatus() {
   return {
     whatsapp: isWhatsAppConfigured(),
     sms: isSmsConfigured(),
-    payments: !!process.env.CINETPAY_API_KEY && !!process.env.CINETPAY_SITE_ID,
+    payments: isPaymentConfigured(),
+    // Détail utile à l'UI : n'afficher que les moyens réellement disponibles.
+    paymentProviders: availableProviders(),
     video: !!process.env.DAILY_API_KEY,
   };
 }

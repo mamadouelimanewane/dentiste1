@@ -4,7 +4,11 @@ import { STAFF_COOKIE_NAME, verifyStaffSessionToken } from '@/lib/auth';
 const PUBLIC_PATHS = ['/', '/login', '/mentions-legales', '/confidentialite', '/portail'];
 const PUBLIC_PREFIXES = [
   '/api/whatsapp/webhook',
-  '/api/payments/webhook',
+  // Notifications des fournisseurs de paiement : appelées sans session.
+  // Wave est authentifié par sa signature HMAC, Orange Money par le
+  // notif_token remis à la création — voir les routes correspondantes.
+  '/api/payments/wave/webhook',
+  '/api/payments/orange/notify',
   // Callback de statut Twilio : appelé par Twilio sans session, protégé par
   // vérification de la signature X-Twilio-Signature côté route.
   '/api/twilio/status',

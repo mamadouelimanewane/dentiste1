@@ -1,17 +1,44 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requirePermission } from '@/lib/permissions';
-import { initiatePayment } from '@/lib/integrations/payment';
+import { initiatePayment, availableProviders, type PaymentProvider } from '@/lib/integrations/payment';
 
+export const dynamic = 'force-dynamic';
+
+// Ouvre un paiement mobile pour une facture, chez Wave ou Orange Money.
+//
+// La facture n'est jamais marquée payée ici : seule la notification du
+// fournisseur, revérifiée auprès de lui, peut le faire. L'ancienne version
+// marquait la facture « payée » dès que l'agrégateur n'était pas configuré,
+// ce qui inscrivait une recette qui n'existait pas.
 export async function POST(request: Request) {
   const { error, status } = await requirePermission(6, 'manage');
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();
-  const { invoiceId } = body as { invoiceId?: string };
+  const { invoiceId, provider } = body as { invoiceId?: string; provider?: PaymentProvider };
 
   if (!invoiceId) {
     return NextResponse.json({ error: 'invoiceId est requis.' }, { status: 400 });
+  }
+
+  const disponibles = availableProviders();
+  if (disponibles.length === 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Aucun moyen de paiement en ligne n'est configuré. Encaissez le règlement au cabinet (espèces, Wave, Orange Money) puis enregistrez-le depuis la facture.",
+      },
+      { status: 503 }
+    );
+  }
+
+  const choisi = provider || disponibles[0];
+  if (!disponibles.includes(choisi)) {
+    return NextResponse.json(
+      { error: `${choisi === 'wave' ? 'Wave' : 'Orange Money'} n'est pas configuré.` },
+      { status: 503 }
+    );
   }
 
   const rows = await sql`select * from invoices where id = ${invoiceId} limit 1`;
@@ -19,46 +46,39 @@ export async function POST(request: Request) {
   if (!invoice) {
     return NextResponse.json({ error: 'Facture introuvable.' }, { status: 404 });
   }
+  if (invoice.status === 'paid') {
+    return NextResponse.json({ error: 'Cette facture est déjà soldée.' }, { status: 400 });
+  }
 
   const result = await initiatePayment({
+    provider: choisi,
     invoiceId: invoice.id,
     amount: Number(invoice.total),
     description: `Facture ${invoice.invoice_number}`,
   });
 
-  if (result.error) {
-    return NextResponse.json({ error: result.error }, { status: 502 });
+  if (result.error || !result.redirectUrl) {
+    return NextResponse.json({ error: result.error || 'Échec de la création du paiement.' }, { status: 502 });
   }
 
-  if (result.simulated) {
-    // Sans clés CinetPay, cette branche marquait la facture « payée » alors
-    // qu'aucun argent n'était encaissé : le cabinet voyait la facture soldée
-    // et la comptabilité comptait un encaissement qui n'existait pas. Une
-    // recette fictive est le pire défaut possible dans un logiciel de
-    // gestion, on refuse donc plutôt que de simuler.
-    if (process.env.PAYMENTS_DEMO_MODE !== 'true') {
-      return NextResponse.json(
-        {
-          error:
-            "Le paiement en ligne n'est pas configuré. Encaissez le règlement au cabinet (espèces, Wave, carte) puis enregistrez-le depuis la facture.",
-        },
-        { status: 503 }
-      );
-    }
-
-    await sql`
-      update invoices
-      set status = 'paid', payment_method = 'mobile_money', payment_provider = 'simulated', paid_at = now()
-      where id = ${invoiceId}
-    `;
-    return NextResponse.json({ simulated: true });
-  }
-
+  // On note le fournisseur et la session pour pouvoir authentifier puis
+  // vérifier la notification à venir. Le statut reste « impayé ».
   await sql`
     update invoices
-    set status = 'pending', payment_method = 'mobile_money', payment_provider = 'cinetpay', payment_reference = ${result.providerReference}
+    set payment_method = 'mobile_money',
+        payment_provider = ${choisi},
+        payment_session_id = ${result.sessionId ?? null},
+        payment_notif_token = ${result.notifToken ?? null}
     where id = ${invoiceId}
   `;
 
-  return NextResponse.json({ simulated: false, redirectUrl: result.redirectUrl });
+  return NextResponse.json({ provider: choisi, redirectUrl: result.redirectUrl });
+}
+
+// Permet à l'interface de n'afficher que les moyens réellement disponibles,
+// plutôt qu'un bouton qui échouera au clic.
+export async function GET() {
+  const { error, status } = await requirePermission(6, 'view');
+  if (error) return NextResponse.json({ error }, { status });
+  return NextResponse.json({ providers: availableProviders() });
 }

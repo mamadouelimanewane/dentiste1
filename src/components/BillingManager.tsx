@@ -38,6 +38,9 @@ export function BillingManager() {
   const [executedActs, setExecutedActs] = useState<ExecutedAct[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [invoice, setInvoice] = useState<{ id: string; invoice_number: string; status: string } | null>(null);
+  const [fournisseur, setFournisseur] = useState<"wave" | "orange_money">("wave");
+  const [fournisseursDisponibles, setFournisseursDisponibles] = useState<("wave" | "orange_money")[]>([]);
+  const [lienPaiement, setLienPaiement] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [insuranceProvider, setInsuranceProvider] = useState("");
@@ -58,6 +61,19 @@ export function BillingManager() {
   // étant déjà rattachés à une facture, l'écran affichait "Régler 0 FCFA"),
   // (2) rééditer le PDF d'une facture déjà émise était impossible, alors
   // qu'un duplicata est une demande courante au comptoir.
+  // N'afficher que les moyens réellement configurés, plutôt qu'un bouton
+  // qui échouerait au clic.
+  useEffect(() => {
+    fetch("/api/payments/checkout")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const dispo = d?.providers || [];
+        setFournisseursDisponibles(dispo);
+        if (dispo.length > 0) setFournisseur(dispo[0]);
+      })
+      .catch(() => {});
+  }, []);
+
   const loadPendingInvoices = useCallback(async () => {
     if (!currentPatient) return;
     const [invRes, actsRes] = await Promise.all([
@@ -144,16 +160,15 @@ export function BillingManager() {
         const res = await fetch("/api/payments/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: currentInvoice!.id }),
+          body: JSON.stringify({ invoiceId: currentInvoice!.id, provider: fournisseur }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Échec du paiement.");
-        if (data.redirectUrl) {
-          window.open(data.redirectUrl, "_blank");
-        } else {
-          // Mode démo : paiement marqué payé immédiatement côté serveur.
-          setInvoice((prev) => (prev ? { ...prev, status: "paid" } : prev));
-        }
+        // La facture n'est pas soldée ici : elle le sera quand le
+        // fournisseur confirmera l'encaissement. On affiche le lien réel,
+        // que le patient peut ouvrir ou scanner.
+        setLienPaiement(data.redirectUrl);
+        window.open(data.redirectUrl, "_blank");
       } else {
         const res = await fetch(`/api/invoices/${currentInvoice!.id}/settle`, {
           method: "POST",
@@ -397,18 +412,53 @@ export function BillingManager() {
           </div>
 
           {paymentMethod === "mobile_money" && !isSettled && (
-            <div className="flex items-center gap-6 p-4 bg-blue-50/50 border border-blue-100 rounded-xl">
-              <div className="bg-white p-2 rounded-lg shadow-sm border border-slate-100">
-                <QRCodeSVG value={`https://pay.wave.com/m/demo?amount=${total}`} size={80} />
+            <div className="space-y-3 p-4 bg-blue-50/50 border border-blue-100 rounded-xl">
+              <div className="flex gap-2">
+                {([
+                  ["wave", "Wave", "bg-blue-600"],
+                  ["orange_money", "Orange Money", "bg-orange-500"],
+                ] as const).map(([id, libelle, couleur]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setFournisseur(id)}
+                    disabled={fournisseursDisponibles.length > 0 && !fournisseursDisponibles.includes(id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest transition-all border disabled:opacity-40 disabled:cursor-not-allowed",
+                      fournisseur === id ? `${couleur} text-white border-transparent` : "bg-white text-slate-600 border-slate-200"
+                    )}
+                  >
+                    {libelle}
+                  </button>
+                ))}
               </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">Scanner pour payer via Wave</h4>
-                <p className="text-xs text-slate-500 mt-1">Montant à régler : <span className="font-bold text-blue-600">{total.toLocaleString()} FCFA</span></p>
-                <div className="flex gap-2 mt-2">
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-[9px] font-bold uppercase rounded">Wave</span>
-                  <span className="px-2 py-1 bg-orange-100 text-orange-700 text-[9px] font-bold uppercase rounded">Orange Money</span>
+
+              {/* Le QR code encodait auparavant une URL de démonstration
+                  (pay.wave.com/m/demo) : un patient qui le scannait ne payait
+                  rien, alors que l'écran annonçait « Scanner pour payer ». Il
+                  n'apparaît donc que lorsqu'un vrai lien a été créé. */}
+              {lienPaiement ? (
+                <div className="flex items-center gap-6">
+                  <div className="bg-white p-2 rounded-lg shadow-sm border border-slate-100">
+                    <QRCodeSVG value={lienPaiement} size={80} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Faire scanner au patient</h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Montant : <span className="font-bold text-blue-600">{total.toLocaleString()} FCFA</span>
+                    </p>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      La facture se soldera automatiquement dès que{" "}
+                      {fournisseur === "wave" ? "Wave" : "Orange Money"} confirmera l&apos;encaissement.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Validez pour créer le lien de paiement. Si le patient règle en espèces ou
+                  directement sur le compte du cabinet, choisissez plutôt le mode correspondant.
+                </p>
+              )}
             </div>
           )}
 
