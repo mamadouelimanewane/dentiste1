@@ -21,7 +21,12 @@ export async function GET(request: Request) {
   const from = searchParams.get('from');
   const to = searchParams.get('to');
   const start = from ? new Date(from) : new Date(new Date().getFullYear(), 0, 1);
+  // Même correctif que le résumé comptable : une date seule vaut minuit, ce
+  // qui excluait les factures du jour même de l'export.
   const end = to ? new Date(to) : new Date();
+  if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    end.setUTCHours(23, 59, 59, 999);
+  }
 
   const rows = await sql`
     select i.invoice_number, i.total, i.status, i.payment_method, i.created_at, i.paid_at,

@@ -25,7 +25,14 @@ export async function GET(request: Request) {
   const to = searchParams.get('to');
 
   const start = from ? new Date(from) : new Date(new Date().getFullYear(), 0, 1);
+
+  // Une date seule ("2026-09-02") est interprétée à minuit : la borne de fin
+  // excluait donc toutes les factures du jour même. Un cabinet qui faisait sa
+  // caisse le soir lisait 0 F. On étend la borne à la fin de la journée.
   const end = to ? new Date(to) : new Date();
+  if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    end.setUTCHours(23, 59, 59, 999);
+  }
 
   const [kpiRows, invoiceRows] = await Promise.all([
     sql`
