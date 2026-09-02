@@ -139,3 +139,30 @@ export function validerDent(
   }
   return { ok: true, valeur: n };
 }
+
+// Quantités de stock. La colonne est un `integer` PostgreSQL : au-delà de
+// 2 147 483 647 l'insertion échoue en 500. Sans borne inférieure, le stock
+// pouvait tomber à -500 aiguilles, ce qui fausse les alertes de réassort.
+export const QUANTITE_MAX = 1_000_000;
+
+export function validerQuantite(
+  valeur: unknown
+): { ok: true; valeur: number } | { ok: false; erreur: string } {
+  const n = Number(valeur);
+  if (!Number.isFinite(n)) {
+    return { ok: false, erreur: 'Quantité invalide : un nombre entier est attendu.' };
+  }
+  if (!Number.isInteger(n)) {
+    return { ok: false, erreur: 'La quantité doit être un nombre entier.' };
+  }
+  if (n < 0) {
+    return { ok: false, erreur: 'La quantité ne peut pas être négative.' };
+  }
+  if (n > QUANTITE_MAX) {
+    return {
+      ok: false,
+      erreur: `Quantité improbable (plafond ${QUANTITE_MAX.toLocaleString('fr-FR')}). Vérifiez la saisie.`,
+    };
+  }
+  return { ok: true, valeur: n };
+}
