@@ -11,7 +11,14 @@ const CRON_SECRET = process.env.CRON_SECRET;
 const LOGIN_ATTEMPTS_RETENTION_DAYS = 30;
 
 export async function GET(request: Request) {
-  if (CRON_SECRET) {
+  // La route est publique au sens du middleware (Vercel Cron n'a pas de
+  // session) : c'est donc ici, et nulle part ailleurs, qu'elle est protégée.
+  // En production un secret absent doit fermer la porte, jamais l'ouvrir.
+  if (!CRON_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'CRON_SECRET non configuré.' }, { status: 401 });
+    }
+  } else {
     const auth = request.headers.get('authorization');
     if (auth !== `Bearer ${CRON_SECRET}`) {
       return NextResponse.json({ error: 'Non autorisé.' }, { status: 401 });

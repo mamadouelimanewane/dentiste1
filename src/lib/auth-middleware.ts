@@ -12,6 +12,12 @@ const PUBLIC_PREFIXES = [
   // limitée par IP côté route, pas de lecture de données exposée ici.
   '/api/public/',
   '/api/clinic-settings/public',
+  // Tâches planifiées Vercel Cron : appelées sans session de staff, donc
+  // jusqu'ici redirigées vers /login — les rappels de rendez-vous et les
+  // suivis post-opératoires n'ont jamais pu s'exécuter. Chaque route vérifie
+  // elle-même l'en-tête Authorization: Bearer CRON_SECRET (et refuse tout
+  // en production si ce secret est absent).
+  '/api/cron/',
 ];
 
 export async function updateSession(request: NextRequest) {

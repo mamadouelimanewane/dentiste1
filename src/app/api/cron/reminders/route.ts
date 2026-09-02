@@ -14,7 +14,14 @@ async function dispatch(channel: string, params: { patientId?: string | null; ph
 export async function GET(request: Request) {
   // Vercel Cron envoie l'en-tête Authorization: Bearer <CRON_SECRET> défini
   // dans vercel.json / les variables d'environnement.
-  if (CRON_SECRET) {
+  // La route est publique au sens du middleware (Vercel Cron n'a pas de
+  // session) : c'est donc ici, et nulle part ailleurs, qu'elle est protégée.
+  // En production un secret absent doit fermer la porte, jamais l'ouvrir.
+  if (!CRON_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'CRON_SECRET non configuré.' }, { status: 401 });
+    }
+  } else {
     const auth = request.headers.get('authorization');
     if (auth !== `Bearer ${CRON_SECRET}`) {
       return NextResponse.json({ error: 'Non autorisé.' }, { status: 401 });
