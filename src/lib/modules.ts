@@ -32,7 +32,7 @@ export const MODULES: ModuleDef[] = [
   { id: 21, label: "Configuration" },
   { id: 22, label: "Super Admin" },
   { id: 23, label: "Statistiques" },
-  { id: 24, label: "Neural Center" },
+  { id: 24, label: "Journal d'activité" },
 ];
 
 export type PermissionAction = "view" | "manage";

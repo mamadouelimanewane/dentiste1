@@ -15,8 +15,8 @@ import {
 const FEATURES = [
   {
     icon: Brain,
-    title: "Intelligence Artificielle",
-    desc: "Dictée vocale neuronale, analyse radiologique assistée et simulation esthétique du sourire par IA.",
+    title: "Saisie & Analyse",
+    desc: "Dictée vocale par reconnaissance native du navigateur, visionneuse de clichés et comparateur avant/après sur les photos du dossier.",
     gradient: "from-violet-500 to-indigo-600",
     glow: "shadow-violet-500/25",
   },

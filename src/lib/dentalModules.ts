@@ -83,12 +83,12 @@ export const DENTAL_MODULE_GROUPS: DentalGroup[] = [
   },
   {
     key: 'ia',
-    label: 'Intelligence Artificielle',
-    hint: 'IA, dictée vocale et analytics',
+    label: 'Outils & Analyse',
+    hint: "Dictée vocale, statistiques et journal d'activité",
     modules: [
       { id: 12, name: 'Dictée vocale',  fullTitle: 'Dictée Vocale',             desc: 'Reconnaissance vocale du navigateur, sauvegarde locale.',                 icon: Brain },
       { id: 23, name: 'Statistiques',   fullTitle: 'Tableau de Bord Stratégique', desc: 'KPIs, analyse de performance et pilotage confidentiel.',               icon: Calculator, badge: 'NEW' },
-      { id: 24, name: 'Neural Center',  fullTitle: 'Data Brain Monitoring',     desc: 'Logs IA et supervision de l\'activité asynchrone en temps réel.',        icon: Database   },
+      { id: 24, name: 'Journal',        fullTitle: "Journal d'activité",        desc: "Historique des actions enregistrees par l'assistant de saisie.",        icon: Database   },
     ],
   },
   {

@@ -45,6 +45,7 @@ import {
   FileText,
   History,
   CheckCircle2,
+  ChevronDown,
   Menu,
   Calculator,
   Users,
@@ -95,7 +96,7 @@ const steps = [
   { id: 21, title: "Configuration", fullTitle: "Paramètres du Cabinet", desc: "Configuration du profil, logo et infos légales.", icon: Settings },
   { id: 22, title: "Super Admin", fullTitle: "Centre d'Administration Sécurisé", desc: "Utilisateurs, Logs, Catalogue et BI.", icon: ShieldAlert },
   { id: 23, title: "Statistiques", fullTitle: "Tableau de Bord Stratégique", desc: "Analyse de performance et pilotage confidentiel.", icon: Calculator },
-  { id: 24, title: "Neural Center", fullTitle: "Data Brain Monitoring", desc: "Logs IA et activité asynchrone en temps réel.", icon: Database },
+  { id: 24, title: "Journal", fullTitle: "Journal d'activité", desc: "Historique des actions enregistrées par l'assistant de saisie.", icon: Database },
 ];
 
 // Source de vérité unique pour la visibilité des étapes : privilège "view"
@@ -140,9 +141,25 @@ export default function Home() {
   const allVisibleSteps = stepsForPermissions(permissions);
   
   const activeGroup = DENTAL_MODULE_GROUPS.find(g => g.modules.some(m => m.id === currentStep));
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
+
+  // Le groupe de l'étape courante s'ouvre automatiquement.
+  useEffect(() => {
+    if (activeGroup && !openGroups.includes(activeGroup.label)) {
+      setOpenGroups(prev => [...prev, activeGroup.label]);
+    }
+  }, [activeGroup?.label]); // eslint-disable-line react-hooks/exhaustive-deps
   const activeGroupModuleIds = activeGroup ? activeGroup.modules.map(m => m.id) : [];
 
   const visibleSteps = allVisibleSteps.filter(s => activeGroupModuleIds.includes(s.id));
+
+  // Groupes réellement accessibles au compte connecté, avec leurs étapes.
+  const authorizedGroups = DENTAL_MODULE_GROUPS
+    .map(g => ({
+      label: g.label,
+      steps: allVisibleSteps.filter(s => g.modules.some(m => m.id === s.id)),
+    }))
+    .filter(g => g.steps.length > 0);
 
   // Si les privilèges du compte connecté ne donnent plus accès à l'étape
   // courante (ex. un admin a modifié le rôle pendant la session), on se
@@ -224,33 +241,60 @@ export default function Home() {
             </button>
           </div>
 
-          <nav className="space-y-2">
-            <p className="text-xs font-black text-slate-500/80 uppercase tracking-widest px-2 mb-5">
-              {activeGroup ? activeGroup.label : "Navigation"}
-            </p>
-            {visibleSteps.map((step) => {
-              const Icon = step.icon;
-              const isActive = currentStep === step.id;
-              const isCompleted = currentStep > step.id;
-
+          {/* La barre latérale n'affichait que le groupe courant : depuis la
+              Consultation, atteindre la Comptabilité imposait un détour par le
+              portail des modules. Tous les groupes autorisés sont désormais
+              présents, celui en cours étant déplié. */}
+          <nav className="space-y-4">
+            {authorizedGroups.map((groupe) => {
+              const ouvert = openGroups.includes(groupe.label);
               return (
-                <button
-                  key={step.id}
-                  onClick={() => {
-                    setCurrentStep(step.id);
-                    if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                  }}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 text-sm font-semibold micro-bounce",
-                    isActive
-                      ? "bg-blue-600/15 text-blue-400 shadow-[inset_4px_0_0_0_#60a5fa]"
-                      : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
-                  )}
-                >
-                  <Icon className={cn("h-5 w-5 transition-transform duration-300", isActive ? "text-blue-400 scale-110" : isCompleted ? "text-emerald-500" : "text-slate-500 group-hover:scale-110")} />
-                  <span className="text-sm tracking-wide">{step.title}</span>
-                  {isCompleted && <CheckCircle2 className="h-4 w-4 ml-auto text-emerald-500" />}
-                </button>
+                <div key={groupe.label} className="space-y-1">
+                  <button
+                    onClick={() =>
+                      setOpenGroups((prev) =>
+                        prev.includes(groupe.label)
+                          ? prev.filter((g) => g !== groupe.label)
+                          : [...prev, groupe.label]
+                      )
+                    }
+                    className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-black text-slate-500/80 uppercase tracking-widest hover:text-slate-300 transition-colors"
+                  >
+                    <span>{groupe.label}</span>
+                    <ChevronDown
+                      className={cn("h-3.5 w-3.5 transition-transform duration-200", ouvert && "rotate-180")}
+                    />
+                  </button>
+
+                  {ouvert &&
+                    groupe.steps.map((step) => {
+                      const Icon = step.icon;
+                      const isActive = currentStep === step.id;
+                      return (
+                        <button
+                          key={step.id}
+                          onClick={() => {
+                            setCurrentStep(step.id);
+                            if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                          }}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-all duration-300 text-sm font-semibold micro-bounce",
+                            isActive
+                              ? "bg-blue-600/15 text-blue-400 shadow-[inset_4px_0_0_0_#60a5fa]"
+                              : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                          )}
+                        >
+                          <Icon
+                            className={cn(
+                              "h-5 w-5 transition-transform duration-300",
+                              isActive ? "text-blue-400 scale-110" : "text-slate-500 group-hover:scale-110"
+                            )}
+                          />
+                          <span className="text-sm tracking-wide">{step.title}</span>
+                        </button>
+                      );
+                    })}
+                </div>
               );
             })}
           </nav>
