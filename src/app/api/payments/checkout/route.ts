@@ -31,8 +31,21 @@ export async function POST(request: Request) {
   }
 
   if (result.simulated) {
-    // Pas de clé CinetPay configurée : on marque la facture payée
-    // immédiatement pour permettre de démontrer le flux de bout en bout.
+    // Sans clés CinetPay, cette branche marquait la facture « payée » alors
+    // qu'aucun argent n'était encaissé : le cabinet voyait la facture soldée
+    // et la comptabilité comptait un encaissement qui n'existait pas. Une
+    // recette fictive est le pire défaut possible dans un logiciel de
+    // gestion, on refuse donc plutôt que de simuler.
+    if (process.env.PAYMENTS_DEMO_MODE !== 'true') {
+      return NextResponse.json(
+        {
+          error:
+            "Le paiement en ligne n'est pas configuré. Encaissez le règlement au cabinet (espèces, Wave, carte) puis enregistrez-le depuis la facture.",
+        },
+        { status: 503 }
+      );
+    }
+
     await sql`
       update invoices
       set status = 'paid', payment_method = 'mobile_money', payment_provider = 'simulated', paid_at = now()
