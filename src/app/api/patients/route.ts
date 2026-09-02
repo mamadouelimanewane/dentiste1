@@ -5,6 +5,12 @@ import { requirePermission } from '@/lib/permissions';
 import { sendWhatsAppMessage } from '@/lib/integrations/whatsapp';
 import { sendSms } from '@/lib/integrations/sms';
 import { isDatabaseConfigured } from '@/lib/db';
+import {
+  validerNom,
+  validerTelephone,
+  validerDateNaissance,
+  bornerTexte,
+} from '@/lib/validation';
 import { recordAudit } from '@/lib/audit';
 
 function getBaseUrl(request: Request) {
@@ -52,14 +58,22 @@ export async function POST(request: Request) {
     mutuelle?: string;
   };
 
-  if (!fullName) {
-    return NextResponse.json({ error: 'fullName est requis.' }, { status: 400 });
-  }
+  // Auparavant seul un `fullName` non vide au sens de JavaScript était exigé :
+  // trois espaces, un téléphone « pas-un-numero » ou un nom de 10 000
+  // caractères passaient sans broncher.
+  const nom = validerNom(fullName);
+  if (!nom.ok) return NextResponse.json({ error: nom.erreur }, { status: 400 });
+
+  const tel = validerTelephone(phone);
+  if (!tel.ok) return NextResponse.json({ error: tel.erreur }, { status: 400 });
+
+  const naissance = validerDateNaissance(birthDate);
+  if (!naissance.ok) return NextResponse.json({ error: naissance.erreur }, { status: 400 });
 
   const rows = await sql`
     insert into patients (full_name, birth_date, phone, address, allergies, mutuelle, created_by)
-    values (${fullName}, ${birthDate || null}, ${phone || null}, ${address || null},
-            ${allergies || null}, ${mutuelle || null}, ${session!.userId})
+    values (${nom.valeur}, ${naissance.valeur}, ${tel.valeur}, ${bornerTexte(address, 300)},
+            ${bornerTexte(allergies, 500)}, ${bornerTexte(mutuelle, 150)}, ${session!.userId})
     returning id, dossier_number, full_name, birth_date, phone, address, allergies, mutuelle, status, created_at
   `;
 

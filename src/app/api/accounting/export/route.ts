@@ -9,7 +9,17 @@ export const dynamic = 'force-dynamic';
 // qui se contentait d'afficher "Exportation générée avec succès" sans rien
 // produire.
 function csvCell(value: unknown) {
-  const s = String(value ?? '');
+  let s = String(value ?? '');
+
+  // Injection de formule : Excel interprète toute cellule commençant par
+  // = + - @ (ou une tabulation) comme une formule. Or un patient saisit
+  // lui-même son nom lors d'une prise de rendez-vous en ligne — sans ce
+  // préfixe, ce nom s'exécuterait sur le poste du comptable à l'ouverture
+  // du journal. L'apostrophe force Excel à traiter la cellule comme du texte.
+  if (/^[=+\-@\t\r]/.test(s)) {
+    s = `'${s}`;
+  }
+
   return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
