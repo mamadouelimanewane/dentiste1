@@ -30,7 +30,11 @@ export async function GET(request: Request) {
 
   const rows = await sql`
     select i.invoice_number, i.total, i.status, i.payment_method, i.created_at, i.paid_at,
-           p.full_name as patient_name, p.dossier_number
+           p.full_name as patient_name, p.dossier_number,
+           coalesce((
+             select sum(c.amount) from insurance_claims c
+             where c.invoice_id = i.id and c.status = 'pending'
+           ), 0)::numeric as part_mutuelle
     from invoices i
     join patients p on p.id = i.patient_id
     where i.created_at >= ${start} and i.created_at <= ${end}
@@ -54,9 +58,19 @@ export async function GET(request: Request) {
       const enCaisse = inv.payment_method === 'cash';
       lines.push([enCaisse ? 'CA' : 'BQ', fmtDate(inv.paid_at || inv.created_at), inv.invoice_number, enCaisse ? '571' : '521', enCaisse ? 'Caisse - encaissement especes' : `Banque - reglement ${inv.payment_method || ''}`, inv.dossier_number, String(total), '0']);
       lines.push([enCaisse ? 'CA' : 'BQ', fmtDate(inv.paid_at || inv.created_at), inv.invoice_number, '411', `Solde creance - ${inv.patient_name}`, inv.dossier_number, '0', String(total)]);
-    } else if (inv.payment_method === 'insurance') {
-      lines.push(['OD', fmtDate(inv.created_at), inv.invoice_number, '4116', `Transfert creance mutuelle - ${inv.patient_name}`, inv.dossier_number, String(total), '0']);
-      lines.push(['OD', fmtDate(inv.created_at), inv.invoice_number, '411', `Solde creance patient - ${inv.patient_name}`, inv.dossier_number, '0', String(total)]);
+    } else {
+      // Même logique que le résumé comptable : la part réellement demandée à
+      // une mutuelle, sinon la facture entière si elle a été basculée « chez
+      // la mutuelle » sans demande détaillée. Sans cela, le CSV remis au
+      // comptable contredisait le journal affiché à l'écran.
+      const partMutuelle = Math.min(
+        Number(inv.part_mutuelle) || (inv.payment_method === 'insurance' ? total : 0),
+        total
+      );
+      if (partMutuelle > 0) {
+        lines.push(['OD', fmtDate(inv.created_at), inv.invoice_number, '4116', `Transfert creance mutuelle - ${inv.patient_name}`, inv.dossier_number, String(partMutuelle), '0']);
+        lines.push(['OD', fmtDate(inv.created_at), inv.invoice_number, '411', `Solde creance patient - ${inv.patient_name}`, inv.dossier_number, '0', String(partMutuelle)]);
+      }
     }
   }
 
