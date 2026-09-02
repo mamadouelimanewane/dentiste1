@@ -43,30 +43,39 @@ export async function GET(request: Request) {
   const [kpiRows, invoiceRows] = await Promise.all([
     sql`
       with parts as (
-        select invoice_id, sum(amount)::numeric as part_mutuelle
+        select
+          invoice_id,
+          -- Tant que l'organisme n'a ni payé ni refusé, sa part reste une
+          -- créance sur lui.
+          sum(amount) filter (where status in ('pending', 'submitted', 'approved'))::numeric as part_due,
+          -- Part effectivement réglée par l'organisme : elle n'est plus due
+          -- ni par lui, ni par le patient.
+          sum(amount) filter (where status = 'paid')::numeric as part_reglee
         from insurance_claims
-        -- Tant que l'organisme n'a ni payé ni refusé, la part reste due par
-        -- lui : une demande transmise ou acceptée est toujours une créance.
-        -- Une demande refusée retombe à la charge du patient, une demande
-        -- payée sort des créances.
-        where status in ('pending', 'submitted', 'approved') and invoice_id is not null
+        where invoice_id is not null
         group by invoice_id
       ),
       f as (
         select i.*,
                least(
-                 coalesce(p.part_mutuelle, case when i.payment_method = 'insurance' then i.total else 0 end),
+                 coalesce(p.part_due, case when i.payment_method = 'insurance' then i.total else 0 end),
                  i.total
-               ) as part_mutuelle
+               ) as part_mutuelle,
+               least(coalesce(p.part_reglee, 0), i.total) as part_reglee
         from invoices i
         left join parts p on p.invoice_id = i.id
         where i.created_at >= ${start} and i.created_at <= ${end}
       )
       select
-        coalesce(sum(total) filter (where status = 'paid'), 0)::numeric as encaissements,
+        -- Une facture soldée compte pour son total. Pour une facture encore
+        -- ouverte, seule la part déjà versée par l'organisme est encaissée —
+        -- l'ajouter aussi aux factures soldées la compterait deux fois.
+        (coalesce(sum(total) filter (where status = 'paid'), 0)
+         + coalesce(sum(part_reglee) filter (where status = 'pending'), 0))::numeric as encaissements,
         coalesce(sum(total) filter (where status = 'paid' and payment_method = 'cash'), 0)::numeric as caisse,
-        coalesce(sum(total) filter (where status = 'paid' and payment_method <> 'cash'), 0)::numeric as banque,
-        coalesce(sum(total - part_mutuelle) filter (where status = 'pending'), 0)::numeric as creances_patients,
+        (coalesce(sum(total) filter (where status = 'paid' and payment_method <> 'cash'), 0)
+         + coalesce(sum(part_reglee) filter (where status = 'pending'), 0))::numeric as banque,
+        coalesce(sum(total - part_mutuelle - part_reglee) filter (where status = 'pending'), 0)::numeric as creances_patients,
         coalesce(sum(part_mutuelle) filter (where status = 'pending'), 0)::numeric as creances_mutuelles,
         coalesce(sum(total) filter (where status in ('paid', 'pending')), 0)::numeric as chiffre_affaires,
         count(*) filter (where status = 'pending')::int as factures_impayees
