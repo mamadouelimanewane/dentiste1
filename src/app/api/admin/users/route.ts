@@ -77,6 +77,57 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Aucune modification fournie.' }, { status: 400 });
   }
 
+  // Un administrateur ne peut pas se désactiver lui-même : il perdrait
+  // l'accès immédiatement, sans possibilité de revenir en arrière.
+  if (isActive === false && userId === session!.userId) {
+    return NextResponse.json(
+      { error: 'Vous ne pouvez pas désactiver votre propre compte.' },
+      { status: 400 }
+    );
+  }
+
+  // Les rôles sont déjà protégés contre la suppression du dernier rôle
+  // administrateur, mais rien n'empêchait de désactiver tous les comptes qui
+  // le portent — ce qui verrouille le cabinet tout aussi sûrement. Comme
+  // aucune récupération de mot de passe n'existe, seul un accès direct à la
+  // base permettrait alors de rouvrir l'application.
+  const perdLAdministration =
+    isActive === false || (roleId !== undefined && roleId !== null);
+
+  if (perdLAdministration) {
+    const cible = await sql`
+      select u.id, r.manage_roles
+      from users u join roles r on r.id = u.role_id
+      where u.id = ${userId} and u.is_active = true
+      limit 1
+    `;
+
+    if (cible[0]?.manage_roles) {
+      const nouveauRole = roleId
+        ? await sql`select manage_roles from roles where id = ${roleId} limit 1`
+        : null;
+      const resteAdministrateur =
+        isActive !== false && !!nouveauRole?.[0]?.manage_roles;
+
+      if (!resteAdministrateur) {
+        const autres = await sql`
+          select count(*)::int as count
+          from users u join roles r on r.id = u.role_id
+          where r.manage_roles = true and u.is_active = true and u.id <> ${userId}
+        `;
+        if (autres[0].count === 0) {
+          return NextResponse.json(
+            {
+              error:
+                "Ce compte est le dernier administrateur actif. Nommez d'abord un autre administrateur, sinon plus personne ne pourra administrer le cabinet.",
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
+  }
+
   try {
     const rows = await sql`
       update users
