@@ -5,10 +5,14 @@ export const dynamic = 'force-dynamic';
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
-// Purge les vieilles tentatives de connexion — seules les 15 dernières
-// minutes comptent pour le rate-limiting (voir src/app/login/actions.ts),
-// le reste ne sert qu'à un éventuel audit à court terme.
-const LOGIN_ATTEMPTS_RETENTION_DAYS = 30;
+// Purge des tentatives de connexion. Le rate-limiting ne regarde que les 15
+// dernières minutes (voir src/app/login/actions.ts), mais l'historique par
+// utilisateur, lui, doit tenir dans la durée : savoir quand un compte s'est
+// connecté et depuis où fait partie du suivi d'un cabinet. On sépare donc
+// les deux usages — les échecs, utiles surtout à court terme pour repérer
+// une attaque, et les connexions réussies, qui constituent le journal.
+const ECHECS_RETENTION_DAYS = 30;
+const CONNEXIONS_RETENTION_DAYS = 365;
 
 export async function GET(request: Request) {
   // La route est publique au sens du middleware (Vercel Cron n'a pas de
@@ -25,11 +29,23 @@ export async function GET(request: Request) {
     }
   }
 
-  const deleted = await sql`
+  const echecs = await sql`
     delete from login_attempts
-    where created_at < now() - make_interval(days => ${LOGIN_ATTEMPTS_RETENTION_DAYS})
+    where success = false
+      and created_at < now() - make_interval(days => ${ECHECS_RETENTION_DAYS})
     returning id
   `;
 
-  return NextResponse.json({ deletedLoginAttempts: deleted.length });
+  const connexions = await sql`
+    delete from login_attempts
+    where success = true
+      and created_at < now() - make_interval(days => ${CONNEXIONS_RETENTION_DAYS})
+    returning id
+  `;
+
+  return NextResponse.json({
+    deletedLoginAttempts: echecs.length + connexions.length,
+    echecsPurges: echecs.length,
+    connexionsPurgees: connexions.length,
+  });
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { UserActivityPanel } from "@/components/UserActivityPanel";
 import { Users, UserPlus, Shield, CheckCircle2, Lock, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,7 @@ export function UserManagement() {
   const [inviteForm, setInviteForm] = useState({ email: "", fullName: "", roleId: "" });
   const [inviting, setInviting] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [activiteDe, setActiviteDe] = useState<string | null>(null);
 
   const loadAll = async () => {
     setLoading(true);
@@ -220,12 +222,20 @@ export function UserManagement() {
                     )}
                   </td>
                   <td className="p-4 text-right">
-                    <button
-                      onClick={() => updateUser(user.id, { isActive: !user.is_active })}
-                      className="px-2 py-1 text-[9px] font-bold uppercase text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors border border-slate-200"
-                    >
-                      {user.is_active ? "Désactiver" : "Réactiver"}
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setActiviteDe(user.id)}
+                        className="px-2 py-1 text-[9px] font-bold uppercase text-blue-600 hover:text-white hover:bg-blue-600 rounded transition-colors border border-blue-200"
+                      >
+                        Historique
+                      </button>
+                      <button
+                        onClick={() => updateUser(user.id, { isActive: !user.is_active })}
+                        className="px-2 py-1 text-[9px] font-bold uppercase text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors border border-slate-200"
+                      >
+                        {user.is_active ? "Désactiver" : "Réactiver"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -233,6 +243,10 @@ export function UserManagement() {
           </table>
         </div>
       </div>
+
+      {activiteDe && (
+        <UserActivityPanel userId={activiteDe} onClose={() => setActiviteDe(null)} />
+      )}
 
       {showInvite && (
         <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">

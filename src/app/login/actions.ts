@@ -18,8 +18,25 @@ async function getClientIp() {
   return h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown';
 }
 
-async function recordAttempt(email: string, ip: string, success: boolean) {
-  await sql`insert into login_attempts (email, ip, success) values (${email}, ${ip}, ${success})`;
+async function getUserAgent() {
+  const h = await headers();
+  return h.get('user-agent')?.slice(0, 300) || null;
+}
+
+// L'historique ne retenait que l'email saisi : impossible de savoir depuis
+// quel poste un compte s'était connecté, ni de rattacher une tentative à un
+// utilisateur si son adresse changeait.
+async function recordAttempt(
+  email: string,
+  ip: string,
+  success: boolean,
+  userId: string | null
+) {
+  const userAgent = await getUserAgent();
+  await sql`
+    insert into login_attempts (email, ip, success, user_id, user_agent)
+    values (${email}, ${ip}, ${success}, ${userId}, ${userAgent})
+  `;
 }
 
 export async function signIn(_prevState: { error: string | null }, formData: FormData) {
@@ -48,27 +65,23 @@ export async function signIn(_prevState: { error: string | null }, formData: For
     where u.email = ${email}
     limit 1
   `;
-  console.log('Login attempt for', email);
-  console.log('Rows found:', rows.length);
   const user = rows[0] as
     | { id: string; full_name: string; password_hash: string; is_active: boolean; role_id: string; role_slug: string; role_label: string }
     | undefined;
 
   if (!user || !user.is_active) {
-    console.log('User not found or inactive');
     await verifyPassword(password, DUMMY_HASH);
-    await recordAttempt(email, ip, false);
+    await recordAttempt(email, ip, false, null);
     return { error: 'Identifiants incorrects.' };
   }
 
   const valid = await verifyPassword(password, user.password_hash);
-  console.log('Password valid?', valid);
   if (!valid) {
-    await recordAttempt(email, ip, false);
+    await recordAttempt(email, ip, false, user.id);
     return { error: 'Identifiants incorrects.' };
   }
 
-  await recordAttempt(email, ip, true);
+  await recordAttempt(email, ip, true, user.id);
 
   const token = await createStaffSessionToken({
     userId: user.id,
