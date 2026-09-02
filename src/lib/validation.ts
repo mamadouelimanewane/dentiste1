@@ -166,3 +166,45 @@ export function validerQuantite(
   }
   return { ok: true, valeur: n };
 }
+
+// Rendez-vous. Sans bornes : une durée négative créait un créneau qui finit
+// avant de commencer (et rendait la détection de conflits inopérante), une
+// durée de 10 000 minutes bloquait l'agenda une semaine entière, et une
+// date illisible faisait planter la route en 500.
+export const DUREE_MIN = 5;
+export const DUREE_MAX = 480; // 8 heures : au-delà, c'est une erreur de saisie
+const ANS_MAX_A_L_AVANCE = 2;
+
+export function validerCreneau(
+  scheduledAt: unknown,
+  durationMinutes: unknown
+):
+  | { ok: true; debut: string; duree: number }
+  | { ok: false; erreur: string } {
+  const d = new Date(String(scheduledAt ?? ''));
+  if (Number.isNaN(d.getTime())) {
+    return { ok: false, erreur: 'Date et heure du rendez-vous invalides.' };
+  }
+
+  const limite = new Date();
+  limite.setFullYear(limite.getFullYear() + ANS_MAX_A_L_AVANCE);
+  if (d > limite) {
+    return {
+      ok: false,
+      erreur: `Date trop lointaine (au-delà de ${ANS_MAX_A_L_AVANCE} ans). Vérifiez l'année saisie.`,
+    };
+  }
+
+  const n = Number(durationMinutes);
+  if (!Number.isFinite(n) || !Number.isInteger(n)) {
+    return { ok: false, erreur: 'Durée invalide : un nombre entier de minutes est attendu.' };
+  }
+  if (n < DUREE_MIN) {
+    return { ok: false, erreur: `La durée doit être d'au moins ${DUREE_MIN} minutes.` };
+  }
+  if (n > DUREE_MAX) {
+    return { ok: false, erreur: `Durée improbable (plafond ${DUREE_MAX} minutes).` };
+  }
+
+  return { ok: true, debut: d.toISOString(), duree: n };
+}

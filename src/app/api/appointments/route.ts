@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { validerCreneau } from '@/lib/validation';
 import { requirePermission } from '@/lib/permissions';
 import { sendWhatsAppMessage } from '@/lib/integrations/whatsapp';
 import { sendSms } from '@/lib/integrations/sms';
@@ -131,6 +132,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'patientId(s) et scheduledAt sont requis.' }, { status: 400 });
   }
 
+  // Une durée négative créait un créneau finissant avant de commencer, ce qui
+  // rendait la détection de conflits inopérante ; une date illisible faisait
+  // planter la route en 500 ; l'an 2200 était accepté sans broncher.
+  const creneau = validerCreneau(scheduledAt, durationMinutes);
+  if (!creneau.ok) {
+    return NextResponse.json({ error: creneau.erreur }, { status: 400 });
+  }
+
   const occurrences = recurrence === 'none' ? 1 : Math.min(Math.max(recurrenceCount, 1), 12);
   const stepDays = RECURRENCE_STEP_DAYS[recurrence] || 0;
   const recurrenceGroupId = occurrences > 1 ? crypto.randomUUID() : null;
@@ -153,11 +162,11 @@ export async function POST(request: Request) {
       
       const occurrenceDate = new Date(occurrenceBaseDate);
       if (multiMode === 'sequential' && pIdx > 0) {
-        occurrenceDate.setMinutes(occurrenceDate.getMinutes() + (durationMinutes * pIdx));
+        occurrenceDate.setMinutes(occurrenceDate.getMinutes() + (creneau.duree * pIdx));
       }
       const occurrenceIso = occurrenceDate.toISOString();
 
-      const patientConflict = await hasPatientConflict(pId, occurrenceIso, durationMinutes);
+      const patientConflict = await hasPatientConflict(pId, occurrenceIso, creneau.duree);
       if (patientConflict) {
         skipped.push({
           scheduledAt: occurrenceIso,
@@ -167,7 +176,7 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const conflict = await hasConflict(practitionerId || null, occurrenceIso, durationMinutes);
+      const conflict = await hasConflict(practitionerId || null, occurrenceIso, creneau.duree);
       if (conflict) {
         skipped.push({
           scheduledAt: occurrenceIso,
@@ -179,7 +188,7 @@ export async function POST(request: Request) {
 
       const rows = await sql`
         insert into appointments (patient_id, practitioner_id, scheduled_at, duration_minutes, type, notes, recurrence_group_id)
-        values (${pId}, ${practitionerId || null}, ${occurrenceIso}, ${durationMinutes}, ${type || null}, ${notes || null}, ${recurrenceGroupId})
+        values (${pId}, ${practitionerId || null}, ${occurrenceIso}, ${creneau.duree}, ${type || null}, ${notes || null}, ${recurrenceGroupId})
         returning *
       `;
       const newAppointment = rows[0];
