@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { validerMontant, validerDent, bornerTexte } from '@/lib/validation';
 import { requirePermission } from '@/lib/permissions';
 
 export async function GET(request: Request) {
@@ -46,9 +47,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'patientId et label sont requis.' }, { status: 400 });
   }
 
+  // Sans ces bornes, un prix négatif diminuait silencieusement le chiffre
+  // d'affaires, un zéro de trop injectait près de mille milliards, un prix
+  // non numérique faisait planter la route en 500, et une « dent 999 »
+  // entrait dans le dossier clinique.
+  const montant = validerMontant(price, { obligatoire: false });
+  if (!montant.ok) return NextResponse.json({ error: montant.erreur }, { status: 400 });
+
+  const dent = validerDent(tooth);
+  if (!dent.ok) return NextResponse.json({ error: dent.erreur }, { status: 400 });
+
+  const nomActe = bornerTexte(label, 200);
+  if (!nomActe) {
+    return NextResponse.json({ error: "Le libellé de l'acte est requis." }, { status: 400 });
+  }
+
   const rows = await sql`
     insert into executed_acts (patient_id, code, label, tooth, price, performed_by)
-    values (${patientId}, ${code || null}, ${label}, ${tooth || null}, ${price || 0}, ${session!.userId})
+    values (${patientId}, ${code || null}, ${nomActe}, ${dent.valeur}, ${montant.valeur}, ${session!.userId})
     returning *
   `;
 

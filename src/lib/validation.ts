@@ -79,3 +79,63 @@ export function validerDateNaissance(
   }
   return { ok: true, valeur: s };
 }
+
+// Plafond volontairement large : l'acte le plus cher de la nomenclature est
+// à 120 000 F. Au-delà de 5 millions, c'est une faute de frappe, pas un
+// soin — et sans borne, un zéro de trop injectait près de mille milliards
+// de chiffre d'affaires dans la comptabilité.
+export const MONTANT_MAX = 5_000_000;
+
+export function validerMontant(
+  valeur: unknown,
+  { obligatoire = true }: { obligatoire?: boolean } = {}
+): { ok: true; valeur: number } | { ok: false; erreur: string } {
+  if (valeur === undefined || valeur === null || valeur === '') {
+    if (obligatoire) return { ok: false, erreur: 'Le montant est requis.' };
+    return { ok: true, valeur: 0 };
+  }
+
+  const n = Number(valeur);
+  if (!Number.isFinite(n)) {
+    return { ok: false, erreur: 'Montant invalide : un nombre est attendu.' };
+  }
+  if (n < 0) {
+    // Un avoir se saisit par une facture d'avoir, pas par un acte négatif
+    // qui viendrait diminuer silencieusement le chiffre d'affaires.
+    return { ok: false, erreur: 'Le montant ne peut pas être négatif.' };
+  }
+  if (n > MONTANT_MAX) {
+    return {
+      ok: false,
+      erreur: `Montant improbable (plafond ${MONTANT_MAX.toLocaleString('fr-FR')} FCFA). Vérifiez la saisie.`,
+    };
+  }
+  return { ok: true, valeur: Math.round(n) };
+}
+
+// Notation FDI : dents permanentes 11–18, 21–28, 31–38, 41–48 ;
+// dents temporaires 51–55, 61–65, 71–75, 81–85. Une « dent 999 » n'existe
+// pas et n'a rien à faire dans un dossier clinique.
+export function validerDent(
+  valeur: unknown
+): { ok: true; valeur: number | null } | { ok: false; erreur: string } {
+  if (valeur === undefined || valeur === null || valeur === '') {
+    return { ok: true, valeur: null };
+  }
+  const n = Number(valeur);
+  if (!Number.isInteger(n)) {
+    return { ok: false, erreur: 'Numéro de dent invalide.' };
+  }
+  const quadrant = Math.floor(n / 10);
+  const rang = n % 10;
+  const permanente = quadrant >= 1 && quadrant <= 4 && rang >= 1 && rang <= 8;
+  const temporaire = quadrant >= 5 && quadrant <= 8 && rang >= 1 && rang <= 5;
+
+  if (!permanente && !temporaire) {
+    return {
+      ok: false,
+      erreur: `Numéro de dent hors notation FDI (${n}). Attendu 11–48 ou 51–85.`,
+    };
+  }
+  return { ok: true, valeur: n };
+}
