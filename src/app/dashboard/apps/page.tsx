@@ -105,7 +105,11 @@ export default function DentalAppsHubPage() {
 
       {/* ── HEADER ───────────────────────────────────────────────────────── */}
       <header className="glass-dark sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between gap-4">
+        {/* Sur tablette (768 px), l'en-tête débordait : 871 px de contenu pour
+            751 px disponibles, si bien que le bouton de déconnexion sortait de
+            l'écran et devenait inatteignable au fauteuil. Les éléments les
+            moins utilisés se replient donc en premier. */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-2 sm:gap-4 flex-wrap">
           {/* Logo */}
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-900/40" style={{ background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)" }}>
@@ -169,7 +173,9 @@ export default function DentalAppsHubPage() {
               <span className="hidden sm:inline">Vue workflow</span>
             </button>
 
-            <ThemeSwitcher />
+            <div className="hidden lg:block">
+              <ThemeSwitcher />
+            </div>
 
             <button
               onClick={signOut}
