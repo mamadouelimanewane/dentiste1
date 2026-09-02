@@ -31,6 +31,8 @@ interface Summary {
     numero: string;
     patient: string;
     total: number;
+    partMutuelle: number;
+    duPatient: number;
     statut: string;
     emiseLe: string;
   }[];
@@ -149,7 +151,8 @@ export function AccountingDashboard() {
                   <th className="px-4 py-2.5">Patient</th>
                   <th className="px-4 py-2.5">Émise le</th>
                   <th className="px-4 py-2.5">État</th>
-                  <th className="px-4 py-2.5 text-right">Montant dû</th>
+                  <th className="px-4 py-2.5 text-right">Chez la mutuelle</th>
+                  <th className="px-4 py-2.5 text-right">Dû par le patient</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -165,7 +168,10 @@ export function AccountingDashboard() {
                         {f.statut === 'insurance' ? 'Chez la mutuelle' : 'Impayée'}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-right font-black text-slate-900">{fcfa(f.total)}</td>
+                    <td className="px-4 py-2.5 text-right font-bold text-amber-700">
+                      {f.partMutuelle > 0 ? fcfa(f.partMutuelle) : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-black text-slate-900">{fcfa(f.duPatient)}</td>
                   </tr>
                 ))}
               </tbody>

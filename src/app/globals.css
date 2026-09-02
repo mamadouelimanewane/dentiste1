@@ -175,3 +175,14 @@ html, body {
 /* Sur le bandeau bleu nuit du recapitulatif, #94a3b8 plafonne a 4,0:1.
    Les libelles monetaires doivent rester nets. */
 .bg-\[\#1E3A8A\] .text-slate-500 { color: #cbd5e1; }
+
+/* Deux boutons flottants (assistant de saisie, messagerie interne) se
+   superposent en bas à droite. Sur tablette — usage courant au fauteuil —
+   ils recouvraient les dernières lignes du journal comptable et des
+   tableaux. On réserve la hauteur correspondante en bas de page plutôt que
+   de déplacer les boutons, qui doivent rester accessibles au pouce. */
+body { padding-bottom: 7rem; }
+
+@media (min-width: 1280px) {
+  body { padding-bottom: 5rem; }
+}

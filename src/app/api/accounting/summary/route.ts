@@ -184,13 +184,25 @@ export async function GET(request: Request) {
     // pour savoir qui devait de l'argent au cabinet.
     impayees: invoiceRows
       .filter((i: any) => i.status !== 'paid')
-      .map((i: any) => ({
-        id: i.id,
-        numero: i.invoice_number,
-        patient: i.patient_name,
-        total: Number(i.total),
-        statut: i.status,
-        emiseLe: i.created_at,
-      })),
+      .map((i: any) => {
+        const total = Number(i.total);
+        const partMutuelle = Math.min(
+          Number(i.part_mutuelle) || (i.payment_method === 'insurance' ? total : 0),
+          total
+        );
+        return {
+          id: i.id,
+          numero: i.invoice_number,
+          patient: i.patient_name,
+          total,
+          // Détail indispensable : afficher le total comme « montant dû » par
+          // le patient contredisait les créances patients du tableau de bord
+          // dès qu'une prise en charge mutuelle était en cours.
+          partMutuelle,
+          duPatient: total - partMutuelle,
+          statut: i.status,
+          emiseLe: i.created_at,
+        };
+      }),
   });
 }
