@@ -3,7 +3,9 @@ import { sql } from '@/lib/db';
 import { requirePermission } from '@/lib/permissions';
 
 export async function GET() {
-  const { error, status } = await requirePermission(9, 'manage');
+  // Lecture : 'view' comme partout ailleurs (lab-orders, prescriptions,
+  // inventory...). 'manage' implique 'view', donc aucun rôle ne perd l'accès.
+  const { error, status } = await requirePermission(9, 'view');
   if (error) return NextResponse.json({ error }, { status });
 
   const claims = await sql`

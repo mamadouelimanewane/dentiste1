@@ -34,22 +34,47 @@ export async function GET(request: Request) {
     end.setUTCHours(23, 59, 59, 999);
   }
 
+  // Les créances mutuelles ne se déduisaient que du statut de la facture
+  // (tout ou rien). Une demande de prise en charge enregistrée dans le module
+  // Mutuelles n'avait donc aucun effet : une facture de 120 000 F dont 84 000
+  // étaient attendus d'une IPM restait imputée en totalité au patient, et le
+  // cabinet réclamait au patient ce que la mutuelle devait. On rattache
+  // désormais la part réellement demandée à chaque facture.
   const [kpiRows, invoiceRows] = await Promise.all([
     sql`
+      with parts as (
+        select invoice_id, sum(amount)::numeric as part_mutuelle
+        from insurance_claims
+        where status = 'pending' and invoice_id is not null
+        group by invoice_id
+      ),
+      f as (
+        select i.*,
+               least(
+                 coalesce(p.part_mutuelle, case when i.payment_method = 'insurance' then i.total else 0 end),
+                 i.total
+               ) as part_mutuelle
+        from invoices i
+        left join parts p on p.invoice_id = i.id
+        where i.created_at >= ${start} and i.created_at <= ${end}
+      )
       select
         coalesce(sum(total) filter (where status = 'paid'), 0)::numeric as encaissements,
         coalesce(sum(total) filter (where status = 'paid' and payment_method = 'cash'), 0)::numeric as caisse,
         coalesce(sum(total) filter (where status = 'paid' and payment_method <> 'cash'), 0)::numeric as banque,
-        coalesce(sum(total) filter (where status = 'pending' and coalesce(payment_method, '') <> 'insurance'), 0)::numeric as creances_patients,
-        coalesce(sum(total) filter (where status = 'pending' and payment_method = 'insurance'), 0)::numeric as creances_mutuelles,
+        coalesce(sum(total - part_mutuelle) filter (where status = 'pending'), 0)::numeric as creances_patients,
+        coalesce(sum(part_mutuelle) filter (where status = 'pending'), 0)::numeric as creances_mutuelles,
         coalesce(sum(total) filter (where status in ('paid', 'pending')), 0)::numeric as chiffre_affaires,
         count(*) filter (where status = 'pending')::int as factures_impayees
-      from invoices
-      where created_at >= ${start} and created_at <= ${end}
+      from f
     `,
     sql`
       select i.id, i.invoice_number, i.total, i.status, i.payment_method,
-             i.created_at, i.paid_at, p.full_name as patient_name
+             i.created_at, i.paid_at, p.full_name as patient_name,
+             coalesce((
+               select sum(c.amount) from insurance_claims c
+               where c.invoice_id = i.id and c.status = 'pending'
+             ), 0)::numeric as part_mutuelle
       from invoices i
       join patients p on p.id = i.patient_id
       where i.created_at >= ${start} and i.created_at <= ${end}
@@ -108,25 +133,34 @@ export async function GET(request: Request) {
         debit: 0,
         credit: total,
       });
-    } else if (inv.payment_method === 'insurance') {
-      journal.push({
-        journal: 'OD',
-        date: inv.created_at,
-        piece,
-        compte: '4116',
-        libelle: `Transfert créance mutuelle — ${inv.patient_name}`,
-        debit: total,
-        credit: 0,
-      });
-      journal.push({
-        journal: 'OD',
-        date: inv.created_at,
-        piece,
-        compte: '411',
-        libelle: `Solde créance patient — ${inv.patient_name}`,
-        debit: 0,
-        credit: total,
-      });
+    } else {
+      // Part réellement demandée à une mutuelle : soit le total des demandes
+      // de prise en charge en attente, soit la facture entière si elle a été
+      // basculée « chez la mutuelle » sans demande détaillée.
+      const partMutuelle = Math.min(
+        Number(inv.part_mutuelle) || (inv.payment_method === 'insurance' ? total : 0),
+        total
+      );
+      if (partMutuelle > 0) {
+        journal.push({
+          journal: 'OD',
+          date: inv.created_at,
+          piece,
+          compte: '4116',
+          libelle: `Transfert créance mutuelle — ${inv.patient_name}`,
+          debit: partMutuelle,
+          credit: 0,
+        });
+        journal.push({
+          journal: 'OD',
+          date: inv.created_at,
+          piece,
+          compte: '411',
+          libelle: `Solde créance patient — ${inv.patient_name}`,
+          debit: 0,
+          credit: partMutuelle,
+        });
+      }
     }
   }
 
