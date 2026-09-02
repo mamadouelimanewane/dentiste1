@@ -16,10 +16,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();
-  const { method, insuranceProvider, insurancePolicyNumber } = body as {
+  const { method, insuranceProvider, insurancePolicyNumber, coverageRate } = body as {
     method?: 'cash' | 'card' | 'insurance';
     insuranceProvider?: string;
     insurancePolicyNumber?: string;
+    coverageRate?: number;
   };
 
   if (!method) {
@@ -37,6 +38,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Facture introuvable.' }, { status: 404 });
     }
 
+    // Le taux de couverture était ignoré : la demande portait toujours sur
+    // la totalité de la facture. Une mutuelle couvrant 80 % était donc
+    // enregistrée comme devant 100 %, et le ticket modérateur du patient
+    // disparaissait — le cabinet ne le lui réclamait jamais.
+    const taux = Number(coverageRate);
+    const tauxRetenu = Number.isFinite(taux) && taux > 0 && taux <= 100 ? taux : 100;
+    const partMutuelle = Math.round((Number(invoice.total) * tauxRetenu) / 100);
+
     const updatedRows = await sql`
       update invoices
       set status = 'pending', payment_method = 'insurance', payment_provider = 'manual'
@@ -44,18 +53,39 @@ export async function POST(request: Request, { params }: { params: { id: string 
       returning *
     `;
 
-    const claimRows = await sql`
-      insert into insurance_claims (patient_id, invoice_id, provider, policy_number, claim_type, amount, created_by)
-      values (${invoice.patient_id}, ${params.id}, ${insuranceProvider.trim()}, ${insurancePolicyNumber?.trim() || null}, 'Facturation', ${invoice.total}, ${session!.userId})
-      returning *
+    // Sans cette recherche préalable, un double clic créait deux prises en
+    // charge identiques pour la même facture : le comptable voyait deux
+    // demandes pour un seul acte, et solder l'une sans l'autre faussait les
+    // créances. On met donc à jour la demande non soldée si elle existe.
+    const existante = await sql`
+      select id from insurance_claims
+      where invoice_id = ${params.id}
+        and status in ('pending', 'submitted', 'approved')
+      order by created_at asc
+      limit 1
     `;
+
+    const claimRows = existante.length
+      ? await sql`
+          update insurance_claims
+          set provider = ${insuranceProvider.trim()},
+              policy_number = ${insurancePolicyNumber?.trim() || null},
+              amount = ${partMutuelle}
+          where id = ${existante[0].id}
+          returning *
+        `
+      : await sql`
+          insert into insurance_claims (patient_id, invoice_id, provider, policy_number, claim_type, amount, created_by)
+          values (${invoice.patient_id}, ${params.id}, ${insuranceProvider.trim()}, ${insurancePolicyNumber?.trim() || null}, 'Facturation', ${partMutuelle}, ${session!.userId})
+          returning *
+        `;
 
     await recordAudit({
       actorId: session!.userId,
       action: 'Transmission facture à une mutuelle',
       entityTable: 'invoices',
       entityId: params.id,
-      meta: { provider: insuranceProvider.trim(), amount: invoice.total },
+      meta: { provider: insuranceProvider.trim(), amount: partMutuelle, tauxCouverture: tauxRetenu },
     });
 
     return NextResponse.json({ invoice: updatedRows[0], claim: claimRows[0] });
