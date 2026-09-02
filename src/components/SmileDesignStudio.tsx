@@ -1,252 +1,220 @@
 "use client";
 
-import React, { useState } from "react";
-import { 
-  Smile, 
-  Sparkles, 
-  UploadCloud, 
-  History, 
-  Download, 
-  Image as ImageIcon, 
-  Camera, 
-  Wand2, 
-  PaintBucket, 
-  MoveUpRight, 
-  Eye, 
-  TrendingUp, 
-  Search,
-  Maximize2,
-  CheckCircle2,
-  Zap,
-  RotateCcw,
-  ChevronRight
-} from "lucide-react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { Smile, Camera, AlertTriangle, Images } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { usePatient } from "@/lib/context";
 
-export function SmileDesignStudio() {
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [simulationDone, setSimulationDone] = useState(false);
-  const [sliderPos, setSliderPos] = useState(50);
-
-  const runSimulation = () => {
-    setIsSimulating(true);
-    setTimeout(() => {
-      setIsSimulating(false);
-      setSimulationDone(true);
-    }, 2500);
-  };
-
-  return (
-    <div className="space-y-6 animate-in fade-in duration-700">
-      {/* ELITE HEADER */}
-      <div className="bg-white border border-slate-200 rounded-sm p-5 flex flex-col md:flex-row items-center justify-between shadow-sm gap-4">
-        <div className="flex items-center gap-5">
-          <div className="h-12 w-12 bg-blue-900 text-amber-400 rounded flex items-center justify-center shadow-xl shadow-blue-900/10">
-            <Smile className="h-7 w-7" />
-          </div>
-          <div>
-            <h2 className="text-base font-black text-slate-900 uppercase tracking-tighter">Smile Design Studio Pro</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <Sparkles className="h-3 w-3 text-amber-500 fill-current" />
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Esthetic Simulation Engine v2.0</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all">
-            <History className="h-4 w-4" /> Historique
-          </button>
-          <button className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-900/20">
-            <Download className="h-4 w-4" /> Exporter Simulation
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* MAIN VIEWER */}
-        <div className="lg:col-span-3 space-y-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-sm shadow-2xl min-h-[500px] relative overflow-hidden flex flex-col">
-            
-            {simulationDone ? (
-              <div className="relative flex-1 group">
-                {/* BEFORE (UNDER) */}
-                <div className="absolute inset-0 bg-slate-800 flex items-center justify-center overflow-hidden">
-                   <div className="opacity-40 grayscale blur-sm">
-                      <Smile className="h-48 w-48 text-slate-400" />
-                   </div>
-                   <p className="absolute top-6 left-6 bg-black/60 text-white px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] rounded-sm backdrop-blur-md border border-white/10">État Initial</p>
-                </div>
-
-                {/* AFTER (OVER) */}
-                <div 
-                  className="absolute inset-0 bg-blue-50/5 flex items-center justify-center overflow-hidden"
-                  style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
-                >
-                   <div className="flex flex-col items-center">
-                      <Smile className="h-48 w-48 text-amber-400 drop-shadow-[0_0_20px_rgba(245,158,11,0.3)]" />
-                      <div className="mt-4 flex gap-1">
-                         {[1,2,3,4,5,6,7,8].map(i => (
-                            <div key={i} className="h-8 w-4 bg-white/90 rounded-sm border border-slate-200" />
-                         ))}
-                      </div>
-                   </div>
-                   <p className="absolute top-6 right-6 bg-amber-500 text-white px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] rounded-sm shadow-xl border border-amber-400">Aperçu simulé</p>
-                </div>
-
-                {/* SLIDER HANDLE */}
-                <div 
-                   className="absolute top-0 bottom-0 w-1 bg-amber-500 cursor-ew-resize z-20 group"
-                   style={{ left: `${sliderPos}%` }}
-                >
-                   <input 
-                      type="range" 
-                      min="0" 
-                      max="100" 
-                      value={sliderPos}
-                      onChange={(e) => setSliderPos(parseInt(e.target.value))}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize"
-                   />
-                   <div className="absolute top-1/2 -left-3 -translate-y-1/2 h-6 w-6 bg-white border-2 border-amber-500 rounded-full flex items-center justify-center shadow-2xl">
-                      <div className="flex gap-0.5">
-                         <div className="w-0.5 h-3 bg-amber-500 rounded-full" />
-                         <div className="w-0.5 h-3 bg-amber-500 rounded-full" />
-                      </div>
-                   </div>
-                </div>
-
-                {/* OVERLAY CONTROLS */}
-                <div className="absolute bottom-6 inset-x-6 flex justify-between items-center z-10">
-                   <div className="flex gap-2">
-                      <button onClick={() => setSimulationDone(false)} className="p-2 bg-black/40 hover:bg-black/60 rounded-sm border border-white/10 text-white transition-all">
-                        <RotateCcw className="h-4 w-4" />
-                      </button>
-                      <button className="p-2 bg-black/40 hover:bg-black/60 rounded-sm border border-white/10 text-white transition-all">
-                        <Maximize2 className="h-4 w-4" />
-                      </button>
-                   </div>
-                   <div className="bg-emerald-500/20 backdrop-blur-md border border-emerald-500/50 px-3 py-1.5 rounded-sm flex items-center gap-2">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                      <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Optimisé par DeepSmile AI</span>
-                   </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-8">
-                <div className="relative group">
-                   <div className="h-32 w-32 bg-slate-800 rounded-full flex items-center justify-center border-2 border-dashed border-slate-700 group-hover:border-amber-400 transition-all cursor-pointer">
-                      <Camera className="h-12 w-12 text-slate-500 group-hover:text-amber-400" />
-                   </div>
-                   <motion.div 
-                     animate={{ scale: [1, 1.2, 1] }}
-                     transition={{ repeat: Infinity, duration: 2 }}
-                     className="absolute -top-2 -right-2 h-8 w-8 bg-amber-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-amber-900/20"
-                   >
-                     <Plus className="h-5 w-5" />
-                   </motion.div>
-                </div>
-                
-                <div className="max-w-xs space-y-2">
-                   <h3 className="text-sm font-black text-white uppercase tracking-[0.2em]">Capture de Portrait</h3>
-                   <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                     Importez un cliché pour préparer une simulation esthétique à présenter au patient.
-                   </p>
-                </div>
-
-                <button 
-                  onClick={runSimulation}
-                  disabled={isSimulating}
-                  className="relative group overflow-hidden bg-white text-slate-900 px-8 py-4 rounded-sm text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-2xl hover:bg-amber-400 hover:text-white disabled:opacity-50"
-                >
-                  <span className="relative z-10 flex items-center gap-3">
-                    {isSimulating ? <Sparkles className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                    {isSimulating ? "Préparation..." : "Lancer le Smile Studio"}
-                  </span>
-                  <AnimatePresence>
-                    {isSimulating && (
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: "100%" }}
-                        className="absolute inset-0 bg-blue-600 z-0"
-                        transition={{ duration: 2.5 }}
-                      />
-                    )}
-                  </AnimatePresence>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ANALYSIS PANELS */}
-        <div className="lg:col-span-2 space-y-4">
-           <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
-              <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
-                 <Zap className="h-4 w-4 text-amber-500" />
-                 <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Paramètres IA</h4>
-              </div>
-              <div className="p-5 space-y-5">
-                 {[
-                   { label: "Teinte (Shade)", value: "Vita Master OM3", icon: PaintBucket, color: "text-amber-500", bg: "bg-amber-50" },
-                   { label: "Architecture Gingivale", value: "Optimisation +1.2mm", icon: MoveUpRight, color: "text-emerald-500", bg: "bg-emerald-50" },
-                   { label: "Forme des Dents", value: "Ovalaire Esthétique", icon: Smile, color: "text-blue-500", bg: "bg-blue-50" }
-                 ].map((p, i) => (
-                   <div key={i} className="flex items-center gap-4 group cursor-pointer">
-                      <div className={cn("h-10 w-10 rounded flex items-center justify-center transition-all group-hover:scale-110", p.bg)}>
-                         <p.icon className={cn("h-5 w-5", p.color)} />
-                      </div>
-                      <div className="flex-1">
-                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{p.label}</p>
-                         <p className="text-xs font-black text-slate-900 uppercase mt-0.5">{p.value}</p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-600 transition-colors" />
-                   </div>
-                 ))}
-              </div>
-           </div>
-
-           <div className="bg-[#0F172A] text-white rounded-sm shadow-xl p-6 relative overflow-hidden">
-              <div className="relative z-10 space-y-4">
-                 <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-emerald-400" />
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Impact Prévisionnel</h4>
-                 </div>
-                 <div className="flex items-end gap-2">
-                    <span className="text-4xl font-black tracking-tighter text-white">+42%</span>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase pb-1.5">Score Confiance</span>
-                 </div>
-                 <p className="text-[11px] text-slate-400 leading-relaxed font-medium italic">
-                    "Simulation visuelle destinée à illustrer un projet esthétique au patient — elle ne constitue ni une analyse automatisée ni un engagement sur le résultat clinique."
-                 </p>
-                 <button className="w-full mt-2 py-3 bg-white text-slate-900 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] hover:bg-amber-400 transition-all shadow-xl">
-                    Valider le Design
-                 </button>
-              </div>
-              <Sparkles className="absolute -right-4 -bottom-4 h-32 w-32 text-white/5" />
-           </div>
-        </div>
-      </div>
-    </div>
-  );
+interface PatientImage {
+  id: string;
+  blob_url: string;
+  type: string | null;
+  notes: string | null;
+  created_at: string;
 }
 
-function Plus(props: any) {
+// Comparateur avant / après sur les clichés réellement importés dans le
+// dossier du patient (module Imagerie).
+//
+// La version précédente de cet écran était entièrement fictive : le bouton
+// « Lancer le Smile Studio » n'était qu'un setTimeout de 2,5 s, sans image
+// d'entrée ni traitement, et affichait comme « avant / après » deux icônes
+// génériques. Elle présentait en outre des données inventées et identiques
+// pour tous les patients — « Architecture Gingivale : Optimisation +1.2mm »,
+// « Vita Master OM3 », « Optimisé par DeepSmile AI » — et surtout un
+// « +42% Score Confiance » qui aurait pu servir d'argument de vente pour un
+// traitement esthétique. Aucune simulation n'est réalisée ici.
+export function SmileDesignStudio() {
+  const { currentPatient } = usePatient();
+  const [images, setImages] = useState<PatientImage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
+  const [leftId, setLeftId] = useState<string | null>(null);
+  const [rightId, setRightId] = useState<string | null>(null);
+  const [sliderPos, setSliderPos] = useState(50);
+
+  const load = useCallback(async () => {
+    if (!currentPatient) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/patient-images?patientId=${currentPatient.id}`);
+      if (res.status === 403) {
+        setForbidden(true);
+        return;
+      }
+      const data = await res.json();
+      if (res.ok) {
+        const list: PatientImage[] = data.images || [];
+        setImages(list);
+        // Par défaut : le plus ancien à gauche, le plus récent à droite.
+        if (list.length >= 2) {
+          const sorted = [...list].sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          setLeftId(sorted[0].id);
+          setRightId(sorted[sorted.length - 1].id);
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPatient]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const left = useMemo(() => images.find((i) => i.id === leftId) || null, [images, leftId]);
+  const right = useMemo(() => images.find((i) => i.id === rightId) || null, [images, rightId]);
+
+  const legend = (img: PatientImage | null) =>
+    img
+      ? `${img.type || "Cliché"} — ${new Date(img.created_at).toLocaleDateString("fr-FR")}`
+      : "Aucun cliché sélectionné";
+
+  if (!currentPatient) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-sm p-12 flex flex-col items-center justify-center text-center space-y-4 min-h-[400px] shadow-sm">
+        <div className="h-20 w-20 bg-blue-50 rounded-full flex items-center justify-center border border-blue-100">
+          <Smile className="h-10 w-10 text-blue-400" />
+        </div>
+        <h2 className="text-lg font-black text-slate-800 tracking-tight">Comparaison de clichés</h2>
+        <p className="text-sm text-slate-500 max-w-sm leading-relaxed">
+          Sélectionnez un patient pour comparer deux photographies de son dossier.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M5 12h14" />
-      <path d="M12 5v14" />
-    </svg>
+    <div className="space-y-6">
+      <div className="bg-white border border-slate-200 rounded-sm p-5 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 bg-blue-900 text-white rounded flex items-center justify-center">
+            <Images className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-base font-black text-slate-900 uppercase tracking-tighter">
+              Comparaison de clichés
+            </h2>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">
+              {currentPatient.name}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-sm">
+          <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-900 leading-relaxed">
+            <strong>Aucune simulation esthétique n&apos;est réalisée.</strong> Cet écran superpose
+            deux photographies réellement présentes au dossier du patient afin de constater une
+            évolution. Il ne génère aucune projection de résultat et ne doit pas être présenté au
+            patient comme un aperçu de traitement.
+          </p>
+        </div>
+      </div>
+
+      {forbidden ? (
+        <div className="bg-white border border-slate-200 rounded-sm p-10 text-center shadow-sm">
+          <p className="text-sm font-bold text-slate-700">Accès restreint</p>
+          <p className="text-xs text-slate-500 mt-2">
+            Votre profil ne dispose pas de l&apos;autorisation de consulter l&apos;imagerie des patients.
+          </p>
+        </div>
+      ) : loading ? (
+        <div className="bg-white border border-slate-200 rounded-sm p-10 text-center text-sm text-slate-400 shadow-sm">
+          Chargement des clichés...
+        </div>
+      ) : images.length < 2 ? (
+        <div className="bg-white border border-slate-200 rounded-sm p-12 text-center space-y-3 shadow-sm">
+          <Camera className="h-10 w-10 text-slate-300 mx-auto" />
+          <p className="text-sm font-bold text-slate-700">
+            {images.length === 0
+              ? "Aucun cliché au dossier de ce patient."
+              : "Un seul cliché au dossier : il en faut deux pour comparer."}
+          </p>
+          <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+            Les photographies s&apos;importent depuis le module Imagerie. La comparaison devient
+            possible dès que le dossier contient au moins deux clichés.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-3 space-y-3">
+            <div className="bg-slate-900 border border-slate-800 rounded-sm shadow-xl relative overflow-hidden min-h-[460px] flex">
+              {/* Cliché de gauche (dessous) */}
+              <div className="absolute inset-0 flex items-center justify-center bg-black">
+                {left && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={left.blob_url} alt={legend(left)} className="max-h-full max-w-full object-contain" />
+                )}
+                <p className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-sm">
+                  {legend(left)}
+                </p>
+              </div>
+
+              {/* Cliché de droite (dessus, révélé par le curseur) */}
+              <div
+                className="absolute inset-0 flex items-center justify-center bg-black"
+                style={{ clipPath: `inset(0 0 0 ${sliderPos}%)` }}
+              >
+                {right && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={right.blob_url} alt={legend(right)} className="max-h-full max-w-full object-contain" />
+                )}
+                <p className="absolute top-4 right-4 bg-blue-600 text-white px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-sm">
+                  {legend(right)}
+                </p>
+              </div>
+
+              <div className="absolute top-0 bottom-0 w-0.5 bg-blue-400 z-20" style={{ left: `${sliderPos}%` }} />
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={sliderPos}
+                onChange={(e) => setSliderPos(parseInt(e.target.value))}
+                aria-label="Position du curseur de comparaison"
+                className="absolute inset-x-0 bottom-4 mx-auto w-2/3 z-30 cursor-ew-resize"
+              />
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 space-y-4">
+            {[
+              { titre: "Cliché de gauche", value: leftId, set: setLeftId },
+              { titre: "Cliché de droite", value: rightId, set: setRightId },
+            ].map((col) => (
+              <div key={col.titre} className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
+                <div className="p-3 bg-slate-50 border-b border-slate-100">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">{col.titre}</h4>
+                </div>
+                <div className="max-h-[190px] overflow-y-auto divide-y divide-slate-100">
+                  {images.map((img) => (
+                    <button
+                      key={img.id}
+                      onClick={() => col.set(img.id)}
+                      className={cn(
+                        "w-full text-left p-3 flex items-center gap-3 transition-colors",
+                        col.value === img.id ? "bg-blue-50" : "hover:bg-slate-50"
+                      )}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.blob_url} alt="" className="h-10 w-10 object-cover rounded-sm border border-slate-200" />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-slate-900 truncate">{img.type || "Cliché"}</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">
+                          {new Date(img.created_at).toLocaleDateString("fr-FR")}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

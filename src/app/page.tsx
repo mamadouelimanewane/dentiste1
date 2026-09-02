@@ -89,8 +89,8 @@ const MODULES_PREVIEW = [
   { name: "Accueil", icon: HeartPulse, color: "#3b82f6" },
   { name: "Agenda", icon: Calendar, color: "#8b5cf6" },
   { name: "Clinique", icon: Stethoscope, color: "#10b981" },
-  { name: "Radio IA", icon: Brain, color: "#f59e0b" },
-  { name: "Smile Design", icon: Smile, color: "#ec4899" },
+  { name: "Imagerie", icon: Brain, color: "#f59e0b" },
+  { name: "Comparaison clichés", icon: Smile, color: "#ec4899" },
   { name: "Ordonnances", icon: Pill, color: "#14b8a6" },
   { name: "Stocks", icon: Package, color: "#f97316" },
   { name: "Analytics", icon: BarChart3, color: "#6366f1" },
@@ -316,7 +316,7 @@ export default function LandingPage() {
       <div className="py-8 border-y overflow-hidden" style={{ borderColor: "rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}>
         <div className="flex gap-10 animate-[marquee_20s_linear_infinite] whitespace-nowrap">
           {[...Array(3)].flatMap(() =>
-            ["Gestion Patients", "Agenda Pro", "Radio IA", "Smile Design", "Facturation", "Téléconsult", "Dictée Vocale", "Ordonnances", "Mutuelles", "Statistiques"]
+            ["Gestion Patients", "Agenda Pro", "Imagerie", "Comparaison clichés", "Facturation", "Téléconsult", "Dictée Vocale", "Ordonnances", "Mutuelles", "Statistiques"]
           ).map((t, i) => (
             <span key={i} className="flex items-center gap-3 text-sm font-bold text-slate-600">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-600" /> {t}

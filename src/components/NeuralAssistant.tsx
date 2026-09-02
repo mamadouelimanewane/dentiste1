@@ -24,6 +24,7 @@ import {
   Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePatient } from "@/lib/context";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface CommandAction {
@@ -88,11 +89,9 @@ export function NeuralAssistant() {
   // Use a ref to always read the latest transcript inside async callbacks
   const transcriptRef = useRef("");
 
-  const currentPatient = {
-    name: "Mamadou Diallo",
-    id: "SN-16499-X",
-    lastRadio: "24 Jan 2026",
-  };
+  // Auparavant un patient fictif codé en dur ("Mamadou Diallo / SN-16499-X")
+  // était affiché quel que soit le dossier réellement ouvert.
+  const { currentPatient } = usePatient();
 
   // --- Auto-scroll ---
   useEffect(() => {
@@ -199,7 +198,7 @@ export function NeuralAssistant() {
       // 🚨 URGENCES & DOULEURS AIGUËS
       // ═══════════════════════════════════════════════════════════
       if (/urgence|j'ai très mal|douleur intense|insupportable|dent cassée|traumatisme|choc|dent qui saigne beaucoup|abcès|abces|gonfle|enflé|enflure|tuméfaction|fièvre dentaire|fievre dentaire|visage enflé|ça me lance|rage de dent|hémorragie|yalla na la wax/.test(L)) {
-        botResponse = "🚨 URGENCE détectée. Patient prioritaire — fiche créée, praticien alerté. Prise en charge immédiate recommandée.";
+        botResponse = "🚨 Mots-clés d'urgence détectés. Aucune fiche n'a été créée et aucune alerte n'a été envoyée : prévenez le praticien vous-même et ouvrez la fiche du patient.";
         setChatHistory((p) => [...p, { role: "bot", text: "URGENCE : Évaluer ABC (Anesthésie, Drainage, Antibiotiques). Documenter heure d'arrivée + constantes.", type: "insight" }]);
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "PATIENT", content: cleanText, suggestion: "Ouvrir fiche urgence & alerter praticien", status: "pending", meta: { priority: "URGENT" } }, ...p]);
 
@@ -234,7 +233,7 @@ export function NeuralAssistant() {
       // 🧼 DÉTARTRAGE / PROPHYLAXIE
       // ═══════════════════════════════════════════════════════════
       } else if (/détartrage|detartrage|nettoyage|tartre|polissage|hygiène dentaire|prophylaxie|curetage|surfaçage/.test(L)) {
-        botResponse = "Détartrage/prophylaxie programmé. Inclus : détartrage supra et sous-gingival + polissage. Tarif : 25 000 FCFA. Durée : 45 min.";
+        botResponse = "Détartrage/prophylaxie à programmer depuis l'agenda — rien n'est réservé ici. Inclus : détartrage supra et sous-gingival + polissage. Tarif : 25 000 FCFA. Durée : 45 min.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RDV", content: cleanText, suggestion: "Programmer séance détartrage", status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
@@ -333,7 +332,7 @@ export function NeuralAssistant() {
       // 🌍 CULTURE LOCALE, WOLOF & LOCALITÉS SÉNÉGAL
       // ═══════════════════════════════════════════════════════════
       } else if (/dakar|guédiawaye|guediawaye|pikine|rufisque|thiès|thies|mbour|saint-louis|ziguinchor|diourbel|kaolack|tambacounda|kolda|bargny|touba|tivaouane|yeumbeul|parcelles assainies|grand yoff|ouakam|ngor|almadies|castors|mermoz|sacré-cœur|sacre-coeur|colobane|sandaga|plateau|médina|medina/.test(L)) {
-        botResponse = "Localité enregistrée. Nous accueillons les patients de tout le Sénégal. Voulez-vous planifier un RDV adapté à votre temps de trajet ?";
+        botResponse = "Nous accueillons les patients de tout le Sénégal. Pensez à noter la localité dans le dossier : elle n'est pas enregistrée depuis cet assistant.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RDV", content: cleanText, suggestion: "Ouvrir Agenda (Patient éloigné)", status: "pending" }, ...p]);
         
       } else if (/naka waa ker|djarama|niokobok|jerejef|na nga def|waaw|dedet|yow|mane/.test(L)) {
@@ -359,7 +358,7 @@ export function NeuralAssistant() {
       // 🔬 LABORATOIRE CFAO & FOURNISSEURS (FLUX NUMÉRIQUE)
       // ═══════════════════════════════════════════════════════════
       } else if (/empreinte numérique|empreinte optique|laboratoire|labo|prothésiste|prothesiste|couronne en zircone|teinte a2|teinte a3|envoyer au labo|relancer le labo|guide chirurgical|fournisseur/.test(L)) {
-        botResponse = "Flux numérique CFAO activé. Ordre de fabrication prêt à être envoyé au laboratoire partenaire. Les fichiers STL/PLY peuvent être joints automatiquement.";
+        botResponse = "Sujet CFAO identifié. Aucun ordre de fabrication n'est créé ni transmis depuis cet assistant : passez par le module Labo & CFAO.";
         setChatHistory((p) => [...p, { role: "bot", text: "LABO CFAO : N'oubliez pas de préciser la teinte exacte et le type de matériau (Zircone, E-max, Céramo-métallique) sur le bon de commande.", type: "insight" }]);
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "LABO", content: cleanText, suggestion: "Générer Bon de Commande Labo CFAO", status: "pending", meta: { priority: "High" } }, ...p]);
 
@@ -422,15 +421,17 @@ export function NeuralAssistant() {
       } else if (/c'était parfait|c'etait parfait|rien senti|très bien|recommande|trop cher|mal parlé|attendu trop longtemps|longue attente|déçu|decu/.test(L)) {
         const isPositive = /parfait|rien senti|très bien|recommande/.test(L);
         botResponse = isPositive 
-          ? "Retour positif enregistré. Merci pour votre confiance ! Souhaitez-vous recevoir un lien pour laisser un avis sur Google ?"
-          : "Plainte enregistrée. Nous sommes navrés pour cette expérience. La direction va être alertée immédiatement pour trouver une solution.";
+          ? "Merci pour votre confiance ! Ce retour n'est pas enregistré au dossier : notez-le dans les observations du patient si besoin."
+          : "Nous sommes navrés pour cette expérience. Attention : cette plainte n'est ni enregistrée ni transmise à la direction depuis cet assistant — remontez-la directement.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "WHATSAPP", content: cleanText, suggestion: isPositive ? "Envoyer demande d'avis Google" : "Alerter la direction (Rattrapage commercial)", status: "pending", meta: { priority: isPositive ? "Normal" : "High" } }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
       // 👤 DOSSIER PATIENT
       // ═══════════════════════════════════════════════════════════
       } else if (/dossier|patient|fiche|historique|antécédent|antecedent|medical|allergie/.test(L)) {
-        botResponse = `Dossier ${currentPatient.name} — ID: ${currentPatient.id}. Dernière radio : ${currentPatient.lastRadio}. Antécédents médicaux à vérifier avant tout acte.`;
+        botResponse = currentPatient
+          ? `Dossier ouvert : ${currentPatient.name} — ${currentPatient.idNumber || ""}. Antécédents médicaux à vérifier avant tout acte.`
+          : "Aucun dossier patient n'est ouvert. Sélectionnez un patient depuis l'agenda ou la recherche.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "PATIENT", content: cleanText, suggestion: "Ouvrir Fiche Complète + Questionnaire médical", status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════

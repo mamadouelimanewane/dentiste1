@@ -23,7 +23,7 @@ export const MODULES: ModuleDef[] = [
   { id: 12, label: "Dictée IA" },
   { id: 13, label: "Agenda" },
   { id: 14, label: "Radio IA" },
-  { id: 15, label: "Smile Design" },
+  { id: 15, label: "Comparaison clichés" },
   { id: 16, label: "Labo & CFAO" },
   { id: 17, label: "Ordonnances" },
   { id: 18, label: "Communication" },

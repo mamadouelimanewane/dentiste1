@@ -63,7 +63,7 @@ export const DENTAL_MODULE_GROUPS: DentalGroup[] = [
       { id: 5,  name: 'Réalisation',   fullTitle: 'Réalisation des Actes',       desc: 'Enregistrement des soins et interventions en temps réel.',              icon: Activity   },
       { id: 7,  name: 'Suivi',         fullTitle: 'Suivi & Archivage',           desc: 'Clôture du dossier et planification des prochains RDV.',                icon: History    },
       { id: 14, name: 'Imagerie',       fullTitle: 'Visionneuse de Clichés',     desc: 'Consultation des radiographies importées.',                              icon: Scan },
-      { id: 15, name: 'Smile Design',   fullTitle: 'Smile Design',               desc: 'Simulation esthétique de présentation au patient.',                      icon: Smile },
+      { id: 15, name: 'Comparaison',    fullTitle: 'Comparaison de clichés',     desc: 'Superposition de deux photographies du dossier patient.',                icon: Smile },
       { id: 16, name: 'Labo & CFAO',    fullTitle: 'Prosthetics Lab Center',     desc: 'Flux numériques et travaux prothétiques.',                               icon: Layers   },
       { id: 17, name: 'Ordonnances',    fullTitle: "Éditeur d'Ordonnance",       desc: 'Création, impression et envoi numérique d\'ordonnances.',                icon: Pill     },
       { id: 11, name: 'Téléconsult',    fullTitle: 'Médecine à Distance',        desc: 'Consultations vidéo sécurisées (Daily.co).',                            icon: Video    },
