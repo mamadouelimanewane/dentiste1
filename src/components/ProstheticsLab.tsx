@@ -6,6 +6,7 @@ import {
   Search,
   Plus,
   Truck,
+  Send,
   CheckCircle2,
   Clock,
   FlaskConical,
@@ -23,24 +24,28 @@ interface LabOrder {
   act_label: string;
   teinte: string | null;
   lab_name: string;
-  status: "production" | "shipped" | "completed";
+  status: "a_envoyer" | "production" | "shipped" | "completed";
   expected_delivery: string | null;
   created_at: string;
 }
 
 const STATUS_LABEL: Record<LabOrder["status"], string> = {
+  a_envoyer: "À envoyer au labo",
   production: "En Production",
   shipped: "Expédié",
   completed: "Terminé",
 };
 
 const STATUS_PROGRESS: Record<LabOrder["status"], number> = {
+  a_envoyer: 0,
   production: 33,
   shipped: 66,
   completed: 100,
 };
 
 const NEXT_STATUS: Record<LabOrder["status"], LabOrder["status"] | null> = {
+  // Un ordre naît « à envoyer » : rien n'a encore été transmis au laboratoire.
+  a_envoyer: "production",
   production: "shipped",
   shipped: "completed",
   completed: null,
@@ -125,6 +130,7 @@ export function ProstheticsLab() {
     (o) => !search || o.patient_name.toLowerCase().includes(search.toLowerCase()) || o.act_label.toLowerCase().includes(search.toLowerCase())
   );
 
+  const aEnvoyer = orders.filter((o) => o.status === "a_envoyer").length;
   const enCours = orders.filter((o) => o.status === "production").length;
   const expedies = orders.filter((o) => o.status === "shipped").length;
   const termines = orders.filter((o) => o.status === "completed").length;
@@ -213,8 +219,9 @@ export function ProstheticsLab() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
+          { label: "À envoyer", value: String(aEnvoyer), icon: Send, color: "text-rose-500", bg: "bg-rose-50" },
           { label: "En Production", value: String(enCours), icon: Clock, color: "text-amber-500", bg: "bg-amber-50" },
           { label: "Expédiés", value: String(expedies), icon: Truck, color: "text-blue-500", bg: "bg-blue-50" },
           { label: "Terminés", value: String(termines), icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-50" },
