@@ -81,6 +81,28 @@ export async function POST(request: Request) {
     total = actes.reduce((s, a) => s + a.prix * (a.quantite || 1), 0);
   }
 
+  // Repli sur le dernier devis du patient. Le praticien construit son devis
+  // puis veut l'expliquer : sans ce repli, le module répondait « aucun acte à
+  // expliquer » alors que le devis était sous ses yeux, parce qu'il ne
+  // regardait que les actes non encore facturés.
+  if (actes.length === 0) {
+    const dernier = await sql`
+      select id, items, total from quotes
+      where patient_id = ${patientId}
+      order by created_at desc
+      limit 1
+    `;
+    if (dernier[0]) {
+      const items = Array.isArray(dernier[0].items) ? dernier[0].items : [];
+      actes = items.map((i: any) => ({
+        label: String(i.label || 'Acte'),
+        prix: Number(i.price) || 0,
+        quantite: Number(i.qty) || 1,
+      }));
+      total = Number(dernier[0].total) || 0;
+    }
+  }
+
   if (actes.length === 0) {
     return NextResponse.json(
       { error: "Aucun acte à expliquer. Établissez d'abord un devis ou saisissez les soins." },
