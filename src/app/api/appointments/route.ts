@@ -146,7 +146,7 @@ export async function POST(request: Request) {
 
   // Récupérer les patients pour les notifications
   const patientsInfo = finalPatientIds.length > 0 
-    ? await sql`select id, full_name, phone from patients where id = any(${finalPatientIds as string[]})`
+    ? await sql`select id, full_name, phone, whatsapp_phone from patients where id = any(${finalPatientIds as string[]})`
     : [];
   
   const created: unknown[] = [];
@@ -208,6 +208,7 @@ export async function POST(request: Request) {
         notifyPatient({
           patientId: pId,
           phone: patient.phone,
+          whatsappPhone: patient.whatsapp_phone,
           body: msg,
           sentBy: session?.userId,
           templateName: MODELES.confirmation,

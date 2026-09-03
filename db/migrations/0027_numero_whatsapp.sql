@@ -1,0 +1,11 @@
+-- Numéro WhatsApp distinct du numéro d'appel.
+--
+-- Au Sénégal, beaucoup de patients ont plusieurs puces : l'une pour les
+-- appels et les SMS, l'autre — souvent chez un opérateur moins cher en
+-- données — pour WhatsApp. La fiche ne retenait qu'un seul numéro, donc les
+-- messages WhatsApp partaient vers une ligne qui n'a pas WhatsApp, et les
+-- SMS vers une ligne que le patient ne consulte pas.
+--
+-- Quand cette colonne est vide, WhatsApp retombe sur `phone` : les dossiers
+-- existants continuent de fonctionner sans reprise.
+alter table patients add column if not exists whatsapp_phone text;

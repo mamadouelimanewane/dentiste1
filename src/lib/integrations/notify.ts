@@ -26,6 +26,10 @@ export interface NotifyResult {
 export async function notifyPatient(params: {
   patientId?: string | null;
   phone: string;
+  // Numéro WhatsApp lorsqu'il diffère de la ligne d'appel. Beaucoup de
+  // patients ont deux puces : sans cette distinction, le message WhatsApp
+  // partait vers une ligne qui n'a pas WhatsApp.
+  whatsappPhone?: string | null;
   body: string;
   sentBy?: string | null;
   // Modèle approuvé et ses variables. Sans eux, l'envoi WhatsApp reste en
@@ -33,35 +37,41 @@ export async function notifyPatient(params: {
   templateName?: string;
   templateParams?: string[];
 }): Promise<NotifyResult> {
+  // Chaque canal reçoit sa propre ligne. À défaut de numéro WhatsApp
+  // renseigné, on retombe sur le numéro d'appel : les dossiers existants
+  // continuent de fonctionner sans reprise.
+  const versWhatsApp = { ...params, phone: params.whatsappPhone || params.phone };
+  const versSms = { ...params, phone: params.phone };
+
   if (DOUBLE_CANAL) {
     const [wa] = await Promise.all([
-      sendWhatsAppMessage(params),
-      sendSms(params),
+      sendWhatsAppMessage(versWhatsApp),
+      sendSms(versSms),
     ]);
     return { canal: 'whatsapp', simulated: wa.simulated, error: wa.error };
   }
 
   if (isWhatsAppConfigured()) {
-    const wa = await sendWhatsAppMessage(params);
+    const wa = await sendWhatsAppMessage(versWhatsApp);
     if (!wa.error) {
       return { canal: 'whatsapp', simulated: wa.simulated };
     }
     // Rejet immédiat de WhatsApp (numéro sans compte, modèle manquant...) :
     // le message ne doit pas être perdu pour autant.
     if (isSmsConfigured()) {
-      const sms = await sendSms(params);
+      const sms = await sendSms(versSms);
       return { canal: 'sms', simulated: sms.simulated, error: sms.error };
     }
     return { canal: 'whatsapp', error: wa.error };
   }
 
   if (isSmsConfigured()) {
-    const sms = await sendSms(params);
+    const sms = await sendSms(versSms);
     return { canal: 'sms', simulated: sms.simulated, error: sms.error };
   }
 
   // Aucun canal configuré : on journalise quand même via WhatsApp, qui
   // enregistre le message en « simulé ».
-  const wa = await sendWhatsAppMessage(params);
+  const wa = await sendWhatsAppMessage(versWhatsApp);
   return { canal: 'aucun', simulated: wa.simulated, error: wa.error };
 }

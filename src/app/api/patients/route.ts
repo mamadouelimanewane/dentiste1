@@ -49,10 +49,11 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();
-  const { fullName, birthDate, phone, address, allergies, mutuelle } = body as {
+  const { fullName, birthDate, phone, whatsappPhone, address, allergies, mutuelle } = body as {
     fullName?: string;
     birthDate?: string;
     phone?: string;
+    whatsappPhone?: string;
     address?: string;
     allergies?: string;
     mutuelle?: string;
@@ -70,11 +71,18 @@ export async function POST(request: Request) {
   const naissance = validerDateNaissance(birthDate);
   if (!naissance.ok) return NextResponse.json({ error: naissance.erreur }, { status: 400 });
 
+  // Ligne WhatsApp distincte, fréquente au Sénégal où beaucoup de patients
+  // ont deux puces.
+  const telWhatsApp = validerTelephone(whatsappPhone);
+  if (!telWhatsApp.ok) {
+    return NextResponse.json({ error: `WhatsApp : ${telWhatsApp.erreur}` }, { status: 400 });
+  }
+
   const rows = await sql`
-    insert into patients (full_name, birth_date, phone, address, allergies, mutuelle, created_by)
-    values (${nom.valeur}, ${naissance.valeur}, ${tel.valeur}, ${bornerTexte(address, 300)},
+    insert into patients (full_name, birth_date, phone, whatsapp_phone, address, allergies, mutuelle, created_by)
+    values (${nom.valeur}, ${naissance.valeur}, ${tel.valeur}, ${telWhatsApp.valeur}, ${bornerTexte(address, 300)},
             ${bornerTexte(allergies, 500)}, ${bornerTexte(mutuelle, 150)}, ${session!.userId})
-    returning id, dossier_number, full_name, birth_date, phone, address, allergies, mutuelle, status, created_at
+    returning id, dossier_number, full_name, birth_date, phone, whatsapp_phone, address, allergies, mutuelle, status, created_at
   `;
 
   const patient = rows[0];
@@ -124,6 +132,7 @@ export async function POST(request: Request) {
       const envoi = await notifyPatient({
         patientId: patient.id,
         phone,
+        whatsappPhone: patient.whatsapp_phone as string | null,
         body: messageBody,
         sentBy: session!.userId,
         // Un nouveau patient n'a par définition jamais écrit au cabinet : le
