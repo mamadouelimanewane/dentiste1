@@ -13,11 +13,29 @@ import 'server-only';
 // médical — le premier est utile, le second exige une certification que ce
 // logiciel n'a pas.
 
-const API_KEY = process.env.ANTHROPIC_API_KEY;
-const MODELE = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
+// Deux fournisseurs possibles. Le cabinet utilise celui dont la clé est
+// posée ; si les deux le sont, AI_PROVIDER tranche. Cette bascule évite de
+// dépendre d'un seul prestataire — l'un peut exiger une vérification
+// d'identité, tomber en panne ou changer ses tarifs.
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const ANTHROPIC_MODELE = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
+
+const OPENAI_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_MODELE = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+
+type Fournisseur = 'anthropic' | 'openai';
+
+function fournisseurRetenu(): Fournisseur | null {
+  const demande = process.env.AI_PROVIDER as Fournisseur | undefined;
+  if (demande === 'openai' && OPENAI_KEY) return 'openai';
+  if (demande === 'anthropic' && ANTHROPIC_KEY) return 'anthropic';
+  if (ANTHROPIC_KEY) return 'anthropic';
+  if (OPENAI_KEY) return 'openai';
+  return null;
+}
 
 export function isExplicationConfigured() {
-  return !!API_KEY;
+  return fournisseurRetenu() !== null;
 }
 
 export interface ActePlan {
@@ -63,9 +81,6 @@ export async function genererExplication(params: {
   partMutuelle?: number | null;
   nomMutuelle?: string | null;
 }): Promise<ResultatExplication> {
-  if (!API_KEY) {
-    return { error: "L'assistant de rédaction n'est pas configuré (clé API absente)." };
-  }
   if (!params.actes.length) {
     return { error: 'Aucun acte à expliquer.' };
   }
@@ -94,42 +109,82 @@ ${lignes}
 
 Total : ${fcfa(params.total)}${reste}`;
 
+  const fournisseur = fournisseurRetenu();
+  if (!fournisseur) {
+    return { error: "L'assistant de rédaction n'est pas configuré (aucune clé API)." };
+  }
+
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const appel: {
+      url: string;
+      headers: Record<string, string>;
+      corps: Record<string, unknown>;
+      modele: string;
+    } =
+      fournisseur === 'anthropic'
+        ? {
+            url: 'https://api.anthropic.com/v1/messages',
+            headers: {
+              'x-api-key': ANTHROPIC_KEY!,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json',
+            },
+            corps: {
+              model: ANTHROPIC_MODELE,
+              max_tokens: 1200,
+              system: SYSTEME,
+              messages: [
+                { role: 'user', content: message },
+                // Amorce la réponse pour garantir un JSON exploitable.
+                { role: 'assistant', content: '{' },
+              ],
+            },
+            modele: ANTHROPIC_MODELE,
+          }
+        : {
+            url: 'https://api.openai.com/v1/chat/completions',
+            headers: {
+              Authorization: `Bearer ${OPENAI_KEY!}`,
+              'content-type': 'application/json',
+            },
+            corps: {
+              model: OPENAI_MODELE,
+              max_tokens: 1200,
+              // Garantit un objet JSON en sortie, sans avoir à amorcer la
+              // réponse comme chez Anthropic.
+              response_format: { type: 'json_object' },
+              messages: [
+                { role: 'system', content: SYSTEME },
+                { role: 'user', content: message },
+              ],
+            },
+            modele: OPENAI_MODELE,
+          };
+
+    const res = await fetch(appel.url, {
       method: 'POST',
-      headers: {
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: MODELE,
-        max_tokens: 1200,
-        system: SYSTEME,
-        messages: [
-          { role: 'user', content: message },
-          // Amorce la réponse pour garantir un JSON exploitable.
-          { role: 'assistant', content: '{' },
-        ],
-      }),
+      headers: appel.headers,
+      body: JSON.stringify(appel.corps),
     });
 
     const data = await res.json();
     if (!res.ok) {
-      // Les messages de l'API sont en anglais et techniques. Un praticien
+      // Les messages des deux API sont en anglais et techniques. Un praticien
       // en consultation a besoin de savoir quoi faire, pas de lire
       // « Your credit balance is too low ».
       const brutErr = String(data?.error?.message || '');
-      const type = String(data?.error?.type || '');
+      const type = String(data?.error?.type || data?.error?.code || '');
 
-      if (/credit balance/i.test(brutErr)) {
+      if (/credit balance|insufficient_quota|billing/i.test(brutErr + type)) {
         return {
           error:
-            "Crédit épuisé sur le compte de rédaction. Rechargez-le sur console.anthropic.com (Plans & Billing) — les explications reprendront aussitôt.",
+            fournisseur === 'anthropic'
+              ? "Crédit épuisé sur le compte de rédaction. Rechargez-le sur console.anthropic.com (Plans & Billing)."
+              : "Crédit épuisé sur le compte de rédaction. Rechargez-le sur platform.openai.com (Billing).",
         };
       }
-      if (res.status === 401 || /authentication/i.test(type)) {
-        return { error: "Clé de rédaction refusée. Vérifiez ANTHROPIC_API_KEY." };
+      if (res.status === 401 || /authentication|invalid_api_key/i.test(type)) {
+        return { error: 'Clé de rédaction refusée. Vérifiez la clé API configurée.' };
       }
       if (res.status === 429 || /rate_limit/i.test(type)) {
         return { error: 'Trop de demandes simultanées. Réessayez dans quelques secondes.' };
@@ -140,19 +195,25 @@ Total : ${fcfa(params.total)}${reste}`;
       return { error: brutErr || "L'assistant de rédaction n'a pas répondu." };
     }
 
-    const brut = '{' + (data?.content?.[0]?.text || '');
+    // Anthropic renvoie content[0].text (amorcé par '{'), OpenAI renvoie
+    // choices[0].message.content déjà complet.
+    const brut =
+      fournisseur === 'anthropic'
+        ? '{' + (data?.content?.[0]?.text || '')
+        : data?.choices?.[0]?.message?.content || '';
+
     let parsed: { fr?: string; wo?: string };
     try {
       parsed = JSON.parse(brut);
     } catch {
-      return { error: 'Réponse illisible de l\'assistant. Réessayez.' };
+      return { error: "Réponse illisible de l'assistant. Réessayez." };
     }
 
     if (!parsed.fr?.trim()) {
       return { error: 'Aucun texte produit.' };
     }
 
-    return { texteFr: parsed.fr.trim(), texteWo: parsed.wo?.trim(), modele: MODELE };
+    return { texteFr: parsed.fr.trim(), texteWo: parsed.wo?.trim(), modele: appel.modele };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erreur réseau (assistant de rédaction)." };
   }
