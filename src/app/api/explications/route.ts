@@ -121,7 +121,6 @@ export async function POST(request: Request) {
   const partMutuelle = Number(claims[0]?.part || 0) || null;
 
   const resultat = await genererExplication({
-    patientNom: patient.full_name as string,
     actes,
     total,
     partMutuelle,

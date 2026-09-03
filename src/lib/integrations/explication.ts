@@ -23,14 +23,21 @@ const ANTHROPIC_MODELE = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODELE = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
-type Fournisseur = 'anthropic' | 'openai';
+// DeepSeek expose une API compatible OpenAI : même endpoint, même corps de
+// requête, même format de réponse. Seuls l'URL de base et le modèle changent.
+const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY;
+const DEEPSEEK_MODELE = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+
+type Fournisseur = 'anthropic' | 'openai' | 'deepseek';
 
 function fournisseurRetenu(): Fournisseur | null {
   const demande = process.env.AI_PROVIDER as Fournisseur | undefined;
+  if (demande === 'deepseek' && DEEPSEEK_KEY) return 'deepseek';
   if (demande === 'openai' && OPENAI_KEY) return 'openai';
   if (demande === 'anthropic' && ANTHROPIC_KEY) return 'anthropic';
   if (ANTHROPIC_KEY) return 'anthropic';
   if (OPENAI_KEY) return 'openai';
+  if (DEEPSEEK_KEY) return 'deepseek';
   return null;
 }
 
@@ -64,7 +71,7 @@ RÈGLES ABSOLUES
 - Si une information manque, tu ne la combles pas : tu n'en parles pas.
 
 STYLE
-- Tu t'adresses au patient en le vouvoyant, avec des mots simples, sans jargon.
+- Tu t'adresses au patient en le vouvoyant, avec des mots simples, sans jargon. Tu ne le nommes jamais : son nom ne t'est pas communiqué, et tu n'en inventes pas.
 - Tu traduis la position des dents en repères compréhensibles : « une molaire en haut à droite », « une dent de devant en bas ». Ne cite jamais les numéros FDI.
 - Explique en une phrase courte pourquoi chaque soin est proposé, en termes concrets (« la dent est trop abîmée pour un simple plombage »).
 - Ton neutre et rassurant, sans dramatiser ni minimiser. Pas de superlatifs commerciaux.
@@ -75,7 +82,6 @@ Réponds uniquement par un objet JSON valide, sans texte autour :
 {"fr": "...", "wo": "..."}`;
 
 export async function genererExplication(params: {
-  patientNom: string;
   actes: ActePlan[];
   total: number;
   partMutuelle?: number | null;
@@ -102,9 +108,15 @@ export async function genererExplication(params: {
         `\nReste à la charge du patient : ${fcfa(params.total - params.partMutuelle)}`
       : '';
 
-  const message = `Patient : ${params.patientNom}
-
-Soins décidés par le praticien :
+  // Le nom du patient n'est pas transmis au fournisseur.
+  //
+  // Le modèle n'en a aucun besoin pour rédiger : le texte s'adresse au
+  // patient en le vouvoyant, sans jamais le nommer. En le retirant, ce qui
+  // sort du cabinet n'est plus qu'une liste d'actes et de montants — sans
+  // identité, donc sans donnée de santé rattachable à une personne. Cela vaut
+  // quel que soit le fournisseur, et d'autant plus lorsqu'il est établi hors
+  // du Sénégal.
+  const message = `Soins décidés par le praticien :
 ${lignes}
 
 Total : ${fcfa(params.total)}${reste}`;
@@ -142,13 +154,16 @@ Total : ${fcfa(params.total)}${reste}`;
             modele: ANTHROPIC_MODELE,
           }
         : {
-            url: 'https://api.openai.com/v1/chat/completions',
+            url:
+              fournisseur === 'deepseek'
+                ? 'https://api.deepseek.com/chat/completions'
+                : 'https://api.openai.com/v1/chat/completions',
             headers: {
-              Authorization: `Bearer ${OPENAI_KEY!}`,
+              Authorization: `Bearer ${(fournisseur === 'deepseek' ? DEEPSEEK_KEY : OPENAI_KEY)!}`,
               'content-type': 'application/json',
             },
             corps: {
-              model: OPENAI_MODELE,
+              model: fournisseur === 'deepseek' ? DEEPSEEK_MODELE : OPENAI_MODELE,
               max_tokens: 1200,
               // Garantit un objet JSON en sortie, sans avoir à amorcer la
               // réponse comme chez Anthropic.
@@ -158,7 +173,7 @@ Total : ${fcfa(params.total)}${reste}`;
                 { role: 'user', content: message },
               ],
             },
-            modele: OPENAI_MODELE,
+            modele: fournisseur === 'deepseek' ? DEEPSEEK_MODELE : OPENAI_MODELE,
           };
 
     const res = await fetch(appel.url, {
@@ -179,8 +194,10 @@ Total : ${fcfa(params.total)}${reste}`;
         return {
           error:
             fournisseur === 'anthropic'
-              ? "Crédit épuisé sur le compte de rédaction. Rechargez-le sur console.anthropic.com (Plans & Billing)."
-              : "Crédit épuisé sur le compte de rédaction. Rechargez-le sur platform.openai.com (Billing).",
+              ? 'Crédit épuisé sur le compte de rédaction. Rechargez-le sur console.anthropic.com (Plans & Billing).'
+              : fournisseur === 'deepseek'
+              ? 'Crédit épuisé sur le compte de rédaction. Rechargez-le sur platform.deepseek.com.'
+              : 'Crédit épuisé sur le compte de rédaction. Rechargez-le sur platform.openai.com (Billing).',
         };
       }
       if (res.status === 401 || /authentication|invalid_api_key/i.test(type)) {
