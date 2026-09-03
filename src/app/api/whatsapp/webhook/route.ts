@@ -112,10 +112,18 @@ export async function POST(request: Request) {
       const dejaRepris = await sql`
         select 1 from patient_messages where fallback_of = ${msg.id} limit 1
       `;
+      // Le SMS doit partir vers la LIGNE D'APPEL du patient, pas vers celle
+      // enregistrée sur le message WhatsApp : quand les deux diffèrent, le
+      // repli visait la ligne WhatsApp, qui ne reçoit pas forcément de SMS.
+      const lignes = msg.patient_id
+        ? await sql`select phone from patients where id = ${msg.patient_id} limit 1`
+        : [];
+      const numeroSms = (lignes[0]?.phone as string | undefined) || (msg.phone as string);
+
       if (dejaRepris.length === 0 && isSmsConfigured()) {
         const envoi = await sendSms({
           patientId: msg.patient_id as string | null,
-          phone: msg.phone as string,
+          phone: numeroSms,
           body: msg.body as string,
         });
         await sql`
@@ -123,7 +131,7 @@ export async function POST(request: Request) {
           set fallback_of = ${msg.id}
           where id = (
             select id from patient_messages
-            where phone = ${msg.phone} and channel = 'sms' and fallback_of is null
+            where phone = ${numeroSms} and channel = 'sms' and fallback_of is null
             order by created_at desc limit 1
           )
         `;
