@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { sql } from '@/lib/db';
+import { sendSms, isSmsConfigured } from '@/lib/integrations/sms';
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const APP_SECRET = process.env.WHATSAPP_APP_SECRET;
@@ -90,12 +91,51 @@ export async function POST(request: Request) {
     const detail = st.errors?.[0]
       ? `${st.errors[0].code} ${st.errors[0].title || st.errors[0].message || ''}`.trim()
       : null;
-    await sql`
+    const rows = await sql`
       update patient_messages
       set status = ${mapped},
           error_detail = coalesce(${detail}, error_detail)
       where provider_message_id = ${st.id}
+      returning id, patient_id, phone, body, fallback_of
     `;
+
+    // Repli SMS. Meta accepte la requête puis rejette la livraison : l'échec
+    // n'arrive qu'ici, par webhook, bien après l'appel. Sans ce rattrapage, le
+    // message de bienvenue et la confirmation de rendez-vous n'atteignaient
+    // jamais un nouveau patient — n'ayant par définition jamais écrit au
+    // cabinet, il est toujours hors de la fenêtre de 24h que Meta impose au
+    // texte libre (erreur 131047).
+    const msg = rows[0];
+    if (mapped === 'failed' && msg && !msg.fallback_of && msg.phone && msg.body) {
+      // Un seul rattrapage par message : `fallback_of` marque le SMS déjà
+      // émis, et sa présence empêche toute nouvelle tentative.
+      const dejaRepris = await sql`
+        select 1 from patient_messages where fallback_of = ${msg.id} limit 1
+      `;
+      if (dejaRepris.length === 0 && isSmsConfigured()) {
+        const envoi = await sendSms({
+          patientId: msg.patient_id as string | null,
+          phone: msg.phone as string,
+          body: msg.body as string,
+        });
+        await sql`
+          update patient_messages
+          set fallback_of = ${msg.id}
+          where id = (
+            select id from patient_messages
+            where phone = ${msg.phone} and channel = 'sms' and fallback_of is null
+            order by created_at desc limit 1
+          )
+        `;
+        if (envoi.error) {
+          await sql`
+            update patient_messages
+            set error_detail = ${`repli SMS: ${envoi.error}`.slice(0, 300)}
+            where id = ${msg.id}
+          `;
+        }
+      }
+    }
   }
 
   const messages =
