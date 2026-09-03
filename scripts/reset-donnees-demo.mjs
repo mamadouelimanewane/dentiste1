@@ -69,7 +69,7 @@ const TABLES = [
 const CONSERVEES = ['users', 'roles', 'clinic_settings', 'inventory_items', 'document_templates'];
 
 // Numéro réel du cabinet, utilisé pour vérifier les envois de bout en bout.
-const TELEPHONES_TEST = ['+221777529288'];
+const TELEPHONES_TEST = ['+221777529288', '+221778438786'];
 
 async function main() {
   console.log(CONFIRME ? '=== SUPPRESSION EFFECTIVE ===' : '=== SIMULATION (aucune écriture) ===');
