@@ -116,7 +116,28 @@ Total : ${fcfa(params.total)}${reste}`;
 
     const data = await res.json();
     if (!res.ok) {
-      return { error: data?.error?.message || "L'assistant de rédaction n'a pas répondu." };
+      // Les messages de l'API sont en anglais et techniques. Un praticien
+      // en consultation a besoin de savoir quoi faire, pas de lire
+      // « Your credit balance is too low ».
+      const brutErr = String(data?.error?.message || '');
+      const type = String(data?.error?.type || '');
+
+      if (/credit balance/i.test(brutErr)) {
+        return {
+          error:
+            "Crédit épuisé sur le compte de rédaction. Rechargez-le sur console.anthropic.com (Plans & Billing) — les explications reprendront aussitôt.",
+        };
+      }
+      if (res.status === 401 || /authentication/i.test(type)) {
+        return { error: "Clé de rédaction refusée. Vérifiez ANTHROPIC_API_KEY." };
+      }
+      if (res.status === 429 || /rate_limit/i.test(type)) {
+        return { error: 'Trop de demandes simultanées. Réessayez dans quelques secondes.' };
+      }
+      if (res.status >= 500) {
+        return { error: 'Service de rédaction momentanément indisponible. Réessayez.' };
+      }
+      return { error: brutErr || "L'assistant de rédaction n'a pas répondu." };
     }
 
     const brut = '{' + (data?.content?.[0]?.text || '');
