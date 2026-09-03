@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
 import { SignaturePadModal } from "./SignaturePadModal";
 import { ActCatalogPicker } from "@/components/ActCatalogPicker";
+import { ExplicationPatient } from "@/components/ExplicationPatient";
 
 export function QuoteBuilder() {
   const { currentPatient } = usePatient();
@@ -194,6 +195,10 @@ export function QuoteBuilder() {
         </div>
       </div>
       
+      {/* Reformulation du plan en mots que le patient comprend : c'est au
+          moment du devis que se joue son acceptation. */}
+      <ExplicationPatient />
+
       <SignaturePadModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
