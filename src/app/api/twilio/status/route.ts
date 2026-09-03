@@ -69,9 +69,21 @@ export async function POST(request: Request) {
     return new NextResponse('OK', { status: 200 });
   }
 
+  // Motif de l'échec. Twilio le transmet dans ErrorCode/ErrorMessage, mais il
+  // n'était pas conservé : un SMS échouait sans que le cabinet puisse savoir
+  // si le numéro était invalide, le crédit épuisé ou le pays non autorisé —
+  // trois situations qui appellent des réponses différentes.
+  const codeErreur = params.ErrorCode;
+  const messageErreur = params.ErrorMessage;
+  const detail =
+    codeErreur || messageErreur
+      ? `${codeErreur || ''} ${messageErreur || ''}`.trim().slice(0, 300)
+      : null;
+
   await sql`
     update patient_messages
-    set status = ${mapped}::message_status
+    set status = ${mapped}::message_status,
+        error_detail = coalesce(${detail}, error_detail)
     where provider_message_id = ${sid}
   `;
 
