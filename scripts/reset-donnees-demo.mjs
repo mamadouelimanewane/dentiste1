@@ -16,6 +16,11 @@
  * du cabinet, le catalogue d'actes, les modèles de documents et le stock
  * (inventory_items) — ce sont des données de paramétrage, pas de démonstration.
  *
+ * PATIENTS PRÉSERVÉS : les numéros listés dans TELEPHONES_TEST survivent à la
+ * purge. Ils servent à vérifier les envois WhatsApp et SMS sur un vrai
+ * téléphone ; les effacer obligerait à les recréer avant chaque test, et à
+ * repasser par le message de bienvenue.
+ *
  * Usage :
  *   node scripts/reset-donnees-demo.mjs            → simulation (n'écrit rien)
  *   node scripts/reset-donnees-demo.mjs --confirmer → suppression effective
@@ -63,9 +68,22 @@ const TABLES = [
 
 const CONSERVEES = ['users', 'roles', 'clinic_settings', 'inventory_items', 'document_templates'];
 
+// Numéro réel du cabinet, utilisé pour vérifier les envois de bout en bout.
+const TELEPHONES_TEST = ['+221777529288'];
+
 async function main() {
   console.log(CONFIRME ? '=== SUPPRESSION EFFECTIVE ===' : '=== SIMULATION (aucune écriture) ===');
   console.log('');
+
+  // Identifiants des patients à préserver, résolus une seule fois.
+  const preserves = (
+    await sql`select id from patients where phone = any(${TELEPHONES_TEST})`
+  ).map((r) => r.id);
+
+  if (preserves.length > 0) {
+    console.log(`  ${preserves.length} patient(s) de test préservé(s) : ${TELEPHONES_TEST.join(', ')}`);
+    console.log('');
+  }
 
   let total = 0;
   for (const table of TABLES) {
@@ -82,11 +100,28 @@ async function main() {
       console.log(`  ${table.padEnd(26)} déjà vide`);
       continue;
     }
+    // Les tables rattachées à un patient épargnent les dossiers préservés.
+    const colonnePatient = table === 'patients' ? 'id' : 'patient_id';
+    const aUnePatientId =
+      table === 'patients' ||
+      (
+        await sql.query(
+          `select 1 from information_schema.columns where table_name = $1 and column_name = 'patient_id'`,
+          [table]
+        )
+      ).length > 0;
+    const filtre =
+      preserves.length > 0 && aUnePatientId
+        ? ` where ${colonnePatient} is null or ${colonnePatient} <> all($1)`
+        : '';
+
     if (CONFIRME) {
-      await sql.query(`delete from ${table}`);
-      console.log(`  ${table.padEnd(26)} ${String(n).padStart(5)} ligne(s) supprimée(s)`);
+      const supprimees = filtre
+        ? await sql.query(`delete from ${table}${filtre} returning 1`, [preserves])
+        : await sql.query(`delete from ${table} returning 1`);
+      console.log(`  ${table.padEnd(26)} ${String(supprimees.length).padStart(5)} ligne(s) supprimée(s)`);
     } else {
-      console.log(`  ${table.padEnd(26)} ${String(n).padStart(5)} ligne(s) seraient supprimées`);
+      console.log(`  ${table.padEnd(26)} ${String(n).padStart(5)} ligne(s) au plus`);
     }
   }
 

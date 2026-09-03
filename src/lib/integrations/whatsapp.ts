@@ -39,10 +39,15 @@ async function logMessage(params: {
   status: string;
   providerMessageId?: string | null;
   sentBy?: string | null;
+  // Motif d'un refus immédiat de Meta (modèle inconnu ou non approuvé,
+  // numéro invalide...). Sans lui, un échec synchrone laissait une ligne
+  // « failed » sans la moindre explication — alors que les échecs
+  // asynchrones, eux, portent leur code depuis le webhook.
+  errorDetail?: string | null;
 }) {
   await sql`
-    insert into patient_messages (patient_id, phone, channel, direction, body, status, provider_message_id, sent_by)
-    values (${params.patientId ?? null}, ${params.phone}, 'whatsapp', 'outbound', ${params.body}, ${params.status}, ${params.providerMessageId ?? null}, ${params.sentBy ?? null})
+    insert into patient_messages (patient_id, phone, channel, direction, body, status, provider_message_id, sent_by, error_detail)
+    values (${params.patientId ?? null}, ${params.phone}, 'whatsapp', 'outbound', ${params.body}, ${params.status}, ${params.providerMessageId ?? null}, ${params.sentBy ?? null}, ${params.errorDetail ?? null})
   `;
 }
 
@@ -295,6 +300,7 @@ export async function sendWhatsAppMessage(params: {
     status: result.error ? 'failed' : 'sent',
     providerMessageId: result.providerMessageId,
     sentBy,
+    errorDetail: result.error ? result.error.slice(0, 300) : null,
   });
 
   return result;
