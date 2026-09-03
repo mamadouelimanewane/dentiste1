@@ -89,11 +89,26 @@ async function sendVia360dialog(phone: string, body: string): Promise<SendResult
 const REMINDER_TEMPLATE = process.env.WHATSAPP_REMINDER_TEMPLATE;
 const REMINDER_TEMPLATE_LANG = process.env.WHATSAPP_REMINDER_TEMPLATE_LANG || 'fr';
 
+// Chaque type de message a son propre modèle : Meta approuve un texte, pas
+// une intention. Un seul modèle « rappel » ne pouvait pas couvrir l'accueil
+// d'un nouveau patient ni la confirmation d'un rendez-vous, qui restaient
+// donc en texte libre — et échouaient en 131047 pour tout patient n'ayant
+// pas écrit au cabinet dans les 24h, c'est-à-dire tous les nouveaux.
+export const MODELES = {
+  rappel: REMINDER_TEMPLATE || 'rappel_rendez_vous',
+  bienvenue: process.env.WHATSAPP_TEMPLATE_BIENVENUE || 'bienvenue_cabinet',
+  confirmation: process.env.WHATSAPP_TEMPLATE_CONFIRMATION || 'confirmation_rdv',
+} as const;
+
 export function isWhatsAppTemplateConfigured() {
-  return isMetaConfigured() && !!REMINDER_TEMPLATE;
+  return isMetaConfigured();
 }
 
-async function sendTemplateViaMeta(phone: string, params: string[]): Promise<SendResult> {
+async function sendTemplateViaMeta(
+  phone: string,
+  params: string[],
+  nomModele: string
+): Promise<SendResult> {
   try {
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
@@ -106,7 +121,7 @@ async function sendTemplateViaMeta(phone: string, params: string[]): Promise<Sen
         to: phone,
         type: 'template',
         template: {
-          name: REMINDER_TEMPLATE,
+          name: nomModele,
           language: { code: REMINDER_TEMPLATE_LANG },
           components: params.length
             ? [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text })) }]
@@ -252,8 +267,11 @@ export async function sendWhatsAppMessage(params: {
   // Renseigné par les envois à l'initiative du cabinet (rappels) : les
   // valeurs qui alimentent les variables du modèle approuvé, dans l'ordre.
   templateParams?: string[];
+  // Modèle approuvé à utiliser (voir MODELES). Sans lui, l'envoi reste en
+  // texte libre, qui n'aboutit que dans la fenêtre de 24h.
+  templateName?: string;
 }): Promise<SendResult> {
-  const { patientId, phone, body, sentBy, templateParams } = params;
+  const { patientId, phone, body, sentBy, templateParams, templateName } = params;
 
   if (!isWhatsAppConfigured()) {
     await logMessage({ patientId, phone, body, status: 'simulated', sentBy });
@@ -263,7 +281,7 @@ export async function sendWhatsAppMessage(params: {
   const useTemplate = !!templateParams && isWhatsAppTemplateConfigured() && !isD360Configured();
 
   const result = useTemplate
-    ? await sendTemplateViaMeta(phone, templateParams!)
+    ? await sendTemplateViaMeta(phone, templateParams!, templateName || MODELES.rappel)
     : isD360Configured()
     ? await sendVia360dialog(phone, body)
     : isMetaConfigured()

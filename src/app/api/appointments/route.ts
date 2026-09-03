@@ -3,6 +3,7 @@ import { sql } from '@/lib/db';
 import { validerCreneau } from '@/lib/validation';
 import { requirePermission } from '@/lib/permissions';
 import { notifyPatient } from '@/lib/integrations/notify';
+import { MODELES } from '@/lib/integrations/whatsapp';
 
 const RECURRENCE_STEP_DAYS: Record<string, number> = {
   weekly: 7,
@@ -204,7 +205,14 @@ export async function POST(request: Request) {
 
         // Un seul canal : le patient recevait auparavant deux fois le même
         // texte, et le cabinet payait deux envois pour une seule information.
-        notifyPatient({ patientId: pId, phone: patient.phone, body: msg, sentBy: session?.userId }).catch(console.error);
+        notifyPatient({
+          patientId: pId,
+          phone: patient.phone,
+          body: msg,
+          sentBy: session?.userId,
+          templateName: MODELES.confirmation,
+          templateParams: [patient.full_name, formattedDate],
+        }).catch(console.error);
       }
     }
   }

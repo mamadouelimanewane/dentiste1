@@ -28,6 +28,10 @@ export async function notifyPatient(params: {
   phone: string;
   body: string;
   sentBy?: string | null;
+  // Modèle approuvé et ses variables. Sans eux, l'envoi WhatsApp reste en
+  // texte libre et n'aboutit que dans la fenêtre de 24h.
+  templateName?: string;
+  templateParams?: string[];
 }): Promise<NotifyResult> {
   if (DOUBLE_CANAL) {
     const [wa] = await Promise.all([

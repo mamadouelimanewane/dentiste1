@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { sql } from '@/lib/db';
 import { requirePermission } from '@/lib/permissions';
 import { notifyPatient } from '@/lib/integrations/notify';
+import { MODELES } from '@/lib/integrations/whatsapp';
 import { isDatabaseConfigured } from '@/lib/db';
 import {
   validerNom,
@@ -125,6 +126,10 @@ export async function POST(request: Request) {
         phone,
         body: messageBody,
         sentBy: session!.userId,
+        // Un nouveau patient n'a par définition jamais écrit au cabinet : le
+        // texte libre lui serait refusé par Meta (131047).
+        templateName: MODELES.bienvenue,
+        templateParams: [patient.full_name as string, link],
       });
 
       welcomeResult = {
