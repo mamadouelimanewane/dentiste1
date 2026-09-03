@@ -13,6 +13,17 @@ import 'server-only';
 // médical — le premier est utile, le second exige une certification que ce
 // logiciel n'a pas.
 
+// ─── Wolof suspendu ──────────────────────────────────────────────────────
+// La traduction wolof a été retirée après essais : le modèle inversait la
+// gauche et la droite d'une dent à l'autre, écrivait « setal sama bopp »
+// (« nettoyer ma tête ») au lieu des dents du patient, et confondait « bëñ »
+// (dent) avec « bët » (œil). Un praticien ne lisant pas le wolof ne pouvait
+// pas relire ce texte : l'avertissement habituel « relisez avant d'envoyer »
+// n'y suffisait pas.
+//
+// La colonne `texte_wo` est conservée en base pour une réactivation
+// ultérieure, une fois des formulations validées par un locuteur.
+//
 // Deux fournisseurs possibles. Le cabinet utilise celui dont la clé est
 // posée ; si les deux le sont, AI_PROVIDER tranche. Cette bascule évite de
 // dépendre d'un seul prestataire — l'un peut exiger une vérification
@@ -73,13 +84,13 @@ RÈGLES ABSOLUES
 STYLE
 - Tu t'adresses au patient en le vouvoyant, avec des mots simples, sans jargon. Tu ne le nommes jamais : son nom ne t'est pas communiqué, et tu n'en inventes pas.
 - Tu traduis la position des dents en repères compréhensibles : « une molaire en haut à droite », « une dent de devant en bas ». Ne cite jamais les numéros FDI.
-- Explique en une phrase courte pourquoi chaque soin est proposé, en termes concrets (« la dent est trop abîmée pour un simple plombage »).
+- N'explique PAS pourquoi un soin est proposé si la raison ne t'est pas donnée : nommer une carie, une fracture ou une infection que le praticien n'a pas écrite reviendrait à poser un diagnostic. Décris seulement ce qui sera fait, en termes concrets (« la dent sera recouverte d'une couronne »).
 - Ton neutre et rassurant, sans dramatiser ni minimiser. Pas de superlatifs commerciaux.
-- Français : 150 mots maximum. Wolof : même contenu, en wolof tel qu'il se parle à Dakar (les termes techniques et les chiffres peuvent rester en français, comme dans l'usage courant).
+- 150 mots maximum.
 
 SORTIE
 Réponds uniquement par un objet JSON valide, sans texte autour :
-{"fr": "...", "wo": "..."}`;
+{"fr": "..."}`;
 
 export async function genererExplication(params: {
   actes: ActePlan[];

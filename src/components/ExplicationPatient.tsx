@@ -26,7 +26,6 @@ export function ExplicationPatient() {
   const [explication, setExplication] = useState<Explication | null>(null);
   const [historique, setHistorique] = useState<Explication[]>([]);
   const [disponible, setDisponible] = useState(true);
-  const [langue, setLangue] = useState<"fr" | "wo">("fr");
   const [enCours, setEnCours] = useState(false);
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -82,7 +81,7 @@ export function ExplicationPatient() {
       const res = await fetch(`/api/explications/${explication.id}/envoyer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ langue }),
+        body: JSON.stringify({ langue: "fr" }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Échec de l'envoi.");
@@ -101,7 +100,7 @@ export function ExplicationPatient() {
 
   const imprimer = () => {
     if (!explication) return;
-    const texte = langue === "wo" ? explication.texte_wo : explication.texte_fr;
+    const texte = explication.texte_fr;
     const w = window.open("", "_blank", "width=800,height=900");
     if (!w) return;
     w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8">
@@ -133,11 +132,7 @@ export function ExplicationPatient() {
     );
   }
 
-  const texteAffiche = explication
-    ? langue === "wo"
-      ? explication.texte_wo
-      : explication.texte_fr
-    : null;
+  const texteAffiche = explication ? explication.texte_fr : null;
 
   return (
     <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
@@ -175,27 +170,9 @@ export function ExplicationPatient() {
 
         {explication ? (
           <>
-            <div className="flex gap-1.5">
-              {([
-                ["fr", "Français"],
-                ["wo", "Wolof"],
-              ] as const).map(([id, libelle]) => (
-                <button
-                  key={id}
-                  onClick={() => setLangue(id)}
-                  disabled={id === "wo" && !explication.texte_wo}
-                  className={cn(
-                    "px-3 py-1 rounded-sm text-[9px] font-black uppercase tracking-widest border transition-all disabled:opacity-40",
-                    langue === id
-                      ? "bg-slate-900 text-white border-slate-900"
-                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
-                  )}
-                >
-                  {libelle}
-                </button>
-              ))}
-            </div>
-
+            {/* Sélecteur de langue retiré : la traduction wolof est suspendue
+                (voir src/lib/integrations/explication.ts). Elle reviendra une
+                fois des formulations validées par un locuteur. */}
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-sm">
               <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{texteAffiche}</p>
             </div>
