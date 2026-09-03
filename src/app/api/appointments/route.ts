@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { validerCreneau } from '@/lib/validation';
 import { requirePermission } from '@/lib/permissions';
-import { sendWhatsAppMessage } from '@/lib/integrations/whatsapp';
-import { sendSms } from '@/lib/integrations/sms';
+import { notifyPatient } from '@/lib/integrations/notify';
 
 const RECURRENCE_STEP_DAYS: Record<string, number> = {
   weekly: 7,
@@ -203,9 +202,9 @@ export async function POST(request: Request) {
 
         const msg = `Bonjour ${patient.full_name}, votre rendez-vous est confirmé pour le ${formattedDate}. À bientôt au Cabinet !`;
 
-        // On lance l'envoi en arrière-plan (fire and forget)
-        sendWhatsAppMessage({ patientId: pId, phone: patient.phone, body: msg, sentBy: session?.userId }).catch(console.error);
-        sendSms({ patientId: pId, phone: patient.phone, body: msg, sentBy: session?.userId }).catch(console.error);
+        // Un seul canal : le patient recevait auparavant deux fois le même
+        // texte, et le cabinet payait deux envois pour une seule information.
+        notifyPatient({ patientId: pId, phone: patient.phone, body: msg, sentBy: session?.userId }).catch(console.error);
       }
     }
   }

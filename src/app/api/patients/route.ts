@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { sql } from '@/lib/db';
 import { requirePermission } from '@/lib/permissions';
-import { sendWhatsAppMessage } from '@/lib/integrations/whatsapp';
-import { sendSms } from '@/lib/integrations/sms';
+import { notifyPatient } from '@/lib/integrations/notify';
 import { isDatabaseConfigured } from '@/lib/db';
 import {
   validerNom,
@@ -119,16 +118,20 @@ export async function POST(request: Request) {
         `Accédez à votre espace patient (rendez-vous, documents, ordonnances) :\n${link}\n\n` +
         `Lien valable 48h. À bientôt !`;
 
-      const [waResult, smsResult] = await Promise.all([
-        sendWhatsAppMessage({ patientId: patient.id, phone, body: messageBody, sentBy: session!.userId }),
-        sendSms({ patientId: patient.id, phone, body: messageBody, sentBy: session!.userId }),
-      ]);
+      // Un seul canal (voir src/lib/integrations/notify.ts) : le double envoi
+      // faisait recevoir deux fois le même message de bienvenue.
+      const envoi = await notifyPatient({
+        patientId: patient.id,
+        phone,
+        body: messageBody,
+        sentBy: session!.userId,
+      });
 
       welcomeResult = {
         link,
-        simulated: waResult.simulated && smsResult.simulated,
-        channels: ['whatsapp', 'sms'],
-        error: waResult.error || smsResult.error,
+        simulated: envoi.simulated === true,
+        channels: [envoi.canal],
+        error: envoi.error,
       };
     } catch (err) {
       // L'échec du message de bienvenue ne doit pas bloquer la création du dossier
