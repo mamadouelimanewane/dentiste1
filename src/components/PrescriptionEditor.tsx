@@ -49,8 +49,14 @@ export function PrescriptionEditor() {
     setMeds(meds.filter(m => m.id !== id));
   };
 
-  const autoPrescribe = () => {
-    // Simulation Copilot IA
+  // Modèle d'ordonnance après extraction ou pose d'implant.
+  //
+  // Ce bouton s'appelait « Copilot IA » et le commentaire du code disait
+  // « Simulation Copilot IA » : il insère en réalité trois lignes fixes,
+  // identiques pour tout patient. Sous un nom d'IA, un praticien peut croire
+  // que le logiciel a tenu compte du dossier, des allergies ou du poids — il
+  // n'en fait rien. C'est un modèle à relire, et il est nommé comme tel.
+  const appliquerModelePostExtraction = () => {
     setMeds([
       { id: Date.now(), name: "Amoxicilline", dosage: "1g", duration: "6 jours", posology: "1 comprimé matin et soir au cours des repas" },
       { id: Date.now() + 1, name: "Paracétamol", dosage: "1000mg", duration: "3 jours", posology: "1 comprimé en cas de douleur, max 3/jour" },
@@ -87,25 +93,24 @@ export function PrescriptionEditor() {
       {/* HEADER BAR - DASHBOARD STYLE */}
       <div className="bg-white border border-slate-200 rounded-sm p-4 flex flex-col md:flex-row items-center justify-between shadow-sm gap-4">
         <div className="flex items-center gap-4 w-full md:w-auto">
-          <button className="h-10 px-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 rounded flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-colors">
-            <ArrowLeft className="h-4 w-4" /> Retour
-          </button>
+          {/* Bouton « Retour » supprimé : il n'avait aucune action et il n'y
+              a nulle part où revenir, la navigation se fait par le menu. */}
           <div>
             <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-              <FileText className="h-4 w-4 text-blue-600" /> Éditeur d'Ordonnance
+              <FileText className="h-4 w-4 text-blue-600" /> Ordonnance
             </h2>
           </div>
         </div>
 
         <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-           <button className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded transition-colors">
-            <History className="h-4 w-4" /> Modèles récents
-          </button>
+           {/* « Modèles récents » supprimé : aucun historique de modèles
+               n'existe derrière ce bouton, qui n'avait pas d'action. */}
           <button
-            onClick={autoPrescribe}
-            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-sm transition-colors shadow-md shadow-purple-900/20"
+            onClick={appliquerModelePostExtraction}
+            title="Insère un modèle fixe, identique pour tout patient. À relire et à adapter."
+            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-sm transition-colors shadow-md shadow-slate-900/20"
           >
-            <Sparkles className="h-4 w-4" /> Copilot IA : Extraction / Implant
+            <FileText className="h-4 w-4" /> Modèle post-extraction
           </button>
           
           {currentPatient && meds.length > 0 ? (

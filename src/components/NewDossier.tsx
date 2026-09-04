@@ -38,9 +38,9 @@ export function NewDossier() {
            >
              <UserPlus className="h-4 w-4" /> Confirmer & Commencer
            </button>
-           <button className="text-[10px] font-bold uppercase text-slate-400 hover:text-slate-900 transition-colors">
-              Gérer les dossiers en attente
-           </button>
+           {/* « Gérer les dossiers en attente » supprimé : ce bouton n'avait
+               aucune action, et il n'existe pas de file de dossiers en attente
+               dans l'application. Il promettait un écran inexistant. */}
         </div>
       </div>
 
