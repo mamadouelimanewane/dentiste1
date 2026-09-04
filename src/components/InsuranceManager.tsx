@@ -34,6 +34,9 @@ const STATUS_BADGE: Record<Claim["status"], string> = {
 export function InsuranceManager() {
   const { currentPatient } = usePatient();
   const [claims, setClaims] = useState<Claim[]>([]);
+  // Nombre réel de demandes, distinct du nombre de lignes reçues.
+  const [total, setTotal] = useState(0);
+  const [tronque, setTronque] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ provider: "", policyNumber: "", claimType: "IPM", amount: "" });
@@ -44,7 +47,11 @@ export function InsuranceManager() {
     try {
       const res = await fetch("/api/insurance-claims");
       const data = await res.json();
-      if (res.ok) setClaims(data.claims);
+      if (res.ok) {
+        setClaims(data.claims);
+        setTotal(typeof data.total === "number" ? data.total : data.claims.length);
+        setTronque(!!data.tronque);
+      }
     } finally {
       setLoading(false);
     }
@@ -173,6 +180,13 @@ export function InsuranceManager() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
+                {/* Sans cette mention, une demande ancienne absente de la
+                    liste passait pour inexistante. */}
+                {tronque && !loading && (
+                  <p className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 mb-3">
+                    {claims.length} demandes affichées sur {total} — les dossiers non soldés sont remontés en tête.
+                  </p>
+                )}
                 {!loading && claims.length === 0 && (
                   <tr>
                     <td colSpan={5} className="p-8 text-center text-slate-400 text-xs">

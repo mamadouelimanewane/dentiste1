@@ -56,6 +56,8 @@ const teintes = ["A1", "A2", "A3", "A3.5", "B1", "B2", "C1", "D2"];
 export function ProstheticsLab() {
   const { currentPatient } = usePatient();
   const [orders, setOrders] = useState<LabOrder[]>([]);
+  const [total, setTotal] = useState(0);
+  const [tronque, setTronque] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -70,7 +72,11 @@ export function ProstheticsLab() {
     setLoading(true);
     fetch("/api/lab-orders")
       .then((res) => res.json())
-      .then((data) => setOrders(data.orders || []))
+      .then((data) => {
+        setOrders(data.orders || []);
+        setTotal(typeof data.total === "number" ? data.total : (data.orders || []).length);
+        setTronque(!!data.tronque);
+      })
       .catch(() => setError("Impossible de charger les travaux labo."))
       .finally(() => setLoading(false));
   }, []);
@@ -144,7 +150,12 @@ export function ProstheticsLab() {
           </div>
           <div>
             <h2 className="text-base font-black text-slate-900 uppercase tracking-tighter">Labo & Prothèses</h2>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">{orders.length} travau(x) suivi(s)</p>
+            {/* Affichait le nombre de lignes reçues comme s'il s'agissait du
+                total : un laboratoire à 250 travaux en lisait 100. */}
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">
+              {total || orders.length} travau(x) suivi(s)
+              {tronque && ` — ${orders.length} affichés, en attente d'abord`}
+            </p>
           </div>
         </div>
 

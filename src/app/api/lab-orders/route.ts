@@ -8,15 +8,31 @@ export async function GET() {
   const { error, status } = await requirePermission(16, 'view');
   if (error) return NextResponse.json({ error }, { status });
 
+  // File de travail, pas historique : voir la note de insurance-claims. Un
+  // travail prothétique en attente depuis des semaines est celui qu'il ne
+  // faut surtout pas perdre de vue ; il sortait pourtant de la liste dès que
+  // 100 travaux plus récents existaient.
+  const LIMITE = 200;
+
   const orders = await sql`
     select lo.*, p.full_name as patient_name
     from lab_orders lo
     join patients p on p.id = lo.patient_id
-    order by lo.created_at desc
-    limit 100
+    order by
+      case lo.status
+        when 'a_envoyer' then 0
+        when 'production' then 1
+        when 'shipped' then 2
+        else 3
+      end,
+      lo.created_at asc
+    limit ${LIMITE}
   `;
 
-  return NextResponse.json({ orders });
+  const compte = await sql`select count(*)::int as n from lab_orders`;
+  const total = Number(compte[0]?.n ?? orders.length);
+
+  return NextResponse.json({ orders, total, tronque: total > orders.length });
 }
 
 export async function POST(request: Request) {

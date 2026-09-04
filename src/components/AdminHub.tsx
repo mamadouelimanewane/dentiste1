@@ -95,6 +95,8 @@ export function AdminHub() {
   const [templateSaving, setTemplateSaving] = useState(false);
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  // Total réel des entrées du journal : la page n'en montre qu'une partie.
+  const [auditTotal, setAuditTotal] = useState(0);
   const [auditLoading, setAuditLoading] = useState(false);
   const [biPeriod, setBiPeriod] = useState<"week" | "month" | "year">("month");
   const [biOverview, setBiOverview] = useState<StatsOverview | null>(null);
@@ -185,7 +187,10 @@ export function AdminHub() {
     setAuditLoading(true);
     fetch("/api/admin/audit-logs")
       .then((res) => res.json())
-      .then((data) => setAuditLogs(data.logs || []))
+      .then((data) => {
+        setAuditLogs(data.logs || []);
+        setAuditTotal(typeof data.total === "number" ? data.total : (data.logs || []).length);
+      })
       .catch(() => setAuditLogs([]))
       .finally(() => setAuditLoading(false));
   }, [activeTab]);
@@ -375,6 +380,14 @@ export function AdminHub() {
               </div>
               <div className="overflow-y-auto p-4 flex-1 bg-slate-50/50">
                 {auditLoading && <p className="text-xs text-slate-400 text-center py-8">Chargement...</p>}
+                {/* 50 entrées couvrent une journée dans un cabinet actif :
+                    qui cherchait « qui a modifié ce dossier la semaine
+                    dernière » concluait à tort qu'il n'y avait pas de trace. */}
+                {auditTotal > auditLogs.length && !auditLoading && (
+                  <p className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 mb-3">
+                    {auditLogs.length} entrées affichées sur {auditTotal} enregistrées.
+                  </p>
+                )}
                 {!auditLoading && auditLogs.length === 0 && (
                   <p className="text-xs text-slate-400 text-center py-8">Aucun événement enregistré pour le moment.</p>
                 )}

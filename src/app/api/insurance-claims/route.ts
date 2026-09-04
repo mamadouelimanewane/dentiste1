@@ -9,15 +9,33 @@ export async function GET() {
   const { error, status } = await requirePermission(9, 'view');
   if (error) return NextResponse.json({ error }, { status });
 
+  // Cette liste est une FILE DE TRAVAIL, pas un historique. Triée par date
+  // décroissante et plafonnée à 100, elle faisait disparaître en premier les
+  // demandes les plus anciennes — c'est-à-dire précisément celles qu'il faut
+  // relancer. Les dossiers non soldés remontent donc en tête, quel que soit
+  // leur âge, et l'écran sait ce qu'il ne montre pas.
+  const LIMITE = 200;
+
   const claims = await sql`
     select ic.*, p.full_name as patient_name
     from insurance_claims ic
     join patients p on p.id = ic.patient_id
-    order by ic.created_at desc
-    limit 100
+    order by
+      case ic.status
+        when 'pending' then 0
+        when 'submitted' then 1
+        when 'approved' then 2
+        when 'rejected' then 3
+        else 4
+      end,
+      ic.created_at asc
+    limit ${LIMITE}
   `;
 
-  return NextResponse.json({ claims });
+  const compte = await sql`select count(*)::int as n from insurance_claims`;
+  const total = Number(compte[0]?.n ?? claims.length);
+
+  return NextResponse.json({ claims, total, tronque: total > claims.length });
 }
 
 export async function POST(request: Request) {
