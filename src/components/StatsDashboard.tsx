@@ -79,7 +79,7 @@ export function StatsDashboard() {
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Tableau de Bord Stratégique</h1>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Statistiques du cabinet</h1>
           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Analyse de Performance & Pilotage</p>
         </div>
         <div className="flex items-center gap-3">

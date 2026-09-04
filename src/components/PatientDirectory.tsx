@@ -119,7 +119,7 @@ export function PatientDirectory() {
       <div className="bg-[#0F172A] text-white p-6 rounded-sm flex justify-between items-center relative overflow-hidden">
         <div className="relative z-10 flex items-center gap-8 w-full">
           <div className="space-y-1">
-            <h3 className="text-lg font-black uppercase tracking-widest text-amber-400">Base de Données Centralisée</h3>
+            <h3 className="text-lg font-black uppercase tracking-widest text-amber-400">Recherche de dossiers</h3>
             <p className="text-slate-300 text-xs font-medium">Indexation ultra-rapide de tous les dossiers médicaux du cabinet.</p>
           </div>
           <div className="hidden md:flex gap-6 border-l border-slate-700 pl-8">

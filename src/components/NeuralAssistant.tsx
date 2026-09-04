@@ -502,19 +502,23 @@ export function NeuralAssistant() {
   return (
     <>
       {/* Floating Action Button */}
-      <div className="fixed bottom-20 right-6 z-[9999]">
+      {/* Aligné avec la messagerie interne : même largeur, même colonne,
+          un intervalle régulier. Le bouton faisait 64px contre 56px pour
+          l'autre, et l'écart entre les deux était de 8px — l'ensemble se
+          lisait comme deux bulles posées au hasard sur le contenu. */}
+      <div className="fixed bottom-[5.5rem] right-6 z-[9999]">
         <motion.button
           whileHover={{ scale: 1.05, boxShadow: "0 0 24px rgba(59,130,246,0.5)" }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "h-16 w-16 rounded-full flex items-center justify-center transition-all duration-500 border-2",
+            "h-14 w-14 rounded-full flex items-center justify-center transition-all duration-500 border-2",
             isOpen
               ? "bg-slate-900 border-slate-700 text-white rotate-90"
               : "bg-blue-600 border-blue-400 text-white shadow-2xl shadow-blue-500/40"
           )}
         >
-          {isOpen ? <X className="h-8 w-8" /> : <Brain className="h-8 w-8" />}
+          {isOpen ? <X className="h-7 w-7" /> : <Brain className="h-7 w-7" />}
           {!isOpen && (
             <div className="absolute -top-1 -right-1 h-5 w-5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
               <Zap className="h-3 w-3 text-white fill-current" />
@@ -531,7 +535,7 @@ export function NeuralAssistant() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 40, scale: 0.96 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="fixed bottom-36 right-6 z-[9998] w-[430px] max-w-[calc(100vw-1.5rem)] h-[660px] bg-white rounded-3xl shadow-[0_32px_80px_-12px_rgba(0,0,0,0.25)] border border-slate-200 overflow-hidden flex flex-col"
+          className="fixed bottom-[9.5rem] right-6 z-[9998] w-[430px] max-w-[calc(100vw-1.5rem)] h-[660px] bg-white rounded-3xl shadow-[0_32px_80px_-12px_rgba(0,0,0,0.25)] border border-slate-200 overflow-hidden flex flex-col"
           >
             {/* Header */}
             <div className="bg-[#0F172A] p-5 text-white shrink-0 relative overflow-hidden">

@@ -240,7 +240,7 @@ export function AdminHub() {
             <Lock className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-black uppercase tracking-widest text-emerald-400">Centre d'Administration Sécurisé</h2>
+            <h2 className="text-lg font-black uppercase tracking-widest text-emerald-400">Administration du cabinet</h2>
             <p className="text-xs font-medium text-slate-400">Accès restreint. Toutes les actions sont tracées et archivées.</p>
           </div>
         </div>

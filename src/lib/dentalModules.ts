@@ -49,9 +49,9 @@ export const DENTAL_MODULE_GROUPS: DentalGroup[] = [
     modules: [
       { id: 1,  name: 'Accueil',       fullTitle: 'Accueil & Prise en charge',   desc: 'Enregistrement, bienvenue SMS/WhatsApp et vérification des droits.',  icon: UserPlus   },
       { id: 2,  name: 'Arrivée',       fullTitle: 'Arrivée au Cabinet',          desc: 'Pointage et questionnaire médical numérique.',                          icon: LogIn      },
-      { id: 3,  name: 'Nouveau Dossier', fullTitle: 'Initialisation Dossier',   desc: 'Réinitialisation et nouveau cycle patient.',                            icon: RotateCcw  },
+      { id: 3,  name: 'Nouveau Dossier', fullTitle: 'Nouveau dossier patient',   desc: 'Réinitialisation et nouveau cycle patient.',                            icon: RotateCcw  },
       { id: 13, name: 'Agenda',         fullTitle: 'Agenda du cabinet',        desc: "Rendez-vous, salle d'attente, reports et rappels aux patients.", icon: Calendar  },
-      { id: 18, name: 'Communication',  fullTitle: 'WhatsApp & SMS Hub',        desc: 'Envoi automatique et manuel de messages patients.',                       icon: MessageSquare },
+      { id: 18, name: 'Communication',  fullTitle: 'Messages aux patients',        desc: 'Envoi automatique et manuel de messages patients.',                       icon: MessageSquare },
     ],
   },
   {
@@ -62,12 +62,12 @@ export const DENTAL_MODULE_GROUPS: DentalGroup[] = [
       { id: 4,  name: 'Consultation',  fullTitle: 'Consultation Clinique',        desc: 'Diagnostic, odontogramme et plan de traitement.',                      icon: Stethoscope},
       { id: 5,  name: 'Réalisation',   fullTitle: 'Réalisation des Actes',       desc: 'Enregistrement des soins et interventions en temps réel.',              icon: Activity   },
       { id: 7,  name: 'Suivi',         fullTitle: 'Suivi & Archivage',           desc: 'Clôture du dossier et planification des prochains RDV.',                icon: History    },
-      { id: 14, name: 'Imagerie',       fullTitle: 'Visionneuse de Clichés',     desc: 'Consultation des radiographies importées.',                              icon: Scan },
+      { id: 14, name: 'Imagerie',       fullTitle: 'Clichés du patient',     desc: 'Consultation des radiographies importées.',                              icon: Scan },
       { id: 15, name: 'Comparaison',    fullTitle: 'Comparaison de clichés',     desc: 'Superposition de deux photographies du dossier patient.',                icon: Smile },
-      { id: 16, name: 'Labo & CFAO',    fullTitle: 'Prosthetics Lab Center',     desc: 'Flux numériques et travaux prothétiques.',                               icon: Layers   },
-      { id: 17, name: 'Ordonnances',    fullTitle: "Éditeur d'Ordonnance",       desc: 'Création, impression et envoi numérique d\'ordonnances.',                icon: Pill     },
-      { id: 11, name: 'Téléconsult',    fullTitle: 'Médecine à Distance',        desc: 'Consultations vidéo sécurisées (Daily.co).',                            icon: Video    },
-      { id: 20, name: 'Recherche',     fullTitle: 'Base de Données Centralisée', desc: 'Recherche et accès rapide à tous les dossiers patients.',               icon: FolderOpen },
+      { id: 16, name: 'Labo & CFAO',    fullTitle: 'Laboratoire & prothèses',     desc: 'Flux numériques et travaux prothétiques.',                               icon: Layers   },
+      { id: 17, name: 'Ordonnances',    fullTitle: "Ordonnances",       desc: 'Création, impression et envoi numérique d\'ordonnances.',                icon: Pill     },
+      { id: 11, name: 'Téléconsult',    fullTitle: 'Téléconsultation',        desc: 'Consultations vidéo sécurisées (Daily.co).',                            icon: Video    },
+      { id: 20, name: 'Recherche',     fullTitle: 'Recherche de dossiers', desc: 'Recherche et accès rapide à tous les dossiers patients.',               icon: FolderOpen },
     ],
   },
   {
@@ -78,7 +78,7 @@ export const DENTAL_MODULE_GROUPS: DentalGroup[] = [
       { id: 6,  name: 'Administration', fullTitle: 'Gestion Administrative',    desc: 'Devis, facturation et enregistrement des paiements.',                    icon: FileText   },
       { id: 8,  name: 'Comptabilité',   fullTitle: 'Comptabilité & Finances',   desc: 'Registre des recettes, dépenses et rapports financiers.',                icon: Calculator },
       { id: 9,  name: 'Mutuelles',      fullTitle: 'Gestion des Mutuelles',     desc: 'Prises en charge IPM, assurances et calcul automatique des parts.',      icon: ShieldCheck},
-      { id: 19, name: 'Stocks',         fullTitle: 'Inventory Manager Pro',     desc: 'Consommables, alertes de stock et commandes fournisseurs.',              icon: Package    },
+      { id: 19, name: 'Stocks',         fullTitle: 'Stock du cabinet',     desc: 'Consommables, alertes de stock et commandes fournisseurs.',              icon: Package    },
     ],
   },
   {
@@ -87,7 +87,7 @@ export const DENTAL_MODULE_GROUPS: DentalGroup[] = [
     hint: "Dictée vocale, statistiques et journal d'activité",
     modules: [
       { id: 12, name: 'Dictée vocale',  fullTitle: 'Dictée Vocale',             desc: 'Reconnaissance vocale du navigateur, sauvegarde locale.',                 icon: Brain },
-      { id: 23, name: 'Statistiques',   fullTitle: 'Tableau de Bord Stratégique', desc: 'KPIs, analyse de performance et pilotage confidentiel.',               icon: Calculator, badge: 'NEW' },
+      { id: 23, name: 'Statistiques',   fullTitle: 'Statistiques du cabinet', desc: 'KPIs, analyse de performance et pilotage confidentiel.',               icon: Calculator, badge: 'NEW' },
       { id: 24, name: 'Journal',        fullTitle: "Journal d'activité",        desc: "Historique des actions enregistrees par l'assistant de saisie.",        icon: Database   },
     ],
   },
@@ -98,7 +98,7 @@ export const DENTAL_MODULE_GROUPS: DentalGroup[] = [
     modules: [
       { id: 10, name: 'Utilisateurs',  fullTitle: 'Gestion des Utilisateurs',   desc: 'Rôles RBAC, privilèges et gestion des comptes staff.',                   icon: Users      },
       { id: 21, name: 'Configuration', fullTitle: 'Paramètres du Cabinet',      desc: 'Logo, informations légales et personnalisation des documents.',           icon: Settings   },
-      { id: 22, name: 'Super Admin',   fullTitle: "Centre d'Administration",    desc: 'Logs, catalogue des actes et Business Intelligence.',                     icon: ShieldAlert},
+      { id: 22, name: 'Super Admin',   fullTitle: "Administration du cabinet", desc: 'Logs, catalogue des actes et Business Intelligence.',                     icon: ShieldAlert},
     ],
   },
 ];
