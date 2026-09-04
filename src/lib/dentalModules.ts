@@ -50,7 +50,7 @@ export const DENTAL_MODULE_GROUPS: DentalGroup[] = [
       { id: 1,  name: 'Accueil',       fullTitle: 'Accueil & Prise en charge',   desc: 'Enregistrement, bienvenue SMS/WhatsApp et vérification des droits.',  icon: UserPlus   },
       { id: 2,  name: 'Arrivée',       fullTitle: 'Arrivée au Cabinet',          desc: 'Pointage et questionnaire médical numérique.',                          icon: LogIn      },
       { id: 3,  name: 'Nouveau Dossier', fullTitle: 'Initialisation Dossier',   desc: 'Réinitialisation et nouveau cycle patient.',                            icon: RotateCcw  },
-      { id: 13, name: 'Agenda',         fullTitle: 'Elite Planner Pro',         desc: 'Calendrier interactif, réservation et notifications RDV (SMS/WhatsApp).', icon: Calendar  },
+      { id: 13, name: 'Agenda',         fullTitle: 'Agenda du cabinet',        desc: "Rendez-vous, salle d'attente, reports et rappels aux patients.", icon: Calendar  },
       { id: 18, name: 'Communication',  fullTitle: 'WhatsApp & SMS Hub',        desc: 'Envoi automatique et manuel de messages patients.',                       icon: MessageSquare },
     ],
   },

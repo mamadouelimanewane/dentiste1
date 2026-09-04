@@ -196,6 +196,10 @@ export function AgendaModule() {
   // d'un report. Affiché après fermeture de la fiche, puisque c'est le
   // moment où l'assistante se demande si le patient est au courant.
   const [notifAnnulation, setNotifAnnulation] = useState<string | null>(null);
+  const grilleRef = useRef<HTMLDivElement>(null);
+  // Mémorise la vue déjà recadrée, pour ne pas repositionner la grille sous
+  // les doigts de l'utilisateur à chaque rechargement des rendez-vous.
+  const positionDejaCalee = useRef<string>("");
 
   const activeDate = new Date();
   activeDate.setDate(activeDate.getDate() + dayOffset);
@@ -422,6 +426,38 @@ export function AgendaModule() {
   // Position verticale d'une heure décimale dans la grille (80px par heure).
   const positionY = (heure: number) => (heure - premiereHeure) * 80;
 
+  // Ouvrir l'agenda sur l'heure qui intéresse, pas sur 8h00.
+  //
+  // La grille démarrait toujours en haut : sur un écran de 720px elle ne
+  // laisse voir que six heures, si bien qu'une consultation en fin de
+  // journée affichait une matinée vide et qu'il fallait faire défiler pour
+  // trouver les rendez-vous. On se cale sur l'heure courante quand on
+  // regarde aujourd'hui, sinon sur le premier rendez-vous de la période.
+  //
+  // Le repositionnement n'a lieu qu'au changement de vue ou de jour : le
+  // refaire à chaque rechargement de données arracherait la grille des
+  // mains de l'utilisateur en train de la parcourir.
+  const clePosition = `${agendaView}|${weekOffset}|${dayOffset}`;
+  useEffect(() => {
+    const el = grilleRef.current;
+    if (!el || loading) return;
+    if (positionDejaCalee.current === clePosition) return;
+
+    const source = agendaView === "week" ? weekAppointments : appointments;
+    const heures = source.map(a => new Date(a.scheduled_at).getHours());
+    const surAujourdhui = weekOffset === 0 && dayOffset === 0;
+
+    let cible: number | null = null;
+    if (surAujourdhui) cible = new Date().getHours();
+    else if (heures.length > 0) cible = Math.min(...heures);
+    if (cible === null) return;
+
+    positionDejaCalee.current = clePosition;
+    // Une heure de marge au-dessus : voir ce qui vient de se terminer aide à
+    // se repérer autant que ce qui arrive.
+    el.scrollTop = Math.max(0, (cible - 1 - premiereHeure) * 80);
+  }, [loading, clePosition, agendaView, weekOffset, dayOffset, appointments, weekAppointments, premiereHeure]);
+
   return (
     <div className={cn(
       "animate-in fade-in duration-500",
@@ -456,15 +492,30 @@ export function AgendaModule() {
 
       {/* HEADER */}
       <div className="bg-white border border-slate-200 rounded-sm p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+        {/* Le titre du module est déjà écrit juste au-dessus par la page :
+            le répéter ici coûtait une bande entière de hauteur sur un écran
+            de 720px, où la grille ne commençait qu'à 468px. Les compteurs
+            prennent cette place — ils étaient plus bas, dans deux grandes
+            cartes, pour afficher deux nombres. */}
         <div className="flex items-center gap-4">
           <div className="h-10 w-10 bg-[#1E3A8A] text-white rounded flex items-center justify-center shadow-lg shadow-blue-200">
             <CalendarIcon className="h-6 w-6" />
           </div>
-          <div>
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Elite Planner Pro</h2>
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-3 w-3 text-emerald-500" />
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Agenda Cabinet</p>
+          <div className="flex items-center gap-5">
+            <div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Aujourd&apos;hui</p>
+              <p className="text-xl font-black text-emerald-600 leading-none mt-0.5">
+                {todaysAppointments.length}
+                <span className="text-[10px] font-bold text-slate-400 ml-1">RDV</span>
+              </p>
+            </div>
+            <div className="w-px h-8 bg-slate-200" />
+            <div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Cette semaine</p>
+              <p className="text-xl font-black text-blue-900 leading-none mt-0.5">
+                {weekAppointments.length}
+                <span className="text-[10px] font-bold text-slate-400 ml-1">RDV</span>
+              </p>
             </div>
           </div>
         </div>
@@ -498,11 +549,14 @@ export function AgendaModule() {
           <div className="w-px h-6 bg-slate-200 mx-1 hidden sm:block" />
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
+            // Ce bouton était plus gros et plus voyant que « Réserver »,
+            // qui est pourtant l'action principale de l'écran. Ramené au
+            // gabarit des autres commandes de la barre.
             className={cn(
-              "flex items-center gap-2 px-6 py-3 text-sm font-black uppercase tracking-widest rounded-full shadow-lg transition-all hover:scale-105",
-              isFullscreen 
-                ? "bg-slate-800 text-white shadow-slate-900/30 hover:bg-slate-900" 
-                : "bg-emerald-600 text-white shadow-emerald-500/30 hover:bg-emerald-700 hover:shadow-emerald-500/50"
+              "flex items-center gap-2 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full border transition-all",
+              isFullscreen
+                ? "bg-slate-900 text-white border-slate-900"
+                : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
             )}
           >
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -564,22 +618,9 @@ export function AgendaModule() {
       <div className={cn("grid grid-cols-1 lg:grid-cols-4 gap-6", isFullscreen && "flex-1")}>
         {/* SIDEBAR */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-4 text-center">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cette semaine</p>
-              <div className="flex items-end gap-1 justify-center text-blue-900">
-                <span className="text-2xl font-black">{weekAppointments.length}</span>
-                <span className="text-[10px] font-bold mb-1">RDV</span>
-              </div>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-4 text-center">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Aujourd&apos;hui</p>
-              <div className="flex items-end gap-1 justify-center text-emerald-600">
-                <span className="text-2xl font-black">{todaysAppointments.length}</span>
-              </div>
-            </div>
-          </div>
-
+          {/* Les compteurs sont remontés dans l'en-tête : deux cartes de
+              100px de haut pour deux nombres, c'était autant de grille en
+              moins. */}
           {currentPatient && (
             <div className="bg-blue-50 border border-blue-100 rounded-sm p-4">
               <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest mb-2">Patient actif</p>
@@ -723,7 +764,7 @@ export function AgendaModule() {
                 ))}
               </div>
 
-              <div className="flex-1 overflow-y-auto overflow-x-auto relative">
+              <div ref={grilleRef} className="flex-1 overflow-y-auto overflow-x-auto relative">
                 <div className="absolute inset-0 flex flex-col pointer-events-none min-w-max">
                   {HOURS.map(h => <div key={h} className="h-20 border-b border-slate-100 w-full" />)}
                 </div>
@@ -1267,8 +1308,8 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
               <CalendarIcon className="h-7 w-7" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-blue-200">Elite Planner Pro</p>
-              <h3 className="text-xl font-black">Nouveau Rendez-vous</h3>
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-200">Agenda du cabinet</p>
+              <h3 className="text-xl font-black">Nouveau rendez-vous</h3>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded hover:bg-white/20 transition-colors">

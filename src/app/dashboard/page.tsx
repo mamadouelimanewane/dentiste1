@@ -85,7 +85,7 @@ const steps = [
   { id: 10, title: "Utilisateurs", fullTitle: "Gestion des Utilisateurs", desc: "Rôles, privilèges et comptes.", icon: Users },
   { id: 11, title: "Téléconsult", fullTitle: "Médecine à Distance", desc: "Consultations vidéo et suivi à distance.", icon: Video },
   { id: 12, title: "Dictée vocale", fullTitle: "Dictée Vocale", desc: "Reconnaissance vocale du navigateur, sauvegarde locale.", icon: Brain },
-  { id: 13, title: "Agenda", fullTitle: "Elite Planner Pro", desc: "Gestion des rendez-vous et ressources.", icon: Calendar },
+  { id: 13, title: "Agenda", fullTitle: "Agenda du cabinet", desc: "Rendez-vous, salle d'attente et rappels.", icon: Calendar },
   { id: 14, title: "Imagerie", fullTitle: "Visionneuse de Clichés", desc: "Consultation des radiographies du patient.", icon: Scan },
   { id: 15, title: "Comparaison", fullTitle: "Comparaison de clichés", desc: "Superposition de deux photographies du dossier.", icon: Smile },
   { id: 16, title: "Labo & CFAO", fullTitle: "Prosthetics Lab Center", desc: "Gestion des flux numériques et travaux prothétiques.", icon: Layers },
