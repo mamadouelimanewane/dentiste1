@@ -57,6 +57,68 @@ function toE164(phone: string) {
   return phone.startsWith('+') ? phone : `+${phone.replace(/^0+/, '')}`;
 }
 
+// ─── Longueur et encodage des SMS ────────────────────────────────────────
+//
+// Un SMS ne transporte 160 caractères que dans l'alphabet GSM-7. Un seul
+// caractère en dehors — un emoji, un tiret cadratin, un « ô » — bascule le
+// message entier en UCS-2, où un segment ne porte plus que 70 caractères
+// (67 en concaténé). Les longs messages deviennent alors une dizaine de
+// segments, que les opérateurs sénégalais rejettent.
+//
+// Constaté en production sur la ligne +221777529288 : deux messages de 108
+// et 117 caractères sans emoji ont été LIVRÉS, tandis qu'un message de 302
+// caractères (erreur 30454) et un de 671 (erreur 30044) — tous deux portant
+// l'emoji 🦷 — ont été refusés. L'emoji reste sur WhatsApp, où il ne coûte
+// rien ; il est retiré du seul canal qui en souffre.
+
+const GSM7 =
+  '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?' +
+  '¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà';
+// Ces caractères existent en GSM-7 mais comptent double (séquence d'échappement).
+const GSM7_EXT = '^{}\\[~]|€';
+
+const GSM7_SEGMENT_SIMPLE = 160;
+const GSM7_SEGMENT_CONCAT = 153;
+// Au-delà, on n'envoie pas : mieux vaut un message remis à l'assistante
+// qu'un message tronqué ou refusé par l'opérateur.
+const SMS_SEGMENTS_MAX = 3;
+
+export function versGsm7(texte: string) {
+  const equivalents: Record<string, string> = {
+    '—': '-', '–': '-', '’': "'", '‘': "'", '“': '"', '”': '"',
+    '…': '...', '«': '"', '»': '"', ' ': ' ', ' ': ' ',
+  };
+
+  const sortie = texte
+    .replace(/[—–’‘“”…«»  ]/g, (c) => equivalents[c] ?? c)
+    .split('')
+    .map((c) => {
+      if (GSM7.includes(c) || GSM7_EXT.includes(c)) return c;
+      // Sans cette équivalence, « N°SN-10063-X » deviendrait « NSN-10063-X » :
+      // le numéro de dossier changerait de forme sans que rien ne le signale.
+      if (c === '°') return 'o';
+      // « ô », « ê », « î » ne sont pas en GSM-7 : on les déaccentue plutôt
+      // que de faire basculer tout le message en UCS-2.
+      // Plage des diacritiques combinants (U+0300–U+036F) : `\p{M}` exigerait
+      // une cible ES6, que ce projet ne vise pas.
+      const sansAccent = c.normalize('NFD').replace(/[̀-ͯ]/g, '');
+      if (sansAccent.length === 1 && GSM7.includes(sansAccent)) return sansAccent;
+      // Emoji et symboles non transposables : retirés.
+      return '';
+    })
+    .join('');
+
+  // Le retrait d'un emoji laisse souvent une double espace derrière lui.
+  return sortie.replace(/[ \t]{2,}/g, ' ').replace(/ +\n/g, '\n').trim();
+}
+
+export function segmentsSms(texte: string) {
+  const unites = texte
+    .split('')
+    .reduce((n, c) => n + (GSM7_EXT.includes(c) ? 2 : 1), 0);
+  return unites <= GSM7_SEGMENT_SIMPLE ? 1 : Math.ceil(unites / GSM7_SEGMENT_CONCAT);
+}
+
 // URL publique du callback de statut Twilio. Absente en développement local
 // (pas d'URL joignable depuis l'extérieur) : l'envoi fonctionne alors sans
 // mise à jour de statut.
@@ -296,22 +358,38 @@ export async function sendSms(params: {
     return { simulated: true };
   }
 
+  // Le corps est ramené à l'alphabet GSM-7 AVANT l'envoi, et c'est cette
+  // version qui est journalisée : l'historique doit montrer ce que le
+  // patient a réellement reçu, pas ce qu'on aurait voulu lui envoyer.
+  const texteSms = versGsm7(body);
+  const segments = segmentsSms(texteSms);
+
+  if (segments > SMS_SEGMENTS_MAX) {
+    // On ne tronque pas : couper un plan de soins au milieu d'un montant
+    // serait pire que de ne rien envoyer. L'appelant (notifyPatient, ou le
+    // repli du webhook) déposera le message en file d'envoi manuel, où
+    // WhatsApp le portera sans limite de longueur.
+    const motif = `SMS trop long : ${texteSms.length} caractères (${segments} segments, maximum ${SMS_SEGMENTS_MAX}).`;
+    await logMessage({ patientId, phone, body: texteSms, status: 'failed', sentBy, errorDetail: motif });
+    return { simulated: false, error: motif };
+  }
+
   try {
     const to = toE164(phone);
     const result = isTermiiConfigured()
-      ? await sendViaTermii(to, body)
+      ? await sendViaTermii(to, texteSms)
       : isPlivoConfigured()
-      ? await sendViaPlivo(to, body)
+      ? await sendViaPlivo(to, texteSms)
       : isAfricasTalkingConfigured()
-      ? await sendViaAfricasTalking(to, body)
+      ? await sendViaAfricasTalking(to, texteSms)
       : isVonageConfigured()
-      ? await sendViaVonage(to, body)
-      : await sendViaTwilio(to, body);
+      ? await sendViaVonage(to, texteSms)
+      : await sendViaTwilio(to, texteSms);
 
     await logMessage({
       patientId,
       phone,
-      body,
+      body: texteSms,
       status: result.error ? 'failed' : 'sent',
       providerMessageId: result.providerMessageId ?? null,
       sentBy,
@@ -326,7 +404,7 @@ export async function sendSms(params: {
     // la messagerie du patient comme s'il n'avait jamais été tenté. Le
     // cabinet ne pouvait donc ni le voir échouer, ni le relancer.
     try {
-      await logMessage({ patientId, phone, body, status: 'failed', sentBy, errorDetail: motif });
+      await logMessage({ patientId, phone, body: texteSms, status: 'failed', sentBy, errorDetail: motif });
     } catch {
       /* la base est peut-être elle-même la cause de l'échec */
     }
