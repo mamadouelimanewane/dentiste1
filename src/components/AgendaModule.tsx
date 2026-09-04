@@ -249,7 +249,15 @@ export function AgendaModule() {
     return { ...d, date: date.getDate(), fullDate: date, isToday };
   });
 
-  const monthLabel = weekStart.toLocaleString("fr-FR", { month: "long", year: "numeric" });
+  // L'en-tête n'affichait que le mois du LUNDI : une semaine du 31 août au
+  // 6 septembre s'annonçait « août 2026 », alors que cinq de ses sept jours
+  // sont en septembre. On nomme les deux bornes de la semaine.
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  const monthLabel =
+    weekStart.getMonth() === weekEnd.getMonth()
+      ? `${weekStart.getDate()} – ${weekEnd.getDate()} ${weekEnd.toLocaleString("fr-FR", { month: "long", year: "numeric" })}`
+      : `${weekStart.getDate()} ${weekStart.toLocaleString("fr-FR", { month: "short" })} – ${weekEnd.getDate()} ${weekEnd.toLocaleString("fr-FR", { month: "short", year: "numeric" })}`;
   const teamDayLabel = activeDate.toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
   // Les compteurs « Cette semaine » et la liste hebdomadaire affichaient
@@ -834,18 +842,37 @@ export function AgendaModule() {
                               colors.light, colors.border, colors.borderLeft, colors.text,
                               appt.status !== "scheduled" && "opacity-60 grayscale"
                             )}
+                            title={`${appt.patient_name} — ${plageHeures(appt.scheduled_at, appt.duration_minutes)} · ${appt.type || "Consultation"}`}
                             style={{ top: `${positionY(hourFloat) + 4}px`, height: `${hauteurBloc(appt.duration_minutes)}px` }}
                           >
-                            <p className="truncate tracking-tight leading-tight">{appt.patient_name}</p>
-                            <p className={cn("truncate text-[10px] leading-tight font-bold mt-0.5", colors.textLight)}>
-                              {plageHeures(appt.scheduled_at, appt.duration_minutes)} · {appt.type}
-                            </p>
-                            <div className="flex items-center gap-1 mt-1 opacity-80">
-                              {appt.checked_in_at && <LogIn className="h-3 w-3" />}
-                              {appt.status === "completed" && <CheckCircle2 className="h-3 w-3" />}
-                              {appt.status === "cancelled" && <XCircle className="h-3 w-3" />}
-                              {appt.status === "no_show" && <UserX className="h-3 w-3" />}
-                            </div>
+                            {/* Le contenu suit la hauteur du bloc : sur une
+                                consultation de 30 minutes, trois lignes se
+                                feraient couper en plein milieu d'un mot. */}
+                            {hauteurBloc(appt.duration_minutes) < 52 ? (
+                              <p className="truncate tracking-tight leading-tight flex items-center gap-1">
+                                <span className={cn("font-bold flex-shrink-0", colors.textLight)}>
+                                  {plageHeures(appt.scheduled_at, appt.duration_minutes).split(" – ")[0]}
+                                </span>
+                                <span className="truncate">{appt.patient_name}</span>
+                                {appt.checked_in_at && <LogIn className="h-3 w-3 flex-shrink-0" />}
+                                {appt.status === "completed" && <CheckCircle2 className="h-3 w-3 flex-shrink-0" />}
+                                {appt.status === "cancelled" && <XCircle className="h-3 w-3 flex-shrink-0" />}
+                                {appt.status === "no_show" && <UserX className="h-3 w-3 flex-shrink-0" />}
+                              </p>
+                            ) : (
+                              <>
+                                <p className="truncate tracking-tight leading-tight">{appt.patient_name}</p>
+                                <p className={cn("truncate text-[10px] leading-tight font-bold mt-0.5", colors.textLight)}>
+                                  {plageHeures(appt.scheduled_at, appt.duration_minutes)} · {appt.type}
+                                </p>
+                                <div className="flex items-center gap-1 mt-1 opacity-80">
+                                  {appt.checked_in_at && <LogIn className="h-3 w-3" />}
+                                  {appt.status === "completed" && <CheckCircle2 className="h-3 w-3" />}
+                                  {appt.status === "cancelled" && <XCircle className="h-3 w-3" />}
+                                  {appt.status === "no_show" && <UserX className="h-3 w-3" />}
+                                </div>
+                              </>
+                            )}
                           </motion.button>
                         );
                       })}
@@ -882,18 +909,37 @@ export function AgendaModule() {
                               colors.light, colors.border, colors.borderLeft, colors.text,
                               appt.status !== "scheduled" && "opacity-60 grayscale"
                             )}
+                            title={`${appt.patient_name} — ${plageHeures(appt.scheduled_at, appt.duration_minutes)} · ${appt.type || "Consultation"}`}
                             style={{ top: `${positionY(hourFloat) + 4}px`, height: `${hauteurBloc(appt.duration_minutes)}px` }}
                           >
-                            <p className="truncate tracking-tight leading-tight">{appt.patient_name}</p>
-                            <p className={cn("truncate text-[10px] leading-tight font-bold mt-0.5", colors.textLight)}>
-                              {plageHeures(appt.scheduled_at, appt.duration_minutes)} · {appt.type}
-                            </p>
-                            <div className="flex items-center gap-1 mt-1 opacity-80">
-                              {appt.checked_in_at && <LogIn className="h-3 w-3" />}
-                              {appt.status === "completed" && <CheckCircle2 className="h-3 w-3" />}
-                              {appt.status === "cancelled" && <XCircle className="h-3 w-3" />}
-                              {appt.status === "no_show" && <UserX className="h-3 w-3" />}
-                            </div>
+                            {/* Le contenu suit la hauteur du bloc : sur une
+                                consultation de 30 minutes, trois lignes se
+                                feraient couper en plein milieu d'un mot. */}
+                            {hauteurBloc(appt.duration_minutes) < 52 ? (
+                              <p className="truncate tracking-tight leading-tight flex items-center gap-1">
+                                <span className={cn("font-bold flex-shrink-0", colors.textLight)}>
+                                  {plageHeures(appt.scheduled_at, appt.duration_minutes).split(" – ")[0]}
+                                </span>
+                                <span className="truncate">{appt.patient_name}</span>
+                                {appt.checked_in_at && <LogIn className="h-3 w-3 flex-shrink-0" />}
+                                {appt.status === "completed" && <CheckCircle2 className="h-3 w-3 flex-shrink-0" />}
+                                {appt.status === "cancelled" && <XCircle className="h-3 w-3 flex-shrink-0" />}
+                                {appt.status === "no_show" && <UserX className="h-3 w-3 flex-shrink-0" />}
+                              </p>
+                            ) : (
+                              <>
+                                <p className="truncate tracking-tight leading-tight">{appt.patient_name}</p>
+                                <p className={cn("truncate text-[10px] leading-tight font-bold mt-0.5", colors.textLight)}>
+                                  {plageHeures(appt.scheduled_at, appt.duration_minutes)} · {appt.type}
+                                </p>
+                                <div className="flex items-center gap-1 mt-1 opacity-80">
+                                  {appt.checked_in_at && <LogIn className="h-3 w-3" />}
+                                  {appt.status === "completed" && <CheckCircle2 className="h-3 w-3" />}
+                                  {appt.status === "cancelled" && <XCircle className="h-3 w-3" />}
+                                  {appt.status === "no_show" && <UserX className="h-3 w-3" />}
+                                </div>
+                              </>
+                            )}
                           </motion.button>
                         );
                       })}
