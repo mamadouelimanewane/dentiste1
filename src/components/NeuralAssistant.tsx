@@ -51,7 +51,7 @@ export function NeuralAssistant() {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
     {
       role: "bot",
-      text: "Bonjour Docteur Ndiaye. Le Neural Core est opérationnel. Parlez ou écrivez votre commande.",
+      text: "Bonjour. Je suis un aide-mémoire sur les gestes et protocoles. Je n'ai accès à aucune donnée du cabinet : agenda, stocks et chiffres sont dans leurs modules.",
     },
   ]);
 
@@ -207,7 +207,7 @@ export function NeuralAssistant() {
       // ═══════════════════════════════════════════════════════════
       } else if (/douleur nocturne|mal la nuit|j'ai mal la nuit|douleur la nuit|réveille la nuit|reveille la nuit|insomnie|douleur qui empêche de dormir|bruxisme|grince les dents|grince dents|serrement de mâchoire|grincement/.test(L)) {
         botResponse = "Douleur nocturne ou bruxisme identifié. Causes fréquentes : pulpite irréversible, bruxisme, sinusite maxillaire. Traitement : gouttière occlusale + évaluation pulpaire urgente.";
-        setChatHistory((p) => [...p, { role: "bot", text: "BILAN NUIT : Radio rétro-alvéolaire → Test vitalité pulpaire → Si bruxisme : gouttière sur mesure 35 000 FCFA", type: "insight" }]);
+        setChatHistory((p) => [...p, { role: "bot", text: "BILAN NUIT : Radio rétro-alvéolaire → Test vitalité pulpaire → Si bruxisme : gouttière sur mesure", type: "insight" }]);
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RADIO", content: cleanText, suggestion: "Lancer bilan pulpaire + radio urgente", status: "pending", meta: { priority: "High" } }, ...p]);
 
       } else if (/douleur|j'ai mal|ça fait mal|je souffre|mal aux dents|sensibilité|dent sensible|chaud|froid|sucré|sensitive|café touba|cafe touba/.test(L)) {
@@ -226,28 +226,28 @@ export function NeuralAssistant() {
       // 🔧 EXTRACTIONS
       // ═══════════════════════════════════════════════════════════
       } else if (/extraction|arracher|enlever la dent|dent de sagesse|sagesse|avulsion|dent à extraire|dent condamnée/.test(L)) {
-        botResponse = "Extraction notée. Protocole : Anesthésie → Avulsion → Sutures → Antibiotiques post-op (Amoxicilline 1g × 2/j × 7j). Tarif : 40 000 FCFA.";
+        botResponse = "Extraction notée. Protocole : Anesthésie → Avulsion → Sutures → Antibiotiques post-op (Amoxicilline 1g × 2/j × 7j).";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "NOTE", content: cleanText, suggestion: "Générer devis + consentement extraction", status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
       // 🧼 DÉTARTRAGE / PROPHYLAXIE
       // ═══════════════════════════════════════════════════════════
       } else if (/détartrage|detartrage|nettoyage|tartre|polissage|hygiène dentaire|prophylaxie|curetage|surfaçage/.test(L)) {
-        botResponse = "Détartrage/prophylaxie à programmer depuis l'agenda — rien n'est réservé ici. Inclus : détartrage supra et sous-gingival + polissage. Tarif : 25 000 FCFA. Durée : 45 min.";
+        botResponse = "Détartrage/prophylaxie à programmer depuis l'agenda — rien n'est réservé ici. Inclus : détartrage supra et sous-gingival + polissage. Durée : 45 min.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RDV", content: cleanText, suggestion: "Programmer séance détartrage", status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
       // 💉 ENDODONTIE / DÉVITALISATION
       // ═══════════════════════════════════════════════════════════
       } else if (/dévitalisation|devitalisation|traitement de canal|endodontie|canal radiculaire|pulpite|nécrose|necrose|granulome|kyste apical/.test(L)) {
-        botResponse = "Dévitalisation requise. Protocole en 2–3 séances. Tarif : 80 000 – 150 000 FCFA selon nombre de canaux.";
+        botResponse = "Dévitalisation requise. Protocole en 2–3 séances. Le nombre de canaux détermine le nombre de séances.";
         setChatHistory((p) => [...p, { role: "bot", text: "ENDODONTIE : Anesthésie → Accès caméral → Mise en forme → Irrigation NaOCl → Obturation Gutta → Couronne de recouvrement", type: "insight" }]);
 
       // ═══════════════════════════════════════════════════════════
       // 🪛 IMPLANTOLOGIE
       // ═══════════════════════════════════════════════════════════
       } else if (/implant|vis dentaire|ostéo-intégration|pose d'implant|pilier implant|sinus lift|greffe osseuse/.test(L)) {
-        botResponse = "Implantologie notée. Tarifs : Implant simple 350 000 FCFA · Sinus lift 180 000 FCFA · Greffe osseuse 120 000 FCFA. Délai osseux : 3–6 mois.";
+        botResponse = "Implantologie notée. Délai osseux : 3–6 mois. Tarifs : voir le Catalogue des actes.";
         setChatHistory((p) => [...p, { role: "bot", text: "IMPLANT : Bilan CBCT → Chirurgie (pose vis) → Cicatrisation 3–6 mois → Pose couronne sur implant", type: "insight" }]);
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "NOTE", content: cleanText, suggestion: "Générer devis implant + simulation 3D", status: "pending" }, ...p]);
 
@@ -255,24 +255,24 @@ export function NeuralAssistant() {
       // 👑 PROTHÈSES & RESTAURATIONS
       // ═══════════════════════════════════════════════════════════
       } else if (/couronne|bridge|prothèse|prothese|dentier|appareil dentaire|facette|onlay|inlay|stellite|partielle amovible|totale amovible/.test(L)) {
-        botResponse = "Restauration prothétique notée. Tarifs : Couronne zircone 120 000 FCFA · Bridge 3 éléments 280 000 FCFA · Prothèse amovible 150 000 FCFA.";
+        botResponse = "Restauration prothétique notée. Couronne, bridge ou prothèse amovible selon l'indication. Tarifs : voir le Catalogue des actes.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "NOTE", content: cleanText, suggestion: "Préparer consultation prothétique + empreinte", status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
       // 😁 ESTHÉTIQUE
       // ═══════════════════════════════════════════════════════════
       } else if (/blanchiment|blanchir|éclaircissement|eclaircissement|dents jaunes|dents blanches|smile design|esthétique dentaire|facette composite|facette céramique/.test(L)) {
-        botResponse = "Esthétique dentaire notée. Blanchiment cabinet 75 000 FCFA · Gouttières 45 000 FCFA · Facettes composite 80 000/dent · Facettes céramique 150 000/dent.";
+        botResponse = "Esthétique dentaire notée. Blanchiment au fauteuil, gouttières, facettes composite ou céramique. Tarifs : voir le Catalogue des actes.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "NOTE", content: cleanText, suggestion: "Ouvrir Smile Design Studio", status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
       // 🦷 ORTHODONTIE & PÉDODONTIE
       // ═══════════════════════════════════════════════════════════
       } else if (/orthodontie|bagues|gouttière orthodontique|aligneur|malposition|dents croches|diastème|diastheme|surplomb|décalage|malocclusion/.test(L)) {
-        botResponse = "Orthodontie notée. Bagues métalliques 250 000 FCFA · Bagues céramique 350 000 FCFA · Aligneurs transparents 400 000–600 000 FCFA. Durée : 12–24 mois.";
+        botResponse = "Orthodontie notée. Bagues métalliques ou céramique, aligneurs. Durée : 12–24 mois. Tarifs : voir le Catalogue des actes.";
 
       } else if (/enfant|pédiatrique|pédodontie|dent de lait|dent lactéale|carie enfant|biberon|fluor|scellement|sealant/.test(L)) {
-        botResponse = "Pédodontie notée. Scellement des sillons : 15 000 FCFA/dent. Fluoration : 10 000 FCFA. Traitement adapté enfant avec approche bienveillante.";
+        botResponse = "Pédodontie notée. Scellement des sillons et fluoration ; approche adaptée à l'enfant. Tarifs : voir le Catalogue des actes.";
 
       // ═══════════════════════════════════════════════════════════
       // 💊 PARODONTOLOGIE & GENCIVES
@@ -285,7 +285,7 @@ export function NeuralAssistant() {
       // 💉 ANESTHÉSIE & CONFORT
       // ═══════════════════════════════════════════════════════════
       } else if (/anesthésie|anesthesie|piqûre|piqure|endormir|j'ai peur|anxieux|anxiété|phobie dentaire|stress dentaire|sédation|protoxyde|mal anesthésié/.test(L)) {
-        botResponse = "Gestion anxiété/douleur notée. Options : Anesthésie locale Xylocaïne 2% · MEOPA (gaz hilarant) 25 000 FCFA · Sédation consciente. Allergie à vérifier.";
+        botResponse = "Gestion anxiété/douleur notée. Options : Anesthésie locale Xylocaïne 2% · MEOPA (gaz hilarant) · Sédation consciente. Allergie à vérifier.";
 
       // ═══════════════════════════════════════════════════════════
       // 💊 ORDONNANCES, MÉDICAMENTS & POSOLOGIE
@@ -314,7 +314,7 @@ export function NeuralAssistant() {
         botResponse = "Paiement bancaire noté. RIB : SGBS — IBAN SN XX XXXX XXXX XXXX. Chèque à l'ordre du Cabinet Dentaire Elite. Délai d'encaissement : 48h ouvrés.";
 
       } else if (/devis|estimation|coût du traitement|cout|combien coûte|combien ça coûte|tarification|grille tarifaire|prix/.test(L)) {
-        botResponse = "Grille tarifaire du cabinet : Consultation 15k · Détartrage 25k · Obturation 30k · Extraction 40k · Dévitalisation 80–150k · Couronne 120k · Implant 350k · Blanchiment 75k FCFA. Devis personnalisé sur demande.";
+        botResponse = "Je ne connais pas les tarifs de ce cabinet. Le catalogue réel est dans Devis et dans le Catalogue des actes ; établissez le devis à partir de là.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "BILLING", content: cleanText, suggestion: "Générer devis personnalisé", status: "pending" }, ...p]);
 
       } else if (/assurance|mutuelle|ipm|ipres|css|ram|sante|prise en charge|remboursement|tiers payant|ticket modérateur|assurance scolaire/.test(L)) {
@@ -322,10 +322,10 @@ export function NeuralAssistant() {
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "BILLING", content: cleanText, suggestion: "Ouvrir module Mutuelles", status: "pending" }, ...p]);
 
       } else if (/échelonner|echelonner|paiement en plusieurs fois|en deux fois|en trois fois|mensualité|mensualite|facilité de paiement|crédit dentaire/.test(L)) {
-        botResponse = "Paiement échelonné disponible pour les montants > 100 000 FCFA. Plans : 2×, 3× ou 6× sans frais avec Wave ou chèque. Accord de paiement requis.";
+        botResponse = "Je ne connais pas les modalités de paiement acceptées par ce cabinet. Ne les annoncez pas à un patient depuis ici : voyez avec la direction, puis enregistrez le règlement dans Facturation.";
 
       } else if (/solde|reste à payer|reste a payer|avance|acompte|règlement partiel|reglement partiel|situation compte|bilan financier/.test(L)) {
-        botResponse = "Consultation du compte patient en cours. Solde actuel : 0 FCFA. Dernier règlement : — FCFA. Souhaitez-vous un relevé de compte ?";
+        botResponse = "Je ne lis aucun compte patient. Le solde réel et les règlements sont dans Facturation, sur le dossier du patient.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "BILLING", content: cleanText, suggestion: "Afficher relevé financier patient", status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
@@ -342,7 +342,7 @@ export function NeuralAssistant() {
       // 📷 RADIO / IMAGERIE
       // ═══════════════════════════════════════════════════════════
       } else if (/radio|radiographie|panoramique|pano|cbct|scanner|rx|rétro-alvéolaire|retroalveolaire|imagerie|téléradiographie|teleradiographie/.test(L)) {
-        botResponse = "Analyse radiographique IA lancée. Modèle Neural Imaging v4.2 actif. Panoramique 15 000 FCFA · CBCT 60 000 FCFA · Rétro-alvéolaire 8 000 FCFA.";
+        botResponse = "Aucune analyse automatisée n'existe dans ce logiciel : le module Imagerie affiche les clichés, l'interprétation reste au praticien.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RADIO", content: cleanText, suggestion: "Ouvrir Radio IA Lab", status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
@@ -366,8 +366,10 @@ export function NeuralAssistant() {
       // 🦷 DICTÉE CLINIQUE & ODONTOGRAMME 3D (CHARTING)
       // ═══════════════════════════════════════════════════════════
       } else if (/carie mésio|carie occlusale|carie distale|face vestibulaire|face palatine|face linguale|poche parodontale|sur la dent|sur la 1|sur la 2|sur la 3|sur la 4|mobilité de grade|indice de plaque|saignement au sondage/.test(L)) {
-        botResponse = "Dictée clinique active. J'enregistre ces données directement sur l'odontogramme 3D et le charting parodontal du patient.";
-        setChatHistory((p) => [...p, { role: "bot", text: "CHARTING IA : Les faces Mésiale, Occlusale, Distale ont été mises à jour. Le schéma dentaire se synchronise en temps réel.", type: "insight" }]);
+        // Rien n'était écrit sur l'odontogramme : la phrase annonçait une
+        // mise à jour du schéma dentaire qui n'a jamais lieu. Un praticien
+        // pouvait croire son relevé enregistré et ne jamais le ressaisir.
+        botResponse = "Noté dans la file de saisie ci-dessous. Attention : rien n'est écrit sur l'odontogramme depuis cet assistant — reportez le relevé dans Consultation.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "CHARTING", content: cleanText, suggestion: "Mettre à jour l'Odontogramme 3D", status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
@@ -447,17 +449,17 @@ export function NeuralAssistant() {
       } else {
         const kb = [
           { r: /horaire|heure|ouvert|ferme|disponible|quand/, a: "Le cabinet est ouvert lundi–vendredi 8h–19h et samedi 9h–13h. Urgences acceptées sans RDV." },
-          { r: /adresse|situé|lieu|où|localisation|itinéraire|plan/, a: "Cabinet au Plateau, Rue de Thiong, Dakar. GPS : 14.6937° N, 17.4441° W. Bus 26, arrêt Plateau." },
-          { r: /tarif|prix|coût|combien/, a: "Consultation 15k · Détartrage 25k · Obturation 30k · Extraction 40k · Dévitalisation 80–150k · Couronne 120k · Implant 350k FCFA." },
-          { r: /bonjour|salut|bonsoir|hello|bonne journée|bonne matinée/, a: "Bonjour Docteur ! Neural Core v3.2 actif. Comment puis-je vous assister ?" },
+          { r: /adresse|situé|lieu|où|localisation|itinéraire|plan/, a: "Je ne connais pas les coordonnées du cabinet. Elles sont dans Configuration, telles que le cabinet les a saisies." },
+          { r: /tarif|prix|coût|combien/, a: "Je ne connais pas les tarifs pratiqués. Le catalogue réel est dans Devis et dans le Catalogue des actes — annoncer un prix de mémoire exposerait le cabinet." },
+          { r: /bonjour|salut|bonsoir|hello|bonne journée|bonne matinée/, a: "Bonjour. Je suis un aide-mémoire : je réponds sur les gestes et les protocoles, pas sur les données du cabinet." },
           { r: /merci|parfait|ok|super|bien|excellent|génial/, a: "Avec plaisir. Autre commande ?" },
-          { r: /agenda|planning|calendrier|programme|emploi du temps/, a: "Planning du jour : 8 patients · 3 urgences · 2 chirurgies. Prochain RDV libre : 15h30." },
-          { r: /stock|matériel|materiel|commande|consommable|gants|masque|résine|amalgame/, a: "Stocks : Gants L (8 boîtes) ⚠️ · Résine composite (3 seringues) ⚠️ · Anesthésiques (12 carpules). Commande urgente suggérée." },
-          { r: /chiffre d'affaires|ca|recettes|revenus|bilan|statistiques|performance/, a: "CA du mois : 2 450 000 FCFA. Objectif : 3 000 000 FCFA (82%). Voir tableau de bord statistiques." },
-          { r: /personnel|assistante|secretaire|infirmière|aide-soignant|equipe/, a: "Équipe active : Dr. Ndiaye (praticien) · Aïssatou (assistante) · M. Fall (comptable). Planning disponible dans la section Utilisateurs." },
+          { r: /agenda|planning|calendrier|programme|emploi du temps/, a: "Je ne lis pas l'agenda. Ouvrez le module Agenda : il affiche les vrais rendez-vous du jour et les créneaux libres." },
+          { r: /stock|matériel|materiel|commande|consommable|gants|masque|résine|amalgame/, a: "Je ne lis pas l'inventaire. Ouvrez le module Stocks : les quantités et les alertes y sont réelles." },
+          { r: /chiffre d'affaires|ca|recettes|revenus|bilan|statistiques|performance/, a: "Je ne connais aucun chiffre du cabinet. Statistiques et Comptabilité les calculent sur les vraies factures — n'annoncez jamais un montant venu d'ici." },
+          { r: /personnel|assistante|secretaire|infirmière|aide-soignant|equipe/, a: "Je ne connais pas la composition de l'équipe. Le module Utilisateurs liste les comptes réels et leurs rôles." },
           { r: /nutrition|alimentation|regime|sucre|acide|erosion|reflux/, a: "Conseils nutritionnels : Réduire les sucres raffinés (bissap, sodas) + boissons acides. Brosser 30 min après. Fluor 1450 ppm recommandé." },
           { r: /hygiène|brossage|dentifrice|fil dentaire|bain de bouche|brosse/, a: "Conseils hygiène : Brossage 2× /j · Fil dentaire 1× /j · Bain de bouche antibactérien. Brosse à dents changée tous les 3 mois." },
-          { r: /téléconsultation|teleconsultation|en ligne|video|zoom|à distance/, a: "Téléconsultation disponible. Tarif : 10 000 FCFA. RDV vidéo via la section Téléconsult du logiciel." },
+          { r: /téléconsultation|teleconsultation|en ligne|video|zoom|à distance/, a: "La téléconsultation vidéo se lance depuis le module Téléconsult, sur un rendez-vous du jour. Je ne connais pas son tarif au cabinet." },
           { r: /chicha|tabac|fumer/, a: "La chicha et le tabac jaunissent les dents et augmentent les risques de maladie parodontale. Un blanchiment et un détartrage régulier sont conseillés." },
           { r: /beurre de karité|karite|médecine traditionnelle|traditionnel|clou de girofle/, a: "Les remèdes traditionnels comme le beurre de karité ou le clou de girofle peuvent soulager temporairement la douleur, mais une consultation est indispensable pour traiter la cause médicale." },
           { r: /eau du robinet|eau dakar/, a: "L'eau du robinet à Dakar est généralement fluorée, ce qui est bénéfique pour l'émail dentaire. Cependant, un brossage régulier avec dentifrice fluoré reste indispensable." },
@@ -473,7 +475,7 @@ export function NeuralAssistant() {
       console.error("processCommand error:", err);
       setChatHistory((prev) => [
         ...prev,
-        { role: "bot", text: "Erreur interne du Neural Core. Réessayez." },
+        { role: "bot", text: "Erreur interne de l'assistant. Réessayez." },
       ]);
     } finally {
       setIsProcessing(false);
@@ -599,7 +601,7 @@ export function NeuralAssistant() {
                       </p>
                       <div className="mt-3 pt-3 border-t border-slate-800 flex justify-between items-center">
                         <span className="text-[8px] font-black text-slate-500 uppercase">
-                          IA Confidence: 98.4%
+                          Aide-mémoire — à vérifier
                         </span>
                         <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
                       </div>
@@ -693,7 +695,7 @@ export function NeuralAssistant() {
                 >
                   <Loader2 className="h-5 w-5 animate-spin" />
                   <span className="text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">
-                    Neural Core Processing...
+                    Recherche…
                   </span>
                 </motion.div>
               )}
