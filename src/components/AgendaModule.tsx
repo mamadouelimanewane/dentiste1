@@ -735,7 +735,11 @@ export function AgendaModule() {
         {/* ZONE PRINCIPALE */}
         <div className={cn(
           "lg:col-span-3 bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col",
-          isFullscreen ? "h-[calc(100vh-140px)]" : "h-[680px]"
+          // Hauteur figée à 680px auparavant : sur un portable de 720px la
+          // page devait défiler (et la barre de défilement est masquée par
+          // `no-scrollbar`, donc rien n'indiquait qu'il y avait une suite).
+          // Le planning occupe désormais la hauteur réellement disponible.
+          isFullscreen ? "h-[calc(100vh-140px)]" : "h-[calc(100vh-290px)] min-h-[420px]"
         )}>
           {/* Toolbar */}
           <div className="p-4 border-b border-slate-200 flex flex-wrap gap-4 items-center justify-between bg-slate-50">
@@ -744,7 +748,7 @@ export function AgendaModule() {
                 <button onClick={() => agendaView === "week" ? setWeekOffset(w => w - 1) : setDayOffset(d => d - 1)} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700">
                   <ChevronLeft className="h-4 w-4" />
                 </button>
-                <span className="text-sm font-black text-slate-900 uppercase min-w-[150px] text-center">
+                <span className="text-sm font-black text-slate-900 uppercase min-w-[190px] text-center">
                   {agendaView === "week" ? monthLabel : teamDayLabel}
                 </span>
                 <button onClick={() => agendaView === "week" ? setWeekOffset(w => w + 1) : setDayOffset(d => d + 1)} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700">
@@ -759,6 +763,9 @@ export function AgendaModule() {
               </div>
             </div>
 
+            {/* Onglets et bouton réunis : séparés, ils passaient à la ligne
+                et coûtaient 44px de planning. */}
+            <div className="flex items-center gap-3">
             <div className="flex gap-2 bg-white border border-slate-200 rounded-sm p-1 shadow-sm">
               {(["Agenda", "Attente"] as const).map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)}
@@ -775,6 +782,7 @@ export function AgendaModule() {
             >
               <Plus className="h-4 w-4" /> Réserver
             </button>
+            </div>
           </div>
 
           {activeTab === "Agenda" ? (
