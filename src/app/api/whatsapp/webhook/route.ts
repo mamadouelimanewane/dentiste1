@@ -136,9 +136,15 @@ export async function POST(request: Request) {
           )
         `;
         if (envoi.error) {
+          // On ajoute le motif du repli SANS écraser celui de Meta : sinon
+          // le code d'origine (131042, 131047...) disparaît, et c'est
+          // précisément lui qui indique quoi corriger côté compte.
           await sql`
             update patient_messages
-            set error_detail = ${`repli SMS: ${envoi.error}`.slice(0, 300)}
+            set error_detail = left(
+              coalesce(error_detail || ' | ', '') || ${`repli SMS: ${envoi.error}`},
+              300
+            )
             where id = ${msg.id}
           `;
         }
