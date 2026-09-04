@@ -99,6 +99,11 @@ const steps = [
   { id: 24, title: "Journal", fullTitle: "Journal d'activité", desc: "Historique des actions enregistrées par l'assistant de saisie.", icon: Database },
 ];
 
+// Modules qui affichent une grille, un tableau ou des colonnes multiples :
+// une largeur de lecture de 1024px les comprime inutilement sur un écran de
+// bureau. Agenda, Comptabilité, Statistiques, Journal, Recherche, Super Admin.
+const MODULES_LARGES = [8, 13, 20, 22, 23, 24];
+
 // Source de vérité unique pour la visibilité des étapes : privilège "view"
 // du rôle sur le module (table roles, gérable depuis l'admin), plus un
 // rôle en dur.
@@ -407,11 +412,25 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Workspace */}
-        <div className="flex-1 overflow-y-auto p-6 lg:p-10 no-scrollbar">
-          <div className="max-w-5xl mx-auto space-y-10 pb-24">
+        {/* Workspace.
+            Les marges et l'espacement ont été resserrés : sur un portable de
+            720px de haut, le châssis consommait près de 200px avant que le
+            module ne commence, et l'agenda n'affichait plus que six heures de
+            journée.
+
+            La largeur s'adapte au module. `max-w-5xl` (1024px) convient à un
+            formulaire, mais serre une grille de planning ou un tableau
+            comptable sur un grand écran : ces modules-là respirent jusqu'à
+            1400px, le reste garde la largeur de lecture confortable. */}
+        <div className="flex-1 overflow-y-auto p-4 lg:p-6 no-scrollbar">
+          <div
+            className={cn(
+              "mx-auto space-y-6 pb-20",
+              MODULES_LARGES.includes(currentStep) ? "max-w-[1400px]" : "max-w-5xl"
+            )}
+          >
             {/* Phase Header */}
-            <div className="border-b border-foreground/10 pb-6 flex items-start justify-between">
+            <div className="border-b border-foreground/10 pb-4 flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Étape {currentStep}</span>
