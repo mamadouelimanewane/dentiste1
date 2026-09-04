@@ -12,6 +12,10 @@ const PUBLIC_PREFIXES = [
   // Callback de statut Twilio : appelé par Twilio sans session, protégé par
   // vérification de la signature X-Twilio-Signature côté route.
   '/api/twilio/status',
+  // Accusés de réception Africa's Talking : appelés sans session. Africa's
+  // Talking ne signe pas ses rappels ; la route exige un jeton placé dans
+  // l'URL déclarée à leur tableau de bord et refuse tout le reste.
+  '/api/africastalking/status',
   // Prise de RDV en ligne par un patient anonyme (page /portail). Écriture
   // limitée par IP côté route, pas de lecture de données exposée ici.
   '/api/public/',
