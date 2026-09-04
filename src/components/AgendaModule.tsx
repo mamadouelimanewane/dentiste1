@@ -79,7 +79,36 @@ const WEEK_DAYS = [
   { name: "dim", label: "Dimanche" },
 ];
 
-const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 8h → 19h
+// Plage affichée par défaut : une journée de cabinet ordinaire.
+const HEURE_DEBUT_DEFAUT = 8;
+const HEURE_FIN_DEFAUT = 19;
+
+// Plage proposée à la réservation. Plus large que la grille par défaut :
+// l'écran ne permettait de créer un rendez-vous qu'entre 8h et 19h, alors
+// que l'API en accepte à toute heure (prise de RDV en ligne, report, série
+// récurrente décalée). Le cabinet ne pouvait donc pas saisir une urgence de
+// 7h alors qu'elle pouvait exister en base.
+const HEURES_RESERVATION = Array.from({ length: 16 }, (_, i) => i + 6); // 6h → 21h
+
+// Grille horaire réellement affichée : la plage par défaut, ÉLARGIE pour
+// contenir tous les rendez-vous de la période.
+//
+// Sans cet élargissement, un rendez-vous hors de 8h–19h était purement et
+// simplement absent de la grille — tout en restant compté dans « RDV
+// aujourd'hui » et listé dans le résumé de la semaine. Constaté en
+// production : un rendez-vous à 7h00 introuvable sur le planning. L'assistante
+// voyait deux rendez-vous annoncés et n'en trouvait qu'un.
+function plageHoraire(dates: Date[]) {
+  let debut = HEURE_DEBUT_DEFAUT;
+  let fin = HEURE_FIN_DEFAUT;
+  for (const d of dates) {
+    const h = d.getHours();
+    if (h < debut) debut = h;
+    // +1 : un rendez-vous commencé à 20h doit avoir sa ligne entière.
+    if (h > fin) fin = h;
+  }
+  return Array.from({ length: fin - debut + 1 }, (_, i) => i + debut);
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -292,6 +321,16 @@ export function AgendaModule() {
     const now = new Date();
     return d.toDateString() === now.toDateString() && a.status === "scheduled";
   }).sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
+
+  // La grille couvre les deux vues à la fois : en basculant de « Semaine » à
+  // « Équipe », l'échelle ne doit pas se déplacer sous les yeux de
+  // l'utilisateur.
+  const HOURS = plageHoraire(
+    [...appointments, ...weekAppointments].map(a => new Date(a.scheduled_at))
+  );
+  const premiereHeure = HOURS[0];
+  // Position verticale d'une heure décimale dans la grille (80px par heure).
+  const positionY = (heure: number) => (heure - premiereHeure) * 80;
 
   return (
     <div className={cn(
@@ -572,7 +611,7 @@ export function AgendaModule() {
 
                   {/* Current Time Line */}
                   <div className="absolute left-16 right-0 z-20 pointer-events-none" style={{
-                    top: `${Math.max(0, (new Date().getHours() + new Date().getMinutes()/60 - 8)) * 80}px`,
+                    top: `${Math.max(0, positionY(new Date().getHours() + new Date().getMinutes() / 60))}px`,
                     display: new Date().getHours() >= 8 && new Date().getHours() < 20 ? 'block' : 'none'
                   }}>
                     <div className="flex items-center -ml-14">
@@ -590,7 +629,6 @@ export function AgendaModule() {
                       {appointments.filter(a => new Date(a.scheduled_at).toDateString() === day.fullDate.toDateString()).map(appt => {
                         const apptDate = new Date(appt.scheduled_at);
                         const hourFloat = apptDate.getHours() + apptDate.getMinutes() / 60;
-                        if (hourFloat < 8 || hourFloat > 20) return null;
                         const colors = practitionerColor(appt.practitioner_id, practitioners);
                         return (
                           <motion.button
@@ -604,7 +642,7 @@ export function AgendaModule() {
                               colors.light, colors.border, colors.borderLeft, colors.text,
                               appt.status !== "scheduled" && "opacity-60 grayscale"
                             )}
-                            style={{ top: `${(hourFloat - 8) * 80 + 4}px`, height: "72px" }}
+                            style={{ top: `${positionY(hourFloat) + 4}px`, height: "72px" }}
                           >
                             <p className="truncate tracking-tight leading-tight">{appt.patient_name}</p>
                             <p className={cn("truncate text-[10px] leading-tight font-bold mt-0.5", colors.textLight)}>{appt.type}</p>
@@ -623,7 +661,7 @@ export function AgendaModule() {
                           key={h}
                           onClick={() => openModal(dayIdx, h)}
                           className="absolute w-full opacity-0 hover:opacity-100 transition-all flex items-center justify-center z-0 p-1"
-                          style={{ top: `${(h - 8) * 80}px`, height: "80px" }}
+                          style={{ top: `${positionY(h)}px`, height: "80px" }}
                           title={`Créer un RDV le ${day.label} à ${h}:00`}
                         >
                           <div className="w-full h-full border-2 border-dashed border-blue-400/50 bg-blue-50/50 rounded-lg flex items-center justify-center text-blue-600 font-bold text-xs uppercase tracking-widest backdrop-blur-sm">
@@ -637,7 +675,6 @@ export function AgendaModule() {
                       {appointments.filter(a => new Date(a.scheduled_at).toDateString() === activeDate.toDateString() && a.practitioner_id === p.id).map(appt => {
                         const apptDate = new Date(appt.scheduled_at);
                         const hourFloat = apptDate.getHours() + apptDate.getMinutes() / 60;
-                        if (hourFloat < 8 || hourFloat > 20) return null;
                         const colors = practitionerColor(appt.practitioner_id, practitioners);
                         return (
                           <motion.button
@@ -651,7 +688,7 @@ export function AgendaModule() {
                               colors.light, colors.border, colors.borderLeft, colors.text,
                               appt.status !== "scheduled" && "opacity-60 grayscale"
                             )}
-                            style={{ top: `${(hourFloat - 8) * 80 + 4}px`, height: "72px" }}
+                            style={{ top: `${positionY(hourFloat) + 4}px`, height: "72px" }}
                           >
                             <p className="truncate tracking-tight leading-tight">{appt.patient_name}</p>
                             <p className={cn("truncate text-[10px] leading-tight font-bold mt-0.5", colors.textLight)}>{appt.type}</p>
@@ -672,7 +709,7 @@ export function AgendaModule() {
                             key={h}
                             onClick={() => openModal(activeDayIdx >= 0 ? activeDayIdx : 0, h)}
                             className="absolute w-full opacity-0 hover:opacity-100 transition-all flex items-center justify-center z-0 p-1"
-                            style={{ top: `${(h - 8) * 80}px`, height: "80px" }}
+                            style={{ top: `${positionY(h)}px`, height: "80px" }}
                           >
                             <div className="w-full h-full border-2 border-dashed border-blue-400/50 bg-blue-50/50 rounded-lg flex items-center justify-center text-blue-600 font-bold text-xs uppercase tracking-widest backdrop-blur-sm">
                               <Plus className="h-4 w-4 mr-1" /> Ajouter
@@ -687,9 +724,9 @@ export function AgendaModule() {
                 {weekOffset === 0 && (
                   <>
                     <div className="absolute left-16 right-0 h-[2px] bg-red-500 z-30 shadow-[0_0_12px_rgba(239,68,68,1)] animate-pulse"
-                      style={{ top: `${Math.max(0, (new Date().getHours() - 8) * 80 + (new Date().getMinutes() / 60) * 80)}px` }} />
+                      style={{ top: `${Math.max(0, positionY(new Date().getHours() + new Date().getMinutes() / 60))}px` }} />
                     <div className="absolute w-2.5 h-2.5 rounded-full bg-red-600 z-30 shadow-[0_0_10px_rgba(239,68,68,1)] animate-pulse border border-white"
-                      style={{ top: `${Math.max(-4, (new Date().getHours() - 8) * 80 + (new Date().getMinutes() / 60) * 80 - 4)}px`, left: "55px" }} />
+                      style={{ top: `${Math.max(-4, positionY(new Date().getHours() + new Date().getMinutes() / 60) - 4)}px`, left: "55px" }} />
                   </>
                 )}
               </div>
@@ -1225,7 +1262,7 @@ function BookingModal({ weekDays, initialDay, initialHour, currentPatient, pract
                   onChange={e => setSelectedHour(Number(e.target.value))}
                   className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg text-base font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white shadow-sm"
                 >
-                  {HOURS.map(h => (
+                  {HEURES_RESERVATION.map(h => (
                     <option key={h} value={h}>{h}:00</option>
                   ))}
                 </select>
