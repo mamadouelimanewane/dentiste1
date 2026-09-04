@@ -324,11 +324,9 @@ export function CommunicationCenter() {
               </div>
             </div>
 
-            {error && (
-              <div className="mx-4 mt-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-3">
-                {error}
-              </div>
-            )}
+            {/* L'erreur s'affiche désormais juste au-dessus de la zone de
+                saisie, avec la porte de sortie qui va avec — en tête de fil,
+                elle était hors du regard au moment d'agir. */}
 
             <div className="flex-1 p-6 overflow-y-auto bg-slate-50/30 space-y-4">
               {loadingMessages && <p className="text-sm text-slate-400 text-center">Chargement...</p>}
@@ -420,6 +418,28 @@ export function CommunicationCenter() {
                   </span>
                 </div>
               )}
+              {/* L'échec d'un envoi automatique est le moment précis où
+                  l'assistante a besoin de l'autre voie : le fournisseur peut
+                  être paramétré et refuser quand même (compte non vérifié,
+                  hors fenêtre de 24h, crédit épuisé). Sans cette porte de
+                  sortie ici, le message est perdu et le patient non prévenu. */}
+              {error && (
+                <div className="mb-3 flex items-start justify-between gap-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">
+                  <span className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    {error}
+                  </span>
+                  {inputText.trim() && activePhone && (
+                    <button
+                      onClick={handleSendManuel}
+                      className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded border border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50 font-bold transition-colors"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Envoyer moi-même
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="flex items-center gap-4 bg-slate-100 rounded-xl p-2 focus-within:ring-2 focus-within:ring-blue-500/20 border border-transparent transition-all">
                 <div className="flex bg-white rounded-lg p-0.5 shadow-sm">
                   <button
@@ -455,6 +475,23 @@ export function CommunicationCenter() {
                   placeholder={`Message via ${channel === "whatsapp" ? "WhatsApp" : "SMS"}...`}
                   className="flex-1 bg-transparent border-none outline-none text-sm px-2 text-slate-800 placeholder:text-slate-400 disabled:cursor-not-allowed"
                 />
+
+                {/* Voie manuelle toujours offerte, même quand un fournisseur
+                    est paramétré : « paramétré » ne veut pas dire « fonctionne »
+                    — un compte non vérifié, une fenêtre de 24h expirée ou un
+                    crédit épuisé se découvrent à l'envoi, parfois seulement
+                    après coup. L'assistante n'a alors pas à attendre l'échec
+                    pour envoyer elle-même. */}
+                {envoiAutoDispo && (
+                  <button
+                    onClick={handleSendManuel}
+                    disabled={sending || !inputText.trim() || !activePhone}
+                    title={`Envoyer moi-même depuis ${channel === "whatsapp" ? "WhatsApp" : "l'application SMS"}`}
+                    className="h-10 w-10 border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-500 rounded-lg flex items-center justify-center transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </button>
+                )}
 
                 {/* Sans fournisseur branché, le bouton n'envoie pas : il ouvre
                     WhatsApp sur le message. L'icône le dit, pour que personne
