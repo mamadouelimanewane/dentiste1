@@ -151,6 +151,8 @@ export async function POST(request: Request) {
   
   const created: unknown[] = [];
   const skipped: { scheduledAt: string; reason: string; conflictWith?: string }[] = [];
+  // Notifications de confirmation, attendues ensemble avant de répondre.
+  const notifications: Promise<unknown>[] = [];
 
   for (let i = 0; i < occurrences; i++) {
     const occurrenceBaseDate = new Date(scheduledAt);
@@ -205,18 +207,33 @@ export async function POST(request: Request) {
 
         // Un seul canal : le patient recevait auparavant deux fois le même
         // texte, et le cabinet payait deux envois pour une seule information.
-        notifyPatient({
-          patientId: pId,
-          phone: patient.phone,
-          whatsappPhone: patient.whatsapp_phone,
-          body: msg,
-          sentBy: session?.userId,
-          templateName: MODELES.confirmation,
-          templateParams: [patient.full_name, formattedDate],
-        }).catch(console.error);
+        //
+        // La promesse est mise de côté puis attendue avant de répondre. Elle
+        // était auparavant lancée sans `await` : sur Vercel, la fonction
+        // s'achève avec la réponse et l'envoi était interrompu en cours —
+        // vérifié, aucune ligne n'apparaissait dans `patient_messages`, pas
+        // même un échec. Les confirmations de rendez-vous se perdaient donc
+        // en silence, sans laisser de trace à consulter.
+        notifications.push(
+          notifyPatient({
+            patientId: pId,
+            phone: patient.phone,
+            whatsappPhone: patient.whatsapp_phone,
+            body: msg,
+            sentBy: session?.userId,
+            templateName: MODELES.confirmation,
+            templateParams: [patient.full_name, formattedDate],
+          })
+        );
       }
     }
   }
+
+  // En parallèle : une série récurrente ne doit pas ajouter une seconde
+  // d'attente par occurrence. `allSettled` car l'échec d'une notification ne
+  // doit jamais annuler des rendez-vous déjà créés — et il ne se perd pas
+  // pour autant, notifyPatient dépose alors le message en file d'envoi.
+  await Promise.allSettled(notifications);
 
   if (created.length === 0) {
     return NextResponse.json(
