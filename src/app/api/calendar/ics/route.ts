@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { requirePermission } from "@/lib/permissions";
 import { formatToGoogleCalendarDate } from "@/lib/google-calendar";
 
 // Flux iCal toujours calculé à la demande : la route lit request.url et doit
@@ -17,6 +18,15 @@ interface AppointmentRow {
 }
 
 export async function GET(req: Request) {
+  // Ce flux porte le nom de chaque patient et l'heure de son rendez-vous.
+  // La route ne vérifiait aucune permission : elle ne tenait que par la
+  // redirection du middleware, donc n'importe quel compte connecté pouvait
+  // l'aspirer — y compris un rôle sans aucun accès à l'agenda. Aujourd'hui
+  // tous les rôles ont l'agenda en lecture, donc rien ne fuyait ; un rôle
+  // personnalisé créé demain aurait suffi à ouvrir la brèche.
+  const { error, status } = await requirePermission(13, "view");
+  if (error) return NextResponse.json({ error }, { status });
+
   try {
     const { searchParams } = new URL(req.url);
     const practitionerId = searchParams.get("practitionerId");

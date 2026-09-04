@@ -484,11 +484,17 @@ export function AgendaModule() {
             </div>
           )}
 
-          {/* Export / Synchronisation Google Calendar */}
+          {/* Export de l'agenda.
+              Le bloc s'intitulait « Sync Google Calendar » alors qu'il ne
+              synchronise rien : le fichier .ics est une copie figée à
+              l'instant du téléchargement. Importée dans Google Calendar, elle
+              n'apprend jamais qu'un rendez-vous a été déplacé ou annulé — le
+              praticien verrait sur son téléphone un patient qui ne vient
+              plus. Le titre dit désormais ce que le bouton fait. */}
           <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-3 space-y-2">
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-blue-600" />
-              <p className="text-[10px] font-black text-slate-800 uppercase tracking-wider">Sync Google Calendar</p>
+              <p className="text-[10px] font-black text-slate-800 uppercase tracking-wider">Exporter l&apos;agenda</p>
             </div>
             <a
               href="/api/calendar/ics"
@@ -496,8 +502,13 @@ export function AgendaModule() {
               download="agenda-cabinet.ics"
               className="w-full flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded transition-all"
             >
-              Exporter Flux iCal (.ics)
+              Télécharger (.ics)
             </a>
+            <p className="text-[9px] text-slate-500 leading-relaxed">
+              Copie de l&apos;agenda à cet instant, à importer dans Google Calendar ou
+              Outlook. Elle ne se met pas à jour toute seule :{" "}
+              <strong>après un report ou une annulation, réexportez</strong>.
+            </p>
           </div>
 
           <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
