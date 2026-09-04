@@ -109,8 +109,15 @@ function libelleNotification(
   if (n.canal === "manuel")
     return "Message déposé dans la file « À envoyer » — à envoyer depuis Communication.";
   if (n.simulated) return "Message enregistré, mais aucun canal d'envoi n'est configuré.";
-  if (n.canal === "whatsapp") return "Patient prévenu par WhatsApp.";
-  if (n.canal === "sms") return "Patient prévenu par SMS.";
+  // Ni Meta ni les opérateurs SMS ne confirment la livraison dans leur
+  // réponse : ils acceptent la requête, puis rendent compte plus tard par
+  // webhook — souvent pour rejeter. Écrire « patient prévenu » ici
+  // affirmerait une chose qu'on ignore encore, et que ce cabinet a
+  // précisément vu se démentir (erreur 131042 arrivant après un HTTP 200).
+  if (n.canal === "whatsapp")
+    return "Message remis à WhatsApp. Livraison pas encore confirmée — vérifiez dans Communication.";
+  if (n.canal === "sms")
+    return "Message remis à l'opérateur SMS. Livraison pas encore confirmée — vérifiez dans Communication.";
   return "Patient NON prévenu. Appelez-le.";
 }
 
