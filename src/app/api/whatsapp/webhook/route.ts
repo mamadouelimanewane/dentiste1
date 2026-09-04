@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { sql } from '@/lib/db';
 import { sendSms, isSmsConfigured } from '@/lib/integrations/sms';
+import { preparerEnvoiManuel } from '@/lib/integrations/envoi-manuel';
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const APP_SECRET = process.env.WHATSAPP_APP_SECRET;
@@ -120,21 +121,27 @@ export async function POST(request: Request) {
         : [];
       const numeroSms = (lignes[0]?.phone as string | undefined) || (msg.phone as string);
 
-      if (dejaRepris.length === 0 && isSmsConfigured()) {
-        const envoi = await sendSms({
-          patientId: msg.patient_id as string | null,
-          phone: numeroSms,
-          body: msg.body as string,
-        });
-        await sql`
-          update patient_messages
-          set fallback_of = ${msg.id}
-          where id = (
-            select id from patient_messages
-            where phone = ${numeroSms} and channel = 'sms' and fallback_of is null
-            order by created_at desc limit 1
-          )
-        `;
+      if (dejaRepris.length === 0) {
+        const envoi = isSmsConfigured()
+          ? await sendSms({
+              patientId: msg.patient_id as string | null,
+              phone: numeroSms,
+              body: msg.body as string,
+            })
+          : { error: 'aucun fournisseur SMS configuré' };
+
+        if (isSmsConfigured()) {
+          await sql`
+            update patient_messages
+            set fallback_of = ${msg.id}
+            where id = (
+              select id from patient_messages
+              where phone = ${numeroSms} and channel = 'sms' and fallback_of is null
+              order by created_at desc limit 1
+            )
+          `;
+        }
+
         if (envoi.error) {
           // On ajoute le motif du repli SANS écraser celui de Meta : sinon
           // le code d'origine (131042, 131047...) disparaît, et c'est
@@ -147,6 +154,26 @@ export async function POST(request: Request) {
             )
             where id = ${msg.id}
           `;
+
+          // Dernier recours : la file d'envoi manuel.
+          //
+          // C'est ici, et pas dans notifyPatient, que se joue le cas le plus
+          // fréquent. Meta accepte la requête (HTTP 200) puis rejette la
+          // livraison par webhook : pour notifyPatient l'envoi a donc réussi,
+          // il ne déclenche aucun repli et rien n'atteint la file. Vérifié en
+          // production sur une confirmation de rendez-vous refusée en 131042
+          // — les deux canaux échouaient et le message ne réapparaissait
+          // nulle part. Le rappel était perdu en silence.
+          try {
+            await preparerEnvoiManuel({
+              patientId: msg.patient_id as string | null,
+              numero: msg.phone as string,
+              canal: 'whatsapp',
+              body: msg.body as string,
+            });
+          } catch {
+            /* la file est un filet ; son échec ne doit pas rompre le webhook */
+          }
         }
       }
     }
