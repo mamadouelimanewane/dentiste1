@@ -98,6 +98,22 @@ const HEURES_RESERVATION = Array.from({ length: 16 }, (_, i) => i + 6); // 6h �
 // aujourd'hui » et listé dans le résumé de la semaine. Constaté en
 // production : un rendez-vous à 7h00 introuvable sur le planning. L'assistante
 // voyait deux rendez-vous annoncés et n'en trouvait qu'un.
+// Traduit le résultat d'envoi en une phrase qui dit à l'assistante ce que le
+// patient sait, et ce qu'il lui reste à faire. « Envoyé » et « à envoyer »
+// n'appellent pas la même action de sa part.
+function libelleNotification(
+  n?: { canal?: string; error?: string; simulated?: boolean } | null
+) {
+  if (!n) return "Patient NON prévenu : aucun numéro à son dossier. Appelez-le.";
+  if (n.error) return `Patient NON prévenu (${n.error}). Appelez-le.`;
+  if (n.canal === "manuel")
+    return "Message déposé dans la file « À envoyer » — à envoyer depuis Communication.";
+  if (n.simulated) return "Message enregistré, mais aucun canal d'envoi n'est configuré.";
+  if (n.canal === "whatsapp") return "Patient prévenu par WhatsApp.";
+  if (n.canal === "sms") return "Patient prévenu par SMS.";
+  return "Patient NON prévenu. Appelez-le.";
+}
+
 function plageHoraire(dates: Date[]) {
   let debut = HEURE_DEBUT_DEFAUT;
   let fin = HEURE_FIN_DEFAUT;
@@ -169,6 +185,10 @@ export function AgendaModule() {
   // Motif d'échec des actions de la fiche rendez-vous (annulation, report,
   // message). Sans lui, un refus du serveur restait invisible.
   const [actionError, setActionError] = useState<string | null>(null);
+  // Ce qui est advenu du message prévenant le patient d'une annulation ou
+  // d'un report. Affiché après fermeture de la fiche, puisque c'est le
+  // moment où l'assistante se demande si le patient est au courant.
+  const [notifAnnulation, setNotifAnnulation] = useState<string | null>(null);
 
   const activeDate = new Date();
   activeDate.setDate(activeDate.getDate() + dayOffset);
@@ -296,6 +316,8 @@ export function AgendaModule() {
         setActionError(d.error || "L'opération a échoué. Le rendez-vous est inchangé.");
         return;
       }
+      const d = await res.json().catch(() => ({}));
+      if (action === "cancel") setNotifAnnulation(libelleNotification(d.notification));
       setActiveAppt(null);
       loadAppointments();
       // La vue semaine se rafraîchit aussi : sans cela un rendez-vous annulé
@@ -349,6 +371,8 @@ export function AgendaModule() {
       body: JSON.stringify({ action: "reschedule", scheduledAt: new Date(rescheduleDate).toISOString() }),
     });
     if (res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setNotifAnnulation(libelleNotification(d.notification));
       setActiveAppt(null);
       setRescheduleDate("");
       loadAppointments();
@@ -366,6 +390,14 @@ export function AgendaModule() {
   useEffect(() => {
     setActionError(null);
   }, [activeAppt?.id]);
+
+  // Le bandeau disparaît de lui-même, mais assez lentement pour être lu :
+  // c'est une information sur ce que le patient sait, pas une décoration.
+  useEffect(() => {
+    if (!notifAnnulation) return;
+    const t = setTimeout(() => setNotifAnnulation(null), 12000);
+    return () => clearTimeout(t);
+  }, [notifAnnulation]);
 
   const todaysAppointments = appointments.filter(a => {
     const d = new Date(a.scheduled_at);
@@ -388,6 +420,33 @@ export function AgendaModule() {
       "animate-in fade-in duration-500",
       isFullscreen ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-4 sm:p-6 overflow-y-auto flex flex-col space-y-6" : "space-y-6"
     )}>
+      {/* Sort du patient après une annulation ou un report : a-t-il été
+          prévenu, et par quel moyen ? */}
+      {notifAnnulation && (
+        <div
+          className={cn(
+            "flex items-start justify-between gap-3 rounded-sm border p-3 text-xs font-bold",
+            /NON prévenu/.test(notifAnnulation)
+              ? "bg-rose-50 border-rose-200 text-rose-800"
+              : /file/.test(notifAnnulation)
+              ? "bg-amber-50 border-amber-200 text-amber-900"
+              : "bg-emerald-50 border-emerald-200 text-emerald-800"
+          )}
+        >
+          <span className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            {notifAnnulation}
+          </span>
+          <button
+            onClick={() => setNotifAnnulation(null)}
+            className="flex-shrink-0 opacity-60 hover:opacity-100"
+            title="Masquer"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* HEADER */}
       <div className="bg-white border border-slate-200 rounded-sm p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-4">
