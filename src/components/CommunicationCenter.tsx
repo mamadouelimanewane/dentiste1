@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Send, MessageCircle, MessageSquare, User, AlertTriangle, Plus, X } from "lucide-react";
+import { Search, Send, MessageCircle, MessageSquare, User, AlertTriangle, Plus, X, ExternalLink, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Thread {
@@ -56,6 +56,10 @@ export function CommunicationCenter() {
   const [showNew, setShowNew] = useState(false);
   const [patientQuery, setPatientQuery] = useState("");
   const [patientHits, setPatientHits] = useState<PatientHit[]>([]);
+  // Canaux réellement branchés sur un fournisseur. Quand aucun ne l'est,
+  // l'application ne fait pas semblant d'envoyer : elle prépare le message
+  // pour que l'assistante l'envoie depuis le téléphone du cabinet.
+  const [canauxAuto, setCanauxAuto] = useState<{ whatsapp: boolean; sms: boolean } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadThreads = useCallback(() => {
@@ -103,7 +107,18 @@ export function CommunicationCenter() {
     return () => clearTimeout(t);
   }, [patientQuery, showNew]);
 
+  useEffect(() => {
+    fetch("/api/config/status")
+      .then((r) => r.json())
+      .then((d) => setCanauxAuto({ whatsapp: !!d.whatsapp, sms: !!d.sms }))
+      // En cas d'échec, on suppose qu'aucun canal n'est branché : proposer
+      // l'envoi manuel à tort est sans conséquence, laisser croire à un envoi
+      // automatique qui n'aura pas lieu ne l'est pas.
+      .catch(() => setCanauxAuto({ whatsapp: false, sms: false }));
+  }, []);
+
   const activeThread = threads.find((t) => t.patient_id === activePatientId);
+  const envoiAutoDispo = canauxAuto ? canauxAuto[channel] : false;
   const activePhone = activeThread?.phone || messages.find((m) => m.phone)?.phone || null;
 
   const filteredThreads = threads.filter(
@@ -130,6 +145,55 @@ export function CommunicationCenter() {
     setActivePatientId(p.id);
     setShowNew(false);
     setPatientQuery("");
+  };
+
+  // Prépare le message et ouvre WhatsApp (ou l'application SMS) dessus.
+  // L'assistante appuie sur envoyer : le message part pour de bon, mais par
+  // une main humaine. Il est donc enregistré « à envoyer », pas « envoyé » —
+  // tant que personne n'a confirmé, l'historique ne prétend rien.
+  const handleSendManuel = async () => {
+    const text = inputText.trim();
+    if (!text || !activePatientId || !activePhone || sending) return;
+
+    setSending(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/messages/manuel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: activePatientId,
+          phone: activePhone,
+          message: text,
+          channel,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de la préparation.");
+      setInputText("");
+      // Ouvert depuis le clic de l'utilisateur : les navigateurs bloquent
+      // l'ouverture d'un onglet déclenchée après coup par du code.
+      window.open(data.lien, "_blank", "noopener,noreferrer");
+      loadMessages(activePatientId);
+      loadThreads();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const confirmerEnvoi = async (id: string) => {
+    setError(null);
+    try {
+      const res = await fetch(`/api/messages/${id}/confirmer`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec de la confirmation.");
+      if (activePatientId) loadMessages(activePatientId);
+      loadThreads();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur inconnue.");
+    }
   };
 
   const handleSendMessage = async () => {
@@ -313,6 +377,21 @@ export function CommunicationCenter() {
                       {isMine && msg.status === "simulated" && (
                         <span className="text-amber-500 font-bold">simulé</span>
                       )}
+                      {/* Préparé mais pas encore parti : le distinguer d'un
+                          message envoyé est tout l'intérêt de ce statut. */}
+                      {isMine && msg.status === "a_envoyer" && (
+                        <>
+                          <span className="text-amber-600 font-bold">à envoyer</span>
+                          <button
+                            onClick={() => confirmerEnvoi(msg.id)}
+                            title="Je l'ai envoyé depuis le téléphone du cabinet"
+                            className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-bold transition-colors"
+                          >
+                            <Check className="h-3 w-3" />
+                            confirmer
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -325,6 +404,20 @@ export function CommunicationCenter() {
                 <div className="mb-3 flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
                   <AlertTriangle className="h-4 w-4 flex-shrink-0" />
                   Ce patient n&apos;a pas de numéro enregistré — impossible de lui écrire.
+                </div>
+              )}
+              {activePhone && canauxAuto && !envoiAutoDispo && (
+                <div className="mb-3 flex items-start gap-2 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                  <ExternalLink className="h-4 w-4 flex-shrink-0 mt-0.5 text-slate-400" />
+                  <span>
+                    L&apos;envoi automatique par {channel === "whatsapp" ? "WhatsApp" : "SMS"}{" "}
+                    n&apos;est pas encore ouvert.{" "}
+                    <strong>
+                      {channel === "whatsapp" ? "WhatsApp s'ouvrira" : "L'application SMS s'ouvrira"}{" "}
+                      avec le message déjà écrit
+                    </strong>{" "}
+                    — il ne vous reste qu&apos;à appuyer sur envoyer, puis à le confirmer ici.
+                  </span>
                 </div>
               )}
               <div className="flex items-center gap-4 bg-slate-100 rounded-xl p-2 focus-within:ring-2 focus-within:ring-blue-500/20 border border-transparent transition-all">
@@ -355,18 +448,40 @@ export function CommunicationCenter() {
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && (envoiAutoDispo ? handleSendMessage() : handleSendManuel())
+                  }
                   disabled={!activePhone}
                   placeholder={`Message via ${channel === "whatsapp" ? "WhatsApp" : "SMS"}...`}
                   className="flex-1 bg-transparent border-none outline-none text-sm px-2 text-slate-800 placeholder:text-slate-400 disabled:cursor-not-allowed"
                 />
 
+                {/* Sans fournisseur branché, le bouton n'envoie pas : il ouvre
+                    WhatsApp sur le message. L'icône le dit, pour que personne
+                    ne croie l'avoir envoyé en cliquant. */}
                 <button
-                  onClick={handleSendMessage}
+                  onClick={envoiAutoDispo ? handleSendMessage : handleSendManuel}
                   disabled={sending || !inputText.trim() || !activePhone}
-                  className="h-10 w-10 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg flex items-center justify-center transition-colors shadow-md shadow-blue-500/20"
+                  title={
+                    envoiAutoDispo
+                      ? "Envoyer"
+                      : `Ouvrir ${channel === "whatsapp" ? "WhatsApp" : "l'application SMS"} avec ce message`
+                  }
+                  className={cn(
+                    "h-10 px-3 min-w-10 disabled:opacity-50 text-white rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-md",
+                    envoiAutoDispo
+                      ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/20"
+                      : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20"
+                  )}
                 >
-                  <Send className="h-4 w-4" />
+                  {envoiAutoDispo ? (
+                    <Send className="h-4 w-4" />
+                  ) : (
+                    <>
+                      <ExternalLink className="h-4 w-4" />
+                      <span className="text-[10px] font-black uppercase tracking-wider">Ouvrir</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
