@@ -121,6 +121,29 @@ function libelleNotification(
   return "Patient NON prévenu. Appelez-le.";
 }
 
+// Hauteur d'un rendez-vous, proportionnelle à sa durée (80px par heure).
+//
+// Tous les blocs faisaient 72px, soit visuellement une heure : un contrôle de
+// 15 minutes et une intervention de deux heures occupaient la même place. Le
+// praticien ne pouvait donc pas voir d'un coup d'œil comment sa journée était
+// remplie — c'est pourtant la première chose qu'on demande à un planning.
+//
+// Plancher à 30px : en dessous, le nom du patient n'est plus lisible, et un
+// rendez-vous illisible est pire qu'un rendez-vous un peu trop grand.
+function hauteurBloc(minutes: number | null | undefined) {
+  return Math.max(30, ((minutes || 30) / 60) * 80 - 6);
+}
+
+// « 14:30 – 15:00 » : l'heure de fin est ce que l'assistante cherche quand
+// elle case un patient entre deux rendez-vous.
+function plageHeures(iso: string, minutes: number | null | undefined) {
+  const debut = new Date(iso);
+  const fin = new Date(debut.getTime() + (minutes || 30) * 60000);
+  const hhmm = (d: Date) =>
+    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return `${hhmm(debut)} – ${hhmm(fin)}`;
+}
+
 function plageHoraire(dates: Date[]) {
   let debut = HEURE_DEBUT_DEFAUT;
   let fin = HEURE_FIN_DEFAUT;
@@ -811,10 +834,12 @@ export function AgendaModule() {
                               colors.light, colors.border, colors.borderLeft, colors.text,
                               appt.status !== "scheduled" && "opacity-60 grayscale"
                             )}
-                            style={{ top: `${positionY(hourFloat) + 4}px`, height: "72px" }}
+                            style={{ top: `${positionY(hourFloat) + 4}px`, height: `${hauteurBloc(appt.duration_minutes)}px` }}
                           >
                             <p className="truncate tracking-tight leading-tight">{appt.patient_name}</p>
-                            <p className={cn("truncate text-[10px] leading-tight font-bold mt-0.5", colors.textLight)}>{appt.type}</p>
+                            <p className={cn("truncate text-[10px] leading-tight font-bold mt-0.5", colors.textLight)}>
+                              {plageHeures(appt.scheduled_at, appt.duration_minutes)} · {appt.type}
+                            </p>
                             <div className="flex items-center gap-1 mt-1 opacity-80">
                               {appt.checked_in_at && <LogIn className="h-3 w-3" />}
                               {appt.status === "completed" && <CheckCircle2 className="h-3 w-3" />}
@@ -857,10 +882,12 @@ export function AgendaModule() {
                               colors.light, colors.border, colors.borderLeft, colors.text,
                               appt.status !== "scheduled" && "opacity-60 grayscale"
                             )}
-                            style={{ top: `${positionY(hourFloat) + 4}px`, height: "72px" }}
+                            style={{ top: `${positionY(hourFloat) + 4}px`, height: `${hauteurBloc(appt.duration_minutes)}px` }}
                           >
                             <p className="truncate tracking-tight leading-tight">{appt.patient_name}</p>
-                            <p className={cn("truncate text-[10px] leading-tight font-bold mt-0.5", colors.textLight)}>{appt.type}</p>
+                            <p className={cn("truncate text-[10px] leading-tight font-bold mt-0.5", colors.textLight)}>
+                              {plageHeures(appt.scheduled_at, appt.duration_minutes)} · {appt.type}
+                            </p>
                             <div className="flex items-center gap-1 mt-1 opacity-80">
                               {appt.checked_in_at && <LogIn className="h-3 w-3" />}
                               {appt.status === "completed" && <CheckCircle2 className="h-3 w-3" />}
