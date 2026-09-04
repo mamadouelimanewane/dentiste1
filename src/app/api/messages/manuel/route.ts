@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { requirePermission } from '@/lib/permissions';
-import { normaliserTelephone, validerTelephone, bornerTexte } from '@/lib/validation';
+import { validerTelephone, bornerTexte } from '@/lib/validation';
+import { preparerEnvoiManuel } from '@/lib/integrations/envoi-manuel';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,25 +65,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const numero = verif.valeur;
+  const prepare = await preparerEnvoiManuel({
+    patientId,
+    numero: verif.valeur,
+    canal,
+    body: texte,
+    sentBy: session!.userId,
+  });
 
-  const rows = await sql`
-    insert into patient_messages
-      (patient_id, phone, channel, direction, body, status, sent_by, envoi_manuel)
-    values (
-      ${patientId ?? null}, ${numero}, ${canal}, 'outbound', ${texte},
-      'a_envoyer'::message_status, ${session!.userId}, true
-    )
-    returning id
-  `;
-
-  // wa.me attend le numéro international sans « + » ni séparateur. Le lien
-  // ouvre WhatsApp — application mobile ou WhatsApp Web — sur la conversation
-  // du patient, message déjà saisi.
-  const lien =
-    canal === 'whatsapp'
-      ? `https://wa.me/${normaliserTelephone(numero).replace(/^\+/, '')}?text=${encodeURIComponent(texte)}`
-      : `sms:${numero}?body=${encodeURIComponent(texte)}`;
-
-  return NextResponse.json({ id: rows[0].id, lien, canal, numero });
+  return NextResponse.json(prepare);
 }

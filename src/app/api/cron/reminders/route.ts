@@ -30,7 +30,16 @@ export async function GET(request: Request) {
   }
 
   const now = new Date();
-  const results = { scheduled: 0, appointmentReminders: 0, followUps: 0, errors: [] as string[] };
+  // `aEnvoyerManuellement` compte les messages qu'aucun canal automatique n'a
+  // pu porter et qui attendent l'assistante. Les compter avec les envois
+  // réussis donnerait un rapport de tâche flatteur et faux.
+  const results = {
+    scheduled: 0,
+    appointmentReminders: 0,
+    followUps: 0,
+    aEnvoyerManuellement: 0,
+    errors: [] as string[],
+  };
 
   // 1. Messages programmés arrivés à échéance.
   const due = await sql`
@@ -88,8 +97,11 @@ export async function GET(request: Request) {
       templateParams: [appt.full_name, when],
     });
     if (!result.error) {
+      // Marqué traité même quand le message part en file manuelle : sinon la
+      // tâche le rejouerait chaque nuit et la file se remplirait de doublons.
       await sql`update appointments set reminder_sent_at = ${now.toISOString()} where id = ${appt.id}`;
-      results.appointmentReminders++;
+      if (result.canal === 'manuel') results.aEnvoyerManuellement++;
+      else results.appointmentReminders++;
     } else {
       results.errors.push(`reminder ${appt.id}: ${result.error}`);
     }
@@ -123,7 +135,8 @@ export async function GET(request: Request) {
     });
     if (!result.error) {
       await sql`update appointments set follow_up_sent_at = ${now.toISOString()} where id = ${appt.id}`;
-      results.followUps++;
+      if (result.canal === 'manuel') results.aEnvoyerManuellement++;
+      else results.followUps++;
     } else {
       results.errors.push(`followup ${appt.id}: ${result.error}`);
     }

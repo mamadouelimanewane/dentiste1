@@ -2,6 +2,7 @@ import 'server-only';
 import { sendWhatsAppMessage } from '@/lib/integrations/whatsapp';
 import { sendSms, isSmsConfigured } from '@/lib/integrations/sms';
 import { isWhatsAppConfigured } from '@/lib/integrations/whatsapp';
+import { preparerEnvoiManuel } from '@/lib/integrations/envoi-manuel';
 
 // Envoi d'une notification patient sur un seul canal.
 //
@@ -18,9 +19,35 @@ import { isWhatsAppConfigured } from '@/lib/integrations/whatsapp';
 const DOUBLE_CANAL = process.env.NOTIFY_BOTH_CHANNELS === 'true';
 
 export interface NotifyResult {
-  canal: 'whatsapp' | 'sms' | 'aucun';
+  canal: 'whatsapp' | 'sms' | 'manuel' | 'aucun';
   simulated?: boolean;
   error?: string;
+  // Identifiant du message déposé dans la file d'envoi manuel, le cas échéant.
+  manuelId?: string;
+}
+
+// Dernier recours quand aucun canal automatique n'a pu porter le message.
+//
+// Le rappel n'est pas perdu : il passe en 'a_envoyer' et attend l'assistante,
+// qui l'enverra depuis le téléphone du cabinet. On rend un résultat SANS
+// erreur, pour que l'appelant (le cron) marque bien le rappel comme traité —
+// sinon il le rejouerait chaque nuit et la file se remplirait de doublons.
+async function deposerEnFile(params: {
+  patientId?: string | null;
+  numero: string;
+  canal: 'whatsapp' | 'sms';
+  body: string;
+  sentBy?: string | null;
+  motif?: string;
+}): Promise<NotifyResult> {
+  try {
+    const prepare = await preparerEnvoiManuel(params);
+    return { canal: 'manuel', manuelId: prepare.id };
+  } catch {
+    // Si même l'enregistrement échoue, on remonte l'échec d'origine plutôt
+    // que de laisser croire que le message a été pris en charge.
+    return { canal: 'aucun', error: params.motif || "Aucun canal d'envoi disponible." };
+  }
 }
 
 export async function notifyPatient(params: {
@@ -60,18 +87,47 @@ export async function notifyPatient(params: {
     // le message ne doit pas être perdu pour autant.
     if (isSmsConfigured()) {
       const sms = await sendSms(versSms);
-      return { canal: 'sms', simulated: sms.simulated, error: sms.error };
+      if (!sms.error) return { canal: 'sms', simulated: sms.simulated };
+      // Les deux canaux ont échoué : le message part en file manuelle plutôt
+      // que de rester un « échec » que personne ne regarde.
+      return deposerEnFile({
+        patientId: params.patientId,
+        numero: versWhatsApp.phone,
+        canal: 'whatsapp',
+        body: params.body,
+        sentBy: params.sentBy,
+        motif: sms.error,
+      });
     }
-    return { canal: 'whatsapp', error: wa.error };
+    return deposerEnFile({
+      patientId: params.patientId,
+      numero: versWhatsApp.phone,
+      canal: 'whatsapp',
+      body: params.body,
+      sentBy: params.sentBy,
+      motif: wa.error,
+    });
   }
 
   if (isSmsConfigured()) {
     const sms = await sendSms(versSms);
-    return { canal: 'sms', simulated: sms.simulated, error: sms.error };
+    if (!sms.error) return { canal: 'sms', simulated: sms.simulated };
+    return deposerEnFile({
+      patientId: params.patientId,
+      numero: versSms.phone,
+      canal: 'sms',
+      body: params.body,
+      sentBy: params.sentBy,
+      motif: sms.error,
+    });
   }
 
-  // Aucun canal configuré : on journalise quand même via WhatsApp, qui
-  // enregistre le message en « simulé ».
-  const wa = await sendWhatsAppMessage(versWhatsApp);
-  return { canal: 'aucun', simulated: wa.simulated, error: wa.error };
+  // Aucun fournisseur paramétré du tout : la file manuelle est la seule voie.
+  return deposerEnFile({
+    patientId: params.patientId,
+    numero: versWhatsApp.phone,
+    canal: 'whatsapp',
+    body: params.body,
+    sentBy: params.sentBy,
+  });
 }

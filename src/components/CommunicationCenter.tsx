@@ -33,6 +33,19 @@ interface PatientHit {
   dossier_number: string;
 }
 
+// Un message préparé qui attend d'être envoyé depuis le téléphone du cabinet.
+interface Envoi {
+  id: string;
+  patientId: string | null;
+  nom: string;
+  dossier: string | null;
+  numero: string;
+  canal: "whatsapp" | "sms";
+  body: string;
+  createdAt: string;
+  lien: string;
+}
+
 function formatTime(iso: string) {
   const d = new Date(iso);
   const today = new Date();
@@ -60,6 +73,10 @@ export function CommunicationCenter() {
   // l'application ne fait pas semblant d'envoyer : elle prépare le message
   // pour que l'assistante l'envoie depuis le téléphone du cabinet.
   const [canauxAuto, setCanauxAuto] = useState<{ whatsapp: boolean; sms: boolean } | null>(null);
+  // File des rappels déposés par la tâche de nuit et des messages préparés :
+  // c'est l'écran du matin de l'assistante.
+  const [fileEnvoi, setFileEnvoi] = useState<Envoi[]>([]);
+  const [vueFile, setVueFile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadThreads = useCallback(() => {
@@ -106,6 +123,17 @@ export function CommunicationCenter() {
     }, 300);
     return () => clearTimeout(t);
   }, [patientQuery, showNew]);
+
+  const chargerFile = useCallback(() => {
+    fetch("/api/messages/a-envoyer")
+      .then((r) => (r.ok ? r.json() : { envois: [] }))
+      .then((d) => setFileEnvoi(d.envois || []))
+      .catch(() => setFileEnvoi([]));
+  }, []);
+
+  useEffect(() => {
+    chargerFile();
+  }, [chargerFile]);
 
   useEffect(() => {
     fetch("/api/config/status")
@@ -176,6 +204,7 @@ export function CommunicationCenter() {
       window.open(data.lien, "_blank", "noopener,noreferrer");
       loadMessages(activePatientId);
       loadThreads();
+      chargerFile();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue.");
     } finally {
@@ -191,6 +220,7 @@ export function CommunicationCenter() {
       if (!res.ok) throw new Error(data.error || "Échec de la confirmation.");
       if (activePatientId) loadMessages(activePatientId);
       loadThreads();
+      chargerFile();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue.");
     }
@@ -240,7 +270,38 @@ export function CommunicationCenter() {
               {showNew ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             </button>
           </div>
-          <div className="relative">
+
+          {/* File d'envoi. Les rappels de la nuit atterrissent ici : sans cet
+              accès visible, ils resteraient en base sans que personne ne
+              sache qu'il y a quelque chose à envoyer. */}
+          {fileEnvoi.length > 0 && (
+            <button
+              onClick={() => {
+                setVueFile((v) => !v);
+                setShowNew(false);
+              }}
+              className={cn(
+                "w-full mb-3 flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-sm font-bold transition-colors",
+                vueFile
+                  ? "bg-amber-500 border-amber-500 text-white"
+                  : "bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100"
+              )}
+            >
+              <span className="flex items-center gap-2">
+                <Send className="h-4 w-4" />À envoyer
+              </span>
+              <span
+                className={cn(
+                  "px-2 py-0.5 rounded-full text-xs font-black",
+                  vueFile ? "bg-white text-amber-700" : "bg-amber-500 text-white"
+                )}
+              >
+                {fileEnvoi.length}
+              </span>
+            </button>
+          )}
+
+          <div className={cn("relative", vueFile && "hidden")}>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
@@ -253,7 +314,58 @@ export function CommunicationCenter() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {showNew ? (
+          {vueFile ? (
+            <>
+              <p className="px-4 py-3 text-[11px] text-slate-600 bg-amber-50/60 border-b border-amber-100 leading-relaxed">
+                Envoyez chaque message depuis le téléphone du cabinet, puis
+                confirmez-le. Tant qu&apos;il n&apos;est pas confirmé, le dossier du patient
+                indique qu&apos;il attend.
+              </p>
+              {fileEnvoi.map((e) => (
+                <div key={e.id} className="p-4 border-b border-slate-100">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-slate-900 text-sm">{e.nom}</span>
+                    <span className="flex items-center gap-1 text-xs text-slate-400">
+                      {e.canal === "whatsapp" ? (
+                        <MessageCircle className="h-3 w-3" />
+                      ) : (
+                        <MessageSquare className="h-3 w-3" />
+                      )}
+                      {formatTime(e.createdAt)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-2">{e.numero}</p>
+                  <p className="text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded p-2 mb-2 line-clamp-3">
+                    {e.body}
+                  </p>
+                  <div className="flex gap-2">
+                    <a
+                      href={e.lien}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-wider transition-colors"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Ouvrir
+                    </a>
+                    <button
+                      onClick={() => confirmerEnvoi(e.id)}
+                      title="Je l'ai envoyé depuis le téléphone du cabinet"
+                      className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-[10px] font-black uppercase tracking-wider transition-colors"
+                    >
+                      <Check className="h-3 w-3" />
+                      Confirmer
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {fileEnvoi.length === 0 && (
+                <p className="p-4 text-sm text-slate-500 text-center">
+                  Rien en attente d&apos;envoi.
+                </p>
+              )}
+            </>
+          ) : showNew ? (
             <>
               {patientHits.map((p) => (
                 <div
