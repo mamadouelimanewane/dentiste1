@@ -166,6 +166,9 @@ export function AgendaModule() {
   const [quickMessageChannel, setQuickMessageChannel] = useState<"whatsapp" | "sms">("whatsapp");
   const [sendingQuickMessage, setSendingQuickMessage] = useState(false);
   const [quickMessageSent, setQuickMessageSent] = useState(false);
+  // Motif d'échec des actions de la fiche rendez-vous (annulation, report,
+  // message). Sans lui, un refus du serveur restait invisible.
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const activeDate = new Date();
   activeDate.setDate(activeDate.getDate() + dayOffset);
@@ -270,21 +273,45 @@ export function AgendaModule() {
     loadWeekAppointments();
   };
 
+  // Annuler, pointer une arrivée ou marquer une absence : la réponse du
+  // serveur était ignorée. Un refus (403, conflit, panne) refermait la fiche
+  // exactement comme un succès, et l'assistante croyait le rendez-vous annulé
+  // alors qu'il tenait toujours.
   const runAction = async (appt: Appointment, action: "check-in" | "complete" | "cancel" | "no-show") => {
-    await fetch(`/api/appointments/${appt.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
-    });
-    setActiveAppt(null);
-    loadAppointments();
+    if ((action === "cancel" || action === "no-show") && !window.confirm(
+      action === "cancel"
+        ? `Annuler le rendez-vous de ${appt.patient_name || "ce patient"} ?`
+        : `Marquer ${appt.patient_name || "ce patient"} comme absent ?`
+    )) return;
+
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/appointments/${appt.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setActionError(d.error || "L'opération a échoué. Le rendez-vous est inchangé.");
+        return;
+      }
+      setActiveAppt(null);
+      loadAppointments();
+      // La vue semaine se rafraîchit aussi : sans cela un rendez-vous annulé
+      // disparaissait de la journée mais restait dans le résumé de la semaine.
+      loadWeekAppointments();
+    } catch {
+      setActionError("Réseau indisponible. Le rendez-vous est inchangé.");
+    }
   };
 
   const sendQuickMessage = async () => {
     if (!activeAppt || !quickMessage.trim() || !activeAppt.patient_phone) return;
     setSendingQuickMessage(true);
+    setActionError(null);
     try {
-      await fetch("/api/messages/send", {
+      const res = await fetch("/api/messages/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -294,9 +321,20 @@ export function AgendaModule() {
           channel: quickMessageChannel,
         }),
       });
+      // La confirmation « Envoyé » s'affichait quoi qu'il arrive : la réponse
+      // n'était pas lue. Avec les canaux actuellement fermés, l'assistante
+      // voyait donc « Envoyé » à chaque tentative sans qu'aucun message ne
+      // parte. C'est le contraire de ce que doit faire cet écran.
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setActionError(d.error || "Le message n'est pas parti.");
+        return;
+      }
       setQuickMessage("");
       setQuickMessageSent(true);
       setTimeout(() => setQuickMessageSent(false), 2500);
+    } catch {
+      setActionError("Réseau indisponible. Le message n'est pas parti.");
     } finally {
       setSendingQuickMessage(false);
     }
@@ -304,6 +342,7 @@ export function AgendaModule() {
 
   const submitReschedule = async () => {
     if (!activeAppt || !rescheduleDate) return;
+    setActionError(null);
     const res = await fetch(`/api/appointments/${activeAppt.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -313,8 +352,20 @@ export function AgendaModule() {
       setActiveAppt(null);
       setRescheduleDate("");
       loadAppointments();
+      loadWeekAppointments();
+    } else {
+      // Un report refusé (créneau déjà pris, notamment) laissait la fiche
+      // ouverte sans un mot : l'utilisateur recliquait sans comprendre.
+      const d = await res.json().catch(() => ({}));
+      setActionError(d.error || "Report impossible. Vérifiez que le créneau est libre.");
     }
   };
+
+  // Un échec ne doit pas suivre l'utilisateur d'une fiche à l'autre : sans
+  // cela, l'erreur d'un rendez-vous s'affichait sur le suivant qu'il ouvre.
+  useEffect(() => {
+    setActionError(null);
+  }, [activeAppt?.id]);
 
   const todaysAppointments = appointments.filter(a => {
     const d = new Date(a.scheduled_at);
@@ -853,6 +904,16 @@ export function AgendaModule() {
                 <p className="text-[10px] text-blue-200 mt-0.5">{activeAppt.type} · {activeAppt.practitioner_name || "Non assigné"}</p>
               </div>
               <div className="p-5 space-y-2">
+                {/* Motif d'échec des actions. Il s'affiche à l'intérieur de la
+                    fiche, qui reste ouverte : l'utilisateur voit ce qui a
+                    échoué à l'endroit même où il vient de cliquer. */}
+                {actionError && (
+                  <div className="flex items-start gap-2 text-[11px] text-rose-700 bg-rose-50 border border-rose-200 rounded p-2.5 mb-1">
+                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                    <span>{actionError}</span>
+                  </div>
+                )}
+
                 {/* Message rapide */}
                 {activeAppt.patient_phone ? (
                   <div className="pb-3 mb-1 border-b border-slate-100 space-y-2">
