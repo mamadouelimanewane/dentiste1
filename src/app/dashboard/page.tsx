@@ -422,7 +422,10 @@ export default function Home() {
             formulaire, mais serre une grille de planning ou un tableau
             comptable sur un grand écran : ces modules-là respirent jusqu'à
             1400px, le reste garde la largeur de lecture confortable. */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-6 no-scrollbar">
+        {/* La barre de défilement était masquée (`no-scrollbar`) : sur un
+            petit écran, rien n'indiquait qu'il restait du contenu sous la
+            ligne de flottaison — on croyait la page finie. */}
+        <div className="flex-1 overflow-y-auto p-4 lg:p-6">
           <div
             className={cn(
               "mx-auto space-y-6 pb-20",

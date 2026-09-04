@@ -739,7 +739,13 @@ export function AgendaModule() {
           // page devait défiler (et la barre de défilement est masquée par
           // `no-scrollbar`, donc rien n'indiquait qu'il y avait une suite).
           // Le planning occupe désormais la hauteur réellement disponible.
-          isFullscreen ? "h-[calc(100vh-140px)]" : "h-[calc(100vh-290px)] min-h-[420px]"
+          // Mesuré : au-dessus de cette carte, le châssis occupe ~260px, et la
+          // barre d'outils + les en-têtes de colonnes en consomment 170 de plus.
+          // Un simple `100vh - 260` ramenait donc la grille à 3h sur un écran
+          // de 720px — pire que le 680px figé d'origine. Le plancher garantit
+          // une demi-journée lisible sur un portable, et le calcul laisse la
+          // grille prendre toute la hauteur d'un écran de bureau.
+          isFullscreen ? "h-[calc(100vh-140px)]" : "h-[calc(100vh-260px)] min-h-[560px]"
         )}>
           {/* Toolbar */}
           <div className="p-4 border-b border-slate-200 flex flex-wrap gap-4 items-center justify-between bg-slate-50">
