@@ -18,6 +18,10 @@ export function PatientDirectory() {
   const { setCurrentPatient } = usePatient();
   const [searchQuery, setSearchQuery] = useState("");
   const [patients, setPatients] = useState<PatientRow[]>([]);
+  // Nombre réel de dossiers correspondant à la recherche, qui n'est pas le
+  // nombre de lignes reçues : l'API en renvoie au plus 100.
+  const [total, setTotal] = useState(0);
+  const [tronque, setTronque] = useState(false);
   const [loading, setLoading] = useState(true);
   const [portalFeedback, setPortalFeedback] = useState<string | null>(null);
   const [confirmingAnonymizeId, setConfirmingAnonymizeId] = useState<string | null>(null);
@@ -28,7 +32,11 @@ export function PatientDirectory() {
     try {
       const res = await fetch(`/api/patients${q ? `?q=${encodeURIComponent(q)}` : ""}`);
       const data = await res.json();
-      if (res.ok) setPatients(data.patients);
+      if (res.ok) {
+        setPatients(data.patients);
+        setTotal(typeof data.total === "number" ? data.total : data.patients.length);
+        setTronque(!!data.tronque);
+      }
     } finally {
       setLoading(false);
     }
@@ -118,14 +126,18 @@ export function PatientDirectory() {
 
       <div className="bg-[#0F172A] text-white p-6 rounded-sm flex justify-between items-center relative overflow-hidden">
         <div className="relative z-10 flex items-center gap-8 w-full">
+          {/* Le titre du module est déjà affiché par la page ; « Indexation
+              ultra-rapide » ne décrivait rien de vérifiable. */}
           <div className="space-y-1">
-            <h3 className="text-lg font-black uppercase tracking-widest text-amber-400">Recherche de dossiers</h3>
-            <p className="text-slate-300 text-xs font-medium">Indexation ultra-rapide de tous les dossiers médicaux du cabinet.</p>
+            <h3 className="text-lg font-black uppercase tracking-widest text-amber-400">Dossiers patients</h3>
+            <p className="text-slate-300 text-xs font-medium">Recherche par nom, numéro de dossier ou téléphone.</p>
           </div>
           <div className="hidden md:flex gap-6 border-l border-slate-700 pl-8">
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Patients</p>
-              <p className="text-2xl font-black text-white">{patients.length}</p>
+              {/* Affichait `patients.length`, donc au plus 100 : un cabinet de
+                  300 dossiers lisait « Total Patients : 100 ». */}
+              <p className="text-2xl font-black text-white">{loading ? "…" : total}</p>
             </div>
           </div>
         </div>
@@ -136,8 +148,15 @@ export function PatientDirectory() {
       <div className="space-y-4">
         <div className="flex justify-between items-center bg-white p-3 border border-slate-200 rounded-sm shadow-sm">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-            <span className="text-slate-900 font-black">{loading ? "…" : patients.length}</span> patient(s) trouvé(s)
+            <span className="text-slate-900 font-black">{loading ? "…" : total}</span> patient(s) trouvé(s)
           </p>
+          {/* Sans cette mention, les dossiers les plus anciens disparaissaient
+              de l'annuaire et le personnel les croyait absents du logiciel. */}
+          {tronque && !loading && (
+            <p className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+              {patients.length} affichés sur {total} — précisez votre recherche pour trouver un dossier plus ancien.
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

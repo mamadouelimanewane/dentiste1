@@ -7,6 +7,7 @@ import DailyIframe, { DailyCall } from "@daily-co/daily-js";
 
 interface UpcomingAppointment {
   id: string;
+  patient_id: string;
   patient_name: string;
   type: string | null;
   duration_minutes: number;
@@ -14,15 +15,51 @@ interface UpcomingAppointment {
   daily_room_url: string | null;
 }
 
-export function Teleconsultation() {
+export function Teleconsultation({ onNavigate }: { onNavigate?: (step: number) => void } = {}) {
   const [activeTab, setActiveTab] = useState<'avenir' | 'historique'>('avenir');
   const [isCalling, setIsCalling] = useState(false);
   const [activePatient, setActivePatient] = useState<string | null>(null);
+  // Le nom seul ne permet pas de rattacher une note à un dossier.
+  const [activePatientId, setActivePatientId] = useState<string | null>(null);
+  // Notes de séance. La zone de saisie n'était reliée à rien et le bouton
+  // « Sauvegarder » n'avait aucune action : le praticien écrivait ses
+  // observations pendant la téléconsultation, cliquait, et tout était perdu
+  // sans le moindre avertissement.
+  const [notes, setNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [notesMsg, setNotesMsg] = useState<string | null>(null);
+  const [notesErr, setNotesErr] = useState<string | null>(null);
   const [appointments, setAppointments] = useState<UpcomingAppointment[]>([]);
   const [joining, setJoining] = useState<string | null>(null);
   const [simulatedMode, setSimulatedMode] = useState(false);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const callFrameRef = useRef<DailyCall | null>(null);
+
+  const enregistrerNotes = async () => {
+    if (!notes.trim()) return;
+    if (!activePatientId) {
+      setNotesErr("Rejoignez d'abord une consultation : la note doit être rattachée à un dossier.");
+      return;
+    }
+    setSavingNotes(true);
+    setNotesErr(null);
+    setNotesMsg(null);
+    try {
+      const res = await fetch("/api/clinical-notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: activePatientId, content: notes.trim(), type: "teleconsultation" }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error || "Échec de l'enregistrement.");
+      setNotes("");
+      setNotesMsg("Note enregistrée dans le dossier du patient.");
+    } catch (e) {
+      setNotesErr(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setSavingNotes(false);
+    }
+  };
 
   const loadAppointments = useCallback(async () => {
     const now = new Date();
@@ -39,6 +76,7 @@ export function Teleconsultation() {
           .filter((a: any) => a.status === "scheduled")
           .map((a: any) => ({
             id: a.id,
+            patient_id: a.patient_id,
             patient_name: a.patient_name,
             type: a.type,
             duration_minutes: a.duration_minutes,
@@ -53,9 +91,12 @@ export function Teleconsultation() {
     loadAppointments();
   }, [loadAppointments]);
 
-  const handleJoin = async (appointmentId: string, patientName: string) => {
+  const handleJoin = async (appointmentId: string, patientName: string, patientId: string) => {
     setJoining(appointmentId);
     setActivePatient(patientName);
+    setActivePatientId(patientId);
+    setNotesMsg(null);
+    setNotesErr(null);
     try {
       const res = await fetch("/api/video/rooms", {
         method: "POST",
@@ -222,16 +263,46 @@ export function Teleconsultation() {
               <h4 className="text-xs font-bold uppercase tracking-widest text-slate-700">Notes de Session</h4>
             </div>
             <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded p-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors min-h-[120px] resize-none"
-              placeholder="Notez vos observations cliniques, prescriptions, recommandations..."
+              placeholder={
+                activePatient
+                  ? `Observations pour ${activePatient} — enregistrées dans son dossier.`
+                  : "Rejoignez une consultation pour prendre des notes rattachées au dossier."
+              }
             ></textarea>
 
+            {notesErr && (
+              <p className="flex items-start gap-2 text-[11px] text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
+                <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                {notesErr}
+              </p>
+            )}
+            {notesMsg && (
+              <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded p-2">
+                {notesMsg}
+              </p>
+            )}
+
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 bg-slate-800 text-white px-5 py-2.5 rounded-sm text-[10px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-colors">
-                <Save className="h-3 w-3" /> Sauvegarder
+              <button
+                onClick={enregistrerNotes}
+                disabled={savingNotes || !notes.trim() || !activePatientId}
+                title={!activePatientId ? "Rejoignez d'abord une consultation" : "Enregistrer dans le dossier du patient"}
+                className="flex items-center gap-2 bg-slate-800 text-white px-5 py-2.5 rounded-sm text-[10px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Save className="h-3 w-3" /> {savingNotes ? "Enregistrement…" : "Sauvegarder"}
               </button>
-              <button className="flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 px-5 py-2.5 rounded-sm text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-100 transition-colors">
-                <Pill className="h-3 w-3" /> Générer Ordonnance
+              {/* Ce bouton n'ouvrait rien. Il conduit maintenant au module
+                  Ordonnances, où l'ordonnance est réellement rédigée et
+                  enregistrée — plutôt que de laisser croire qu'un clic suffit. */}
+              <button
+                onClick={() => onNavigate?.(17)}
+                disabled={!onNavigate}
+                className="flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 px-5 py-2.5 rounded-sm text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-100 transition-colors disabled:opacity-40"
+              >
+                <Pill className="h-3 w-3" /> Rédiger une ordonnance
               </button>
             </div>
           </div>
@@ -288,7 +359,7 @@ export function Teleconsultation() {
                       </div>
                     </div>
                     <button
-                      onClick={() => handleJoin(apt.id, apt.patient_name)}
+                      onClick={() => handleJoin(apt.id, apt.patient_name, apt.patient_id)}
                       disabled={joining === apt.id}
                       className="w-full mt-4 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-100 hover:border-blue-600 py-2 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all disabled:opacity-50"
                     >

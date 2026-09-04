@@ -473,7 +473,7 @@ export default function Home() {
                     {currentStep === 8 && <AccountingDashboard />}
                     {currentStep === 9 && <InsuranceManager />}
                     {currentStep === 10 && <UserManagement />}
-                    {currentStep === 11 && <Teleconsultation />}
+                    {currentStep === 11 && <Teleconsultation onNavigate={(step) => setCurrentStep(step)} />}
                     {currentStep === 12 && <VoiceDictation />}
                     {currentStep === 13 && <AgendaModule />}
                     {currentStep === 14 && <AiRadioLab />}

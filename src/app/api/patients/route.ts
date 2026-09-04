@@ -24,6 +24,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q')?.trim();
 
+  // La liste était plafonnée à 50 dossiers, sans que rien ne le signale.
+  // Passé 50 patients — c'est-à-dire au bout de quelques semaines dans un
+  // vrai cabinet — les plus anciens disparaissaient purement et simplement
+  // de l'annuaire : le personnel les croyait absents du logiciel. Le total
+  // est désormais renvoyé pour que l'écran puisse dire ce qu'il ne montre pas.
+  const LIMITE = 100;
+
   const patients = q
     ? await sql`
         select id, dossier_number, full_name, phone, status, created_at
@@ -32,16 +39,31 @@ export async function GET(request: Request) {
            or dossier_number ilike ${'%' + q + '%'}
            or phone ilike ${'%' + q + '%'}
         order by created_at desc
-        limit 50
+        limit ${LIMITE}
       `
     : await sql`
         select id, dossier_number, full_name, phone, status, created_at
         from patients
         order by created_at desc
-        limit 50
+        limit ${LIMITE}
       `;
 
-  return NextResponse.json({ patients });
+  const compte = q
+    ? await sql`
+        select count(*)::int as n from patients
+        where full_name ilike ${'%' + q + '%'}
+           or dossier_number ilike ${'%' + q + '%'}
+           or phone ilike ${'%' + q + '%'}
+      `
+    : await sql`select count(*)::int as n from patients`;
+
+  const total = Number(compte[0]?.n ?? patients.length);
+
+  return NextResponse.json({
+    patients,
+    total,
+    tronque: total > patients.length,
+  });
 }
 
 export async function POST(request: Request) {
