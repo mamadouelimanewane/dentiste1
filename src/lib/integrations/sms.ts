@@ -1,6 +1,21 @@
 import 'server-only';
 import { sql } from '@/lib/db';
 
+// Orange Sénégal (developer.orange.com, API « SMS Senegal 2.0 »).
+//
+// Placé en tête de la chaîne : c'est le seul fournisseur local. Sonatel livre
+// directement sur son réseau et par interconnexion vers Free/Yas et Expresso
+// — la documentation Orange précise « Only in and to Senegal, any operator ».
+//
+// Surtout, c'est le seul dont l'accès ne passe pas par une vérification
+// d'identité internationale : les forfaits se paient en **Airtime ou Orange
+// Money**, sans carte bancaire ni reconnaissance faciale. Twilio, Meta,
+// Africa's Talking et Anthropic ont tous bloqué le cabinet sur ce point.
+const ORANGE_CLIENT_ID = process.env.ORANGE_SMS_CLIENT_ID;
+const ORANGE_CLIENT_SECRET = process.env.ORANGE_SMS_CLIENT_SECRET;
+const ORANGE_SENDER = process.env.ORANGE_SMS_SENDER; // ligne Orange du cabinet, ex: +221771234567
+const ORANGE_SENDER_NAME = process.env.ORANGE_SMS_SENDER_NAME; // optionnel, à faire enregistrer
+
 const TERMII_API_KEY = process.env.TERMII_API_KEY;
 const TERMII_SENDER_ID = process.env.TERMII_SENDER_ID; // ex: "CabinetDentaire"
 
@@ -19,6 +34,10 @@ const VONAGE_FROM = process.env.VONAGE_FROM; // nom d'expéditeur ou numéro
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_FROM_NUMBER = process.env.TWILIO_FROM_NUMBER;
+
+function isOrangeConfigured() {
+  return !!ORANGE_CLIENT_ID && !!ORANGE_CLIENT_SECRET && !!ORANGE_SENDER;
+}
 
 function isTermiiConfigured() {
   return !!TERMII_API_KEY;
@@ -41,13 +60,20 @@ function isTwilioConfigured() {
 }
 
 export function isSmsConfigured() {
-  return isTermiiConfigured() || isPlivoConfigured() || isAfricasTalkingConfigured() || isVonageConfigured() || isTwilioConfigured();
+  return (
+    isOrangeConfigured() ||
+    isTermiiConfigured() ||
+    isPlivoConfigured() ||
+    isAfricasTalkingConfigured() ||
+    isVonageConfigured() ||
+    isTwilioConfigured()
+  );
 }
 
 interface SendResult {
   simulated: boolean;
   providerMessageId?: string;
-  provider?: 'termii' | 'plivo' | 'africastalking' | 'vonage' | 'twilio';
+  provider?: 'orange' | 'termii' | 'plivo' | 'africastalking' | 'vonage' | 'twilio';
   error?: string;
 }
 
@@ -125,6 +151,119 @@ export function segmentsSms(texte: string) {
 function statusCallbackUrl() {
   const base = process.env.NEXT_PUBLIC_APP_URL;
   return base ? `${base}/api/twilio/status` : null;
+}
+
+// Jeton OAuth2 Orange, valable environ une heure. Conservé en mémoire du
+// processus : sans ce cache, chaque SMS coûterait un aller-retour
+// d'authentification supplémentaire. Une instance serverless froide le
+// redemande, ce qui est sans conséquence.
+let jetonOrange: { valeur: string; expire: number } | null = null;
+
+async function jetonOrangeValide(): Promise<{ jeton?: string; error?: string }> {
+  // Marge d'une minute : un jeton qui expire pendant la requête d'envoi
+  // produirait un 401 difficile à interpréter côté cabinet.
+  if (jetonOrange && jetonOrange.expire > Date.now() + 60_000) {
+    return { jeton: jetonOrange.valeur };
+  }
+
+  const res = await fetch('https://api.orange.com/oauth/v3/token', {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${ORANGE_CLIENT_ID}:${ORANGE_CLIENT_SECRET}`).toString('base64')}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'application/json',
+    },
+    body: 'grant_type=client_credentials',
+  });
+
+  const brut = await res.text();
+  let data: { access_token?: string; expires_in?: number; error_description?: string } | null = null;
+  try {
+    data = JSON.parse(brut);
+  } catch {
+    return { error: `Orange (jeton, HTTP ${res.status}) : ${brut.slice(0, 150) || 'réponse illisible'}` };
+  }
+
+  if (!res.ok || !data?.access_token) {
+    return {
+      error:
+        data?.error_description ||
+        `Orange : authentification refusée (HTTP ${res.status}). Vérifiez ORANGE_SMS_CLIENT_ID et ORANGE_SMS_CLIENT_SECRET.`,
+    };
+  }
+
+  jetonOrange = {
+    valeur: data.access_token,
+    expire: Date.now() + (Number(data.expires_in) || 3600) * 1000,
+  };
+  return { jeton: data.access_token };
+}
+
+async function sendViaOrange(to: string, body: string): Promise<SendResult> {
+  const auth = await jetonOrangeValide();
+  if (!auth.jeton) return { simulated: false, provider: 'orange', error: auth.error };
+
+  // Le numéro expéditeur apparaît deux fois : dans le chemin (encodé) et
+  // dans le corps. Orange rejette la requête si les deux diffèrent.
+  const expediteur = toE164(ORANGE_SENDER!);
+  const chemin = encodeURIComponent(`tel:${expediteur}`);
+
+  const res = await fetch(`https://api.orange.com/smsmessaging/v1/outbound/${chemin}/requests`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${auth.jeton}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      outboundSMSMessageRequest: {
+        address: `tel:${to}`,
+        senderAddress: `tel:${expediteur}`,
+        outboundSMSTextMessage: { message: body },
+        // Nom d'expéditeur : il doit être enregistré auprès de Sonatel, sinon
+        // Orange le remplace par le numéro. On ne l'envoie que s'il est posé.
+        ...(ORANGE_SENDER_NAME ? { senderName: ORANGE_SENDER_NAME } : {}),
+      },
+    }),
+  });
+
+  const brut = await res.text();
+  let data: Record<string, any> | null = null;
+  try {
+    data = JSON.parse(brut);
+  } catch {
+    /* Orange répond parfois en texte brut sur erreur de passerelle */
+  }
+
+  if (!res.ok) {
+    const motif =
+      data?.requestError?.serviceException?.text ||
+      data?.requestError?.policyException?.text ||
+      brut.slice(0, 150);
+    // 403 recouvre à la fois le forfait épuisé et le forfait expiré : ce sont
+    // les deux cas que le cabinet doit pouvoir corriger seul, en rachetant un
+    // bundle depuis son compte Orange.
+    if (res.status === 403) {
+      return {
+        simulated: false,
+        provider: 'orange',
+        error: `Orange : forfait SMS épuisé ou expiré. Rachetez un bundle sur developer.orange.com. (${motif})`,
+      };
+    }
+    return {
+      simulated: false,
+      provider: 'orange',
+      error: `Orange (HTTP ${res.status}) : ${motif || 'échec envoi SMS.'}`,
+    };
+  }
+
+  // La ressource créée porte l'identifiant de la demande en fin d'URL.
+  const url: string = data?.outboundSMSMessageRequest?.resourceURL || '';
+  return {
+    simulated: false,
+    provider: 'orange',
+    providerMessageId: url.split('/').pop() || undefined,
+  };
 }
 
 async function sendViaTermii(to: string, body: string): Promise<SendResult> {
@@ -340,11 +479,14 @@ async function logMessage(params: {
   `;
 }
 
-// Envoie un SMS via Termii, Plivo, Africa's Talking, Vonage ou Twilio, dans
-// cet ordre de priorité selon les clés configurées (le premier fournisseur
-// disponible est utilisé). Sans aucune clé, journalise en base avec le
-// statut "simulated" au lieu d'appeler le réseau — l'UI affiche un badge
-// "Mode démo".
+// Envoie un SMS via Orange Sénégal, Termii, Plivo, Africa's Talking, Vonage
+// ou Twilio, dans cet ordre de priorité selon les clés configurées (le
+// premier fournisseur disponible est utilisé). Orange passe en premier :
+// c'est le seul opérateur local, il livre sur les trois réseaux du pays sans
+// transiter par un long code étranger, et son accès ne dépend d'aucune
+// vérification d'identité internationale. Sans aucune clé, journalise en base
+// avec le statut "simulated" au lieu d'appeler le réseau — l'UI affiche un
+// badge "Mode démo".
 export async function sendSms(params: {
   patientId?: string | null;
   phone: string;
@@ -376,7 +518,9 @@ export async function sendSms(params: {
 
   try {
     const to = toE164(phone);
-    const result = isTermiiConfigured()
+    const result = isOrangeConfigured()
+      ? await sendViaOrange(to, texteSms)
+      : isTermiiConfigured()
       ? await sendViaTermii(to, texteSms)
       : isPlivoConfigured()
       ? await sendViaPlivo(to, texteSms)
