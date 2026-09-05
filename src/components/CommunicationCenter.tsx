@@ -78,6 +78,12 @@ export function CommunicationCenter() {
   const [fileEnvoi, setFileEnvoi] = useState<Envoi[]>([]);
   const [vueFile, setVueFile] = useState(false);
   const [fileErreur, setFileErreur] = useState<string | null>(null);
+  // Programmation d'un envoi. La table `scheduled_messages` et la tâche
+  // planifiée existaient depuis longtemps, mais aucun écran ne les alimentait :
+  // la fonction était complète côté serveur et inaccessible au cabinet.
+  const [quandProgrammer, setQuandProgrammer] = useState("");
+  const [programmation, setProgrammation] = useState(false);
+  const [programmes, setProgrammes] = useState<{ id: string; patient_name: string | null; phone: string; body: string; send_at: string; channel: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadThreads = useCallback(() => {
@@ -124,6 +130,56 @@ export function CommunicationCenter() {
     }, 300);
     return () => clearTimeout(t);
   }, [patientQuery, showNew]);
+
+  const chargerProgrammes = useCallback(() => {
+    fetch("/api/messages/schedule")
+      .then((r) => (r.ok ? r.json() : { programmes: [] }))
+      .then((d) => setProgrammes(d.programmes || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    chargerProgrammes();
+  }, [chargerProgrammes]);
+
+  const programmerEnvoi = async () => {
+    const text = inputText.trim();
+    if (!text || !activePhone || !quandProgrammer) return;
+    setProgrammation(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/messages/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: activePatientId,
+          phone: activePhone,
+          message: text,
+          channel,
+          sendAt: new Date(quandProgrammer).toISOString(),
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Programmation impossible.");
+      setInputText("");
+      setQuandProgrammer("");
+      chargerProgrammes();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setProgrammation(false);
+    }
+  };
+
+  const annulerProgramme = async (id: string) => {
+    const res = await fetch(`/api/messages/schedule?id=${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error || "Annulation impossible.");
+      return;
+    }
+    chargerProgrammes();
+  };
 
   const chargerFile = useCallback(() => {
     fetch("/api/messages/a-envoyer")
@@ -568,6 +624,55 @@ export function CommunicationCenter() {
                   )}
                 </div>
               )}
+              {/* Programmation d'un envoi. La tâche planifiée ne tourne
+                  qu'une fois par jour (limite du plan d'hébergement) : le
+                  message part au prochain passage, pas à la minute demandée.
+                  Le dire évite de promettre une précision qu'on n'a pas. */}
+              {activePhone && (
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <input
+                    type="datetime-local"
+                    value={quandProgrammer}
+                    onChange={(e) => setQuandProgrammer(e.target.value)}
+                    className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={programmerEnvoi}
+                    disabled={programmation || !inputText.trim() || !quandProgrammer}
+                    className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-[10px] font-black uppercase tracking-widest disabled:opacity-40 transition-colors"
+                  >
+                    {programmation ? "Enregistrement…" : "Programmer"}
+                  </button>
+                  <span className="text-[10px] text-slate-400">
+                    Envoi au prochain passage de la tâche quotidienne, pas à la minute près.
+                  </span>
+                </div>
+              )}
+
+              {programmes.length > 0 && (
+                <div className="mb-3 border border-slate-200 rounded-lg overflow-hidden">
+                  <p className="px-3 py-1.5 bg-slate-50 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                    {programmes.length} envoi(s) programmé(s)
+                  </p>
+                  <ul className="divide-y divide-slate-100 max-h-32 overflow-y-auto">
+                    {programmes.map((p) => (
+                      <li key={p.id} className="px-3 py-1.5 flex items-center gap-2 text-[11px]">
+                        <span className="font-bold text-slate-700 truncate flex-1">
+                          {p.patient_name || p.phone} — {new Date(p.send_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                        </span>
+                        <span className="text-slate-400 truncate max-w-[40%]">{p.body}</span>
+                        <button
+                          onClick={() => annulerProgramme(p.id)}
+                          className="text-rose-600 hover:underline font-bold flex-shrink-0"
+                        >
+                          Annuler
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               <div className="flex items-center gap-4 bg-slate-100 rounded-xl p-2 focus-within:ring-2 focus-within:ring-blue-500/20 border border-transparent transition-all">
                 <div className="flex bg-white rounded-lg p-0.5 shadow-sm">
                   <button
