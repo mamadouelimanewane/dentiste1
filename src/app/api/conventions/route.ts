@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { requirePermission } from '@/lib/permissions';
+import { requirePermission, getRoleById } from '@/lib/permissions';
+import { getStaffSession } from '@/lib/session';
+import { hasPermission } from '@/lib/modules';
 import { bornerTexte } from '@/lib/validation';
 import { recordAudit } from '@/lib/audit';
 
@@ -35,10 +37,20 @@ function validerValeurD(valeur: unknown): { ok: true; valeur: number } | { ok: f
 }
 
 export async function GET() {
-  // Lecture ouverte à qui établit un devis (module 4) : le praticien doit
-  // pouvoir choisir sa base sans avoir accès à la Configuration.
-  const { error, status } = await requirePermission(4, 'view');
-  if (error) return NextResponse.json({ error }, { status });
+  // Lecture ouverte à qui établit un devis (module 4, le praticien choisit sa
+  // base sans accéder à la Configuration) ET à la comptabilité (module 8) :
+  // ce sont les conventions qui expliquent qu'un même acte soit facturé à deux
+  // montants différents. Sans cet accès, un écart entre deux factures restait
+  // inexplicable pour la personne chargée de les justifier.
+  const session = await getStaffSession();
+  if (!session) return NextResponse.json({ error: 'Non authentifié.' }, { status: 401 });
+  const role = await getRoleById(session.roleId);
+  if (
+    !role ||
+    (!hasPermission(role.permissions, 4, 'view') && !hasPermission(role.permissions, 8, 'view'))
+  ) {
+    return NextResponse.json({ error: 'Rôle non autorisé.' }, { status: 403 });
+  }
 
   const conventions = await sql`
     select id, nom, valeur_d, actif from conventions
