@@ -42,6 +42,7 @@ export function PatientRegistration() {
     address: "",
     mutuelle: "",
     allergies: "",
+    whatsappPhone: "",
   });
   // Le dossier complet a-t-il été relu en base ? Tant que non, enregistrer
   // reviendrait à effacer les champs que l'écran ne connaît pas.
@@ -89,6 +90,7 @@ export function PatientRegistration() {
             address: p.address || prev.address,
             allergies: p.allergies || "",
             mutuelle: p.mutuelle || "",
+            whatsappPhone: p.whatsapp_phone || "",
           }));
           setDossierRelu(true);
         })
@@ -107,6 +109,7 @@ export function PatientRegistration() {
         address: "",
         mutuelle: "",
         allergies: "",
+        whatsappPhone: "",
       });
       setIsEditing(true); // Auto-edit if no patient
       setDossierRelu(true); // création : rien à écraser
@@ -137,6 +140,7 @@ export function PatientRegistration() {
             full_name: fullName,
             birth_date: formData.birthDate || null,
             phone: formData.phone,
+            whatsapp_phone: formData.whatsappPhone || null,
             address: formData.address,
             allergies: formData.allergies,
             mutuelle: formData.mutuelle,
@@ -161,6 +165,7 @@ export function PatientRegistration() {
             fullName,
             birthDate: formData.birthDate || null,
             phone: formData.phone,
+            whatsappPhone: formData.whatsappPhone || null,
             address: formData.address,
             allergies: formData.allergies,
             mutuelle: formData.mutuelle,
@@ -310,6 +315,25 @@ export function PatientRegistration() {
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="+221 77 000 00 00"
+                  disabled={!isEditing}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
+                />
+              </div>
+
+              {/* Ligne WhatsApp. Beaucoup de patients ont deux puces : sans ce
+                  champ, les rappels WhatsApp partaient vers la ligne d'appel,
+                  qui n'a pas forcément WhatsApp. La colonne existait et l'envoi
+                  s'en servait déjà — il manquait simplement de quoi la saisir. */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">
+                  WhatsApp <span className="text-slate-400 normal-case font-medium">(si différent)</span>
+                </label>
+                <input
+                  type="tel"
+                  name="whatsappPhone"
+                  value={formData.whatsappPhone}
+                  onChange={handleChange}
+                  placeholder="Même numéro que ci-dessus"
                   disabled={!isEditing}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                 />
