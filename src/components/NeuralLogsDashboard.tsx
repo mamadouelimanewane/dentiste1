@@ -16,13 +16,23 @@ interface NeuralLog {
 export function NeuralLogsDashboard() {
   const [logs, setLogs] = useState<NeuralLog[]>([]);
   const [loading, setLoading] = useState(true);
+  // Un journal vide et un journal illisible se ressemblaient : le second doit
+  // se dire, sinon on conclut qu'aucune action n'a été enregistrée.
+  const [erreur, setErreur] = useState<string | null>(null);
 
   const fetchLogs = async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/neural-logs?limit=50");
       const data = await res.json();
-      if (res.ok) setLogs(data.logs);
+      if (res.ok) {
+        setLogs(data.logs);
+        setErreur(null);
+      } else {
+        setErreur(data.error || "Journal non chargé.");
+      }
+    } catch {
+      setErreur("Journal non chargé : le contenu affiché peut être ancien.");
     } finally {
       setLoading(false);
     }
@@ -94,11 +104,17 @@ export function NeuralLogsDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {logs.length === 0 ? (
+              {erreur ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center">
+                    <p className="text-sm font-bold text-rose-700">{erreur}</p>
+                  </td>
+                </tr>
+              ) : logs.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
                     <Brain className="h-12 w-12 mx-auto text-slate-200 mb-3" />
-                    <p className="text-sm font-medium">Aucun log neural détecté.</p>
+                    <p className="text-sm font-medium">Aucune action enregistrée pour l&apos;instant.</p>
                   </td>
                 </tr>
               ) : (

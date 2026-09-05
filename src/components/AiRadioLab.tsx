@@ -39,14 +39,25 @@ export function AiRadioLab() {
   const [filtre, setFiltre] = useState("Toutes");
   const [selected, setSelected] = useState<ImageRecord | null>(null);
   const [zoom, setZoom] = useState(1);
+  // Distingue « ce patient n'a pas de cliché » de « je n'ai pas pu les lire ».
+  const [erreur, setErreur] = useState<string | null>(null);
   const [contraste, setContraste] = useState(100);
 
   const load = useCallback((patientId: string) => {
     setLoading(true);
+    setErreur(null);
     fetch(`/api/patient-images?patientId=${patientId}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Clichés non chargés.");
+        return r.json();
+      })
       .then((d) => setImages(d.images || []))
-      .catch(() => setImages([]))
+      // Vider la liste sur erreur revenait à afficher « aucun cliché » pour un
+      // patient qui en a : le praticien pouvait conclure qu'aucune imagerie
+      // n'existe et demander un nouveau cliché — donc une irradiation inutile.
+      .catch(() =>
+        setErreur("Les clichés n'ont pas pu être chargés. Rechargez avant de conclure qu'il n'y en a pas.")
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -116,8 +127,13 @@ export function AiRadioLab() {
       </div>
 
       {/* GALERIE */}
+      {erreur && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-xs font-bold text-rose-800">
+          {erreur}
+        </div>
+      )}
       {loading && <p className="text-xs text-slate-400 text-center py-10">Chargement des clichés...</p>}
-      {!loading && affichees.length === 0 && (
+      {!loading && !erreur && affichees.length === 0 && (
         <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-12 text-center">
           <ImageIcon className="h-10 w-10 text-slate-300 mx-auto mb-3" />
           <p className="text-sm font-bold text-slate-700">Aucun cliché pour ce patient</p>
