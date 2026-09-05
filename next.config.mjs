@@ -31,11 +31,19 @@ const enTetesSecurite = [
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   {
-    // La caméra et le micro restent autorisés pour l'origine : la
-    // téléconsultation et la dictée vocale en dépendent. Tout le reste est
-    // refusé, y compris aux iframes.
+    // Caméra et micro : autorisés à l'origine ET au domaine daily.co.
+    //
+    // La téléconsultation s'affiche dans une iframe servie par Daily. Une
+    // politique limitée à `self` l'aurait donc privée de caméra et de micro —
+    // la visio se serait ouverte muette et noire, sans message d'erreur. C'est
+    // exactement le piège que je voulais éviter en renonçant à une CSP écrite
+    // au jugé, et je l'avais reproduit ici.
+    //
+    // La dictée vocale, elle, tourne dans la page : `self` lui suffit.
     key: 'Permissions-Policy',
-    value: 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=()',
+    value:
+      'camera=(self "https://*.daily.co"), microphone=(self "https://*.daily.co"), ' +
+      'display-capture=(self "https://*.daily.co"), geolocation=(), payment=(), usb=()',
   },
 ];
 
