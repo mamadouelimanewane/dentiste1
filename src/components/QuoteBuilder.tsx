@@ -5,10 +5,12 @@ import { D_VALUE, DENTAL_NOMENCLATURE, DentalProcedure, prixSelonD } from "@/lib
 import { Plus, Trash2, FileText, Download, CheckCircle2, Eraser, ShoppingCart, Save, AlertTriangle, PenTool } from "lucide-react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { QuotePDF } from "./QuotePDF";
+import type { ReglagesCabinetPDF } from "./InvoicePDF";
 import SignatureCanvas from "react-signature-canvas";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
+import { useAuth } from "@/lib/auth-context";
 import { SignaturePadModal } from "./SignaturePadModal";
 import { ActCatalogPicker } from "@/components/ActCatalogPicker";
 import { ExplicationPatient } from "@/components/ExplicationPatient";
@@ -42,6 +44,7 @@ const BADGE_STATUT: Record<StatutDevis, string> = {
 
 export function QuoteBuilder() {
   const { currentPatient } = usePatient();
+  const { user } = useAuth();
   const [selected, setSelected] = useState<(DentalProcedure & { qty: number })[]>([]);
   const sigCanvas = useRef<SignatureCanvas>(null);
   const [isSigned, setIsSigned] = useState(false);
@@ -96,6 +99,18 @@ export function QuoteBuilder() {
     sigCanvas.current?.clear();
     setIsSigned(false);
   };
+
+  // Identité légale du cabinet, pour le document remis au patient : le PDF
+  // portait un praticien, un numéro d'Ordre, une adresse et un NINEA inventés
+  // — voir QuotePDF.
+  const [cabinet, setCabinet] = useState<ReglagesCabinetPDF | null>(null);
+
+  useEffect(() => {
+    fetch("/api/clinic-settings/public")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setCabinet(d?.settings || null))
+      .catch(() => {});
+  }, []);
 
   // Devis déjà établis pour ce patient.
   //
@@ -287,9 +302,26 @@ export function QuoteBuilder() {
                     {saving ? "Enregistrement..." : saved ? "Devis Enregistré" : "Enregistrer"}
                   </button>
                   <PDFDownloadLink
-                    document={<QuotePDF items={selected.map(i => ({ label: i.label, qty: i.qty, price: prixLigne(i) }))}
-                    baseTarifaire={{ nom: nomBase, valeurD }} total={total} patientName={currentPatient?.name || "Patient non sélectionné"} signatureBase64={signatureData} />}
-                    fileName={`devis_${new Date().getTime()}.pdf`}
+                    document={
+                      <QuotePDF
+                        items={selected.map((i) => ({ label: i.label, qty: i.qty, price: prixLigne(i) }))}
+                        baseTarifaire={{ nom: nomBase, valeurD }}
+                        total={total}
+                        patientName={currentPatient?.name || "Patient non sélectionné"}
+                        signatureBase64={signatureData}
+                        clinic={cabinet}
+                        patientDossier={currentPatient?.idNumber}
+                        practitionerName={user?.fullName}
+                        // Référence du devis réellement enregistré — elle était
+                        // tirée au sort à chaque impression. Tant que le devis
+                        // n'est pas enregistré, aucune référence n'est
+                        // affichée : en inventer une, ou reprendre celle d'un
+                        // devis antérieur, serait repartir dans le même travers.
+                        reference={saved && devisExistants[0]?.id ? `DEV-${devisExistants[0].id.slice(0, 8).toUpperCase()}` : null}
+                        issuedAt={saved ? devisExistants[0]?.created_at || null : null}
+                      />
+                    }
+                    fileName={`devis_${currentPatient?.idNumber || "patient"}.pdf`}
                   >
                     {/* @ts-ignore */}
                     {({ loading }) => (

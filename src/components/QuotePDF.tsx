@@ -1,5 +1,6 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import type { ReglagesCabinetPDF } from './InvoicePDF';
 
 const styles = StyleSheet.create({
   page: { padding: 50, backgroundColor: '#FFFFFF', fontFamily: 'Helvetica' },
@@ -62,9 +63,43 @@ interface QuotePDFProps {
   total: number;
   patientName: string;
   signatureBase64?: string | null;
+  // Identité réelle du cabinet et du dossier — voir la note ci-dessous.
+  clinic?: ReglagesCabinetPDF | null;
+  patientDossier?: string | null;
+  practitionerName?: string | null;
+  reference?: string | null;
+  issuedAt?: string | null;
 }
 
-export const QuotePDF = ({ items, total, patientName, signatureBase64, baseTarifaire }: QuotePDFProps) => (
+// Ce devis est remis au patient et engage le cabinet. Il portait pourtant,
+// écrits en dur : un praticien inexistant (« Dr. Mamadou Diallo »), un numéro
+// d'Ordre inventé (« 4521 »), un cabinet qui n'est pas celui-ci (« Cabinet
+// Dentaire Premium ») et — le plus gênant — un numéro de dossier fixe,
+// « SN-12345-X », qui n'était celui d'aucun patient. La référence du devis
+// était de surcroît TIRÉE AU SORT à chaque impression : le patient qui
+// revenait avec « DEV-2026-4821 » présentait une référence introuvable, et
+// deux impressions du même devis ne portaient pas le même numéro.
+//
+// Ce qui n'est pas renseigné dans Configuration reste vide plutôt qu'inventé.
+export const QuotePDF = ({
+  items,
+  total,
+  patientName,
+  signatureBase64,
+  baseTarifaire,
+  clinic,
+  patientDossier,
+  practitionerName,
+  reference,
+  issuedAt,
+}: QuotePDFProps) => {
+  const nomCabinet = clinic?.clinic_name?.trim() || 'Cabinet dentaire';
+  const mentions = [clinic?.address, clinic?.phone, clinic?.ninea ? `NINEA : ${clinic.ninea}` : null]
+    .map((v) => (v || '').trim())
+    .filter(Boolean);
+  const dateDevis = issuedAt ? new Date(issuedAt) : new Date();
+
+  return (
   <Document>
     <Page size="A4" style={styles.page}>
       {/* Header Premium */}
@@ -74,14 +109,16 @@ export const QuotePDF = ({ items, total, patientName, signatureBase64, baseTarif
             <Text style={styles.logoText}>E</Text>
           </View>
           <View>
-            <Text style={styles.titleText}>ELITE ERP</Text>
-            <Text style={styles.subtitleText}>Cabinet Dentaire Premium</Text>
+            <Text style={styles.titleText}>{nomCabinet}</Text>
+            {!!clinic?.address && <Text style={styles.subtitleText}>{clinic.address}</Text>}
           </View>
         </View>
         <View style={styles.invoiceTag}>
           <Text style={styles.invoiceTitle}>DEVIS</Text>
-          <Text style={styles.invoiceNumber}>Réf: DEV-{new Date().getFullYear()}-{Math.floor(Math.random() * 10000)}</Text>
-          <Text style={{ fontSize: 8, color: '#94A3B8', marginTop: 4 }}>Date: {new Date().toLocaleDateString('fr-FR')}</Text>
+          {!!reference && <Text style={styles.invoiceNumber}>Réf : {reference}</Text>}
+          <Text style={{ fontSize: 8, color: '#94A3B8', marginTop: 4 }}>
+            Établi le {dateDevis.toLocaleDateString('fr-FR')}
+          </Text>
         </View>
       </View>
 
@@ -90,13 +127,14 @@ export const QuotePDF = ({ items, total, patientName, signatureBase64, baseTarif
         <View style={styles.infoCol}>
           <Text style={styles.infoLabel}>Informations Patient</Text>
           <Text style={styles.infoText}>{patientName}</Text>
-          <Text style={styles.infoSub}>Dossier : SN-12345-X</Text>
+          {!!patientDossier && <Text style={styles.infoSub}>Dossier : {patientDossier}</Text>}
         </View>
         <View style={styles.infoCol}>
-          <Text style={styles.infoLabel}>Praticien Traitant</Text>
-          <Text style={styles.infoText}>Dr. Mamadou Diallo</Text>
-          <Text style={styles.infoSub}>Chirurgien-Dentiste, Implantologue</Text>
-          <Text style={styles.infoSub}>Ordre National : 4521</Text>
+          <Text style={styles.infoLabel}>Praticien traitant</Text>
+          <Text style={styles.infoText}>{practitionerName || nomCabinet}</Text>
+          {mentions.map((m, i) => (
+            <Text key={i} style={styles.infoSub}>{m}</Text>
+          ))}
         </View>
       </View>
 
@@ -151,17 +189,23 @@ export const QuotePDF = ({ items, total, patientName, signatureBase64, baseTarif
           )}
           {signatureBase64 && (
             <View style={styles.signatureLine}>
-              <Text style={styles.signatureLabel}>Signé électroniquement le {new Date().toLocaleDateString('fr-FR')} à {new Date().toLocaleTimeString('fr-FR')}</Text>
+              {/* Portait la date d'IMPRESSION : un devis signé en juillet et
+                  réédité en septembre s'annonçait signé en septembre. */}
+              <Text style={styles.signatureLabel}>
+                Signé électroniquement le {dateDevis.toLocaleDateString('fr-FR')}
+              </Text>
             </View>
           )}
         </View>
       </View>
 
+      {/* Le pied portait une adresse, un téléphone (« +221 77 000 00 00 ») et
+          un NINEA (« 012345678 ») entièrement inventés. */}
       <Text style={styles.footer}>
-        Devis valable pour une durée de 30 jours.{'\n'}
-        Clinique du Cap Vert - Dakar, Plateau - Tél: +221 77 000 00 00 - NINEA: 012345678{'\n'}
-        Généré par Elite ERP Cap Vert
+        Devis valable 30 jours à compter du {dateDevis.toLocaleDateString('fr-FR')}.{'\n'}
+        {mentions.length > 0 ? `${nomCabinet} — ${mentions.join(' — ')}` : nomCabinet}
       </Text>
     </Page>
   </Document>
-);
+  );
+};

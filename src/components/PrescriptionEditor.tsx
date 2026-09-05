@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft, History, Printer, Save, Plus, Pill, Star, Search, User, FileText, Sparkles, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
 import { rappelsAllergie } from "@/lib/allergies";
+import type { ReglagesCabinetPDF } from "./InvoicePDF";
 import { useAuth } from "@/lib/auth-context";
 import dynamic from "next/dynamic";
 
@@ -65,6 +66,17 @@ export function PrescriptionEditor() {
     ]);
   };
 
+  // Identité du cabinet pour l'ordonnance imprimée : le nom et l'adresse
+  // étaient écrits en dur dans le PDF.
+  const [cabinet, setCabinet] = useState<ReglagesCabinetPDF | null>(null);
+
+  useEffect(() => {
+    fetch("/api/clinic-settings/public")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setCabinet(d?.settings || null))
+      .catch(() => {});
+  }, []);
+
   const rappels = rappelsAllergie(currentPatient?.allergies, meds);
 
   const handleSave = async () => {
@@ -123,6 +135,8 @@ export function PrescriptionEditor() {
                   patientName={currentPatient.name}
                   practitionerName={user.fullName}
                   medications={meds}
+                  clinic={cabinet}
+                  patientDossier={currentPatient.idNumber}
                 />
               }
               fileName={`Ordonnance_${currentPatient.name}.pdf`}

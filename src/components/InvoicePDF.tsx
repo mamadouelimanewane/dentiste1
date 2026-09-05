@@ -204,15 +204,74 @@ const styles = StyleSheet.create({
   }
 });
 
+// Identité du cabinet et état réel de la facture.
+//
+// Ce document est remis au patient et présenté aux mutuelles. Il portait
+// pourtant, écrits en dur : un praticien qui n'existe pas (« Dr. Mamadou
+// Diallo »), un NINEA fabriqué (« 1234567 »), un nom de cabinet qui n'est pas
+// celui-ci (« Cabinet Dentaire Premium »), la date DU JOUR au lieu de la date
+// d'émission — et surtout un tampon « PAYÉ / ACQUITTÉ » apposé sur TOUTE
+// facture, réglée ou non. Une facture impayée sortait donc acquittée : le
+// patient pouvait la présenter comme preuve de paiement.
+//
+// Un faux « hash de certification » tiré au sort à chaque impression
+// accompagnait le tout sous la mention « Facture certifiée électroniquement ».
+// Rien n'était certifié, et deux impressions de la même facture donnaient deux
+// empreintes différentes.
+//
+// Ce qui n'est pas renseigné dans Configuration reste vide : un cabinet sans
+// NINEA saisi vaut mieux qu'un NINEA inventé.
+export interface ReglagesCabinetPDF {
+  clinic_name?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  ninea?: string | null;
+  rccm?: string | null;
+}
+
 interface InvoicePDFProps {
   items: any[];
   total: number;
   patientName: string;
   patientId?: string;
   invoiceNumber: string;
+  clinic?: ReglagesCabinetPDF | null;
+  practitionerName?: string | null;
+  status?: string | null;
+  issuedAt?: string | null;
+  paidAt?: string | null;
+  paymentMethod?: string | null;
 }
 
-export const InvoicePDF = ({ items, total, patientName, patientId, invoiceNumber }: InvoicePDFProps) => (
+const MOYENS: Record<string, string> = {
+  cash: 'espèces',
+  card: 'carte',
+  insurance: 'prise en charge',
+  mobile_money: 'mobile money',
+};
+
+export const InvoicePDF = ({
+  items,
+  total,
+  patientName,
+  patientId,
+  invoiceNumber,
+  clinic,
+  practitionerName,
+  status,
+  issuedAt,
+  paidAt,
+  paymentMethod,
+}: InvoicePDFProps) => {
+  const nomCabinet = clinic?.clinic_name?.trim() || 'Cabinet dentaire';
+  const mentions = [clinic?.address, clinic?.phone, clinic?.ninea ? `NINEA : ${clinic.ninea}` : null, clinic?.rccm ? `RCCM : ${clinic.rccm}` : null]
+    .map((v) => (v || '').trim())
+    .filter(Boolean);
+  const dateEmission = issuedAt ? new Date(issuedAt) : new Date();
+  const acquittee = status === 'paid';
+
+  return (
   <Document>
     <Page size="A4" style={styles.page}>
       {/* Header Premium */}
@@ -222,14 +281,16 @@ export const InvoicePDF = ({ items, total, patientName, patientId, invoiceNumber
             <Text style={styles.logoText}>E</Text>
           </View>
           <View>
-            <Text style={styles.titleText}>ELITE ERP</Text>
-            <Text style={styles.subtitleText}>Cabinet Dentaire Premium</Text>
+            <Text style={styles.titleText}>{nomCabinet}</Text>
+            {!!clinic?.address && <Text style={styles.subtitleText}>{clinic.address}</Text>}
           </View>
         </View>
         <View style={styles.invoiceTag}>
           <Text style={styles.invoiceTitle}>FACTURE</Text>
           <Text style={styles.invoiceNumber}>N° {invoiceNumber}</Text>
-          <Text style={{ fontSize: 8, color: '#94A3B8', marginTop: 4 }}>Date: {new Date().toLocaleDateString('fr-FR')}</Text>
+          <Text style={{ fontSize: 8, color: '#94A3B8', marginTop: 4 }}>
+            Émise le {dateEmission.toLocaleDateString('fr-FR')}
+          </Text>
         </View>
       </View>
 
@@ -237,9 +298,11 @@ export const InvoicePDF = ({ items, total, patientName, patientId, invoiceNumber
       <View style={styles.infoSection}>
         <View style={styles.infoBlock}>
           <Text style={styles.infoLabel}>Émetteur</Text>
-          <Text style={styles.infoValue}>Dr. Mamadou Diallo</Text>
-          <Text style={styles.infoSub}>Chirurgien-Dentiste, Implantologue</Text>
-          <Text style={styles.infoSub}>Dakar, Sénégal - NINEA: 1234567</Text>
+          <Text style={styles.infoValue}>{nomCabinet}</Text>
+          {!!practitionerName && <Text style={styles.infoSub}>{practitionerName}</Text>}
+          {mentions.map((m, i) => (
+            <Text key={i} style={styles.infoSub}>{m}</Text>
+          ))}
         </View>
         <View style={styles.infoBlock}>
           <Text style={styles.infoLabel}>Patient / Destinataire</Text>
@@ -271,10 +334,6 @@ export const InvoicePDF = ({ items, total, patientName, patientId, invoiceNumber
             <Text style={styles.summaryLabel}>Sous-total</Text>
             <Text style={styles.summaryValue}>{total.toLocaleString()} FCFA</Text>
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>TVA (0%)</Text>
-            <Text style={styles.summaryValue}>0 FCFA</Text>
-          </View>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>NET À PAYER</Text>
             <Text style={styles.totalValue}>{total.toLocaleString()} FCFA</Text>
@@ -286,14 +345,23 @@ export const InvoicePDF = ({ items, total, patientName, patientId, invoiceNumber
       <View style={styles.footer}>
         <View style={styles.certificationBlock}>
           <View>
-            <Text style={styles.certifText1}>Facture certifiée électroniquement par Elite ERP.</Text>
-            <Text style={styles.certifText2}>Hash: {Math.random().toString(36).substring(2, 15).toUpperCase()} - {new Date().toISOString()}</Text>
+            <Text style={styles.certifText1}>
+              {acquittee
+                ? `Réglée le ${paidAt ? new Date(paidAt).toLocaleDateString('fr-FR') : dateEmission.toLocaleDateString('fr-FR')}${paymentMethod ? ` en ${MOYENS[paymentMethod] || paymentMethod}` : ''}.`
+                : 'Facture non réglée à ce jour.'}
+            </Text>
+            <Text style={styles.certifText2}>
+              Document émis par le logiciel du cabinet — {dateEmission.toLocaleDateString('fr-FR')}
+            </Text>
           </View>
-          <View style={styles.stampBox}>
-            <Text style={styles.stampText}>PAYÉ / ACQUITTÉ</Text>
-          </View>
+          {acquittee && (
+            <View style={styles.stampBox}>
+              <Text style={styles.stampText}>Acquittée</Text>
+            </View>
+          )}
         </View>
       </View>
     </Page>
   </Document>
-);
+  );
+};

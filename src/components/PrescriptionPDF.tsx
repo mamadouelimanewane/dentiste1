@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import type { ReglagesCabinetPDF } from './InvoicePDF';
 
 const styles = StyleSheet.create({
   page: {
@@ -95,15 +96,32 @@ interface PrescriptionPDFProps {
   patientName: string;
   practitionerName: string;
   medications: Med[];
+  // Identité du cabinet et du dossier. Le nom du cabinet et « Dakar, Sénégal »
+  // étaient écrits en dur : justes pour ce cabinet-ci, faux pour tout autre.
+  // Et l'ordonnance ne portait aucune référence de dossier — le pharmacien
+  // n'avait que le nom du patient pour l'identifier.
+  clinic?: ReglagesCabinetPDF | null;
+  patientDossier?: string | null;
 }
 
-export const PrescriptionPDF = ({ patientName, practitionerName, medications }: PrescriptionPDFProps) => (
+export const PrescriptionPDF = ({
+  patientName,
+  practitionerName,
+  medications,
+  clinic,
+  patientDossier,
+}: PrescriptionPDFProps) => (
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.header}>
-        <Text style={styles.clinicName}>Cabinet Dentaire du Cap Vert</Text>
+        <Text style={styles.clinicName}>{clinic?.clinic_name?.trim() || 'Cabinet dentaire'}</Text>
         <Text style={styles.practitionerLine}>{practitionerName}</Text>
-        <Text style={styles.contactLine}>Dakar, Sénégal</Text>
+        {[clinic?.address, clinic?.phone]
+          .map((v) => (v || '').trim())
+          .filter(Boolean)
+          .map((v, i) => (
+            <Text key={i} style={styles.contactLine}>{v}</Text>
+          ))}
       </View>
 
       <Text style={styles.dateLine}>
@@ -112,6 +130,7 @@ export const PrescriptionPDF = ({ patientName, practitionerName, medications }: 
 
       <Text style={styles.patientLine}>
         Prescription pour : <Text style={styles.patientName}>{patientName}</Text>
+        {patientDossier ? ` — dossier ${patientDossier}` : ''}
       </Text>
 
       {medications.length === 0 ? (

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { CreditCard, Banknote, Shield, Smartphone, Download, CheckCircle2, Receipt, FileText , ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
+import { useAuth } from "@/lib/auth-context";
 import dynamic from "next/dynamic";
 import { DemoModeBadge } from "@/components/DemoModeBadge";
 import { QRCodeSVG } from "qrcode.react";
@@ -12,7 +13,7 @@ const PDFDownloadLink = dynamic(
   () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
   { ssr: false }
 );
-import { InvoicePDF } from "./InvoicePDF";
+import { InvoicePDF, type ReglagesCabinetPDF } from "./InvoicePDF";
 
 interface ExecutedAct {
   id: string;
@@ -31,13 +32,22 @@ interface PendingInvoice {
   status: string;
   payment_method: string | null;
   created_at: string;
+  paid_at?: string | null;
 }
 
 export function BillingManager() {
   const { currentPatient } = usePatient();
+  const { user } = useAuth();
   const [executedActs, setExecutedActs] = useState<ExecutedAct[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
-  const [invoice, setInvoice] = useState<{ id: string; invoice_number: string; status: string } | null>(null);
+  const [invoice, setInvoice] = useState<{
+    id: string;
+    invoice_number: string;
+    status: string;
+    created_at?: string | null;
+    paid_at?: string | null;
+    payment_method?: string | null;
+  } | null>(null);
   const [fournisseur, setFournisseur] = useState<"wave" | "orange_money">("wave");
   const [fournisseursDisponibles, setFournisseursDisponibles] = useState<("wave" | "orange_money")[]>([]);
   const [lienPaiement, setLienPaiement] = useState<string | null>(null);
@@ -143,6 +153,18 @@ export function BillingManager() {
       setSettlingId(null);
     }
   };
+
+  // Identité légale du cabinet, pour les documents remis au patient. Le PDF
+  // de facture portait jusqu'ici un praticien, un NINEA et un nom de cabinet
+  // inventés — voir InvoicePDF.
+  const [cabinet, setCabinet] = useState<ReglagesCabinetPDF | null>(null);
+
+  useEffect(() => {
+    fetch("/api/clinic-settings/public")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setCabinet(d?.settings || null))
+      .catch(() => {});
+  }, []);
 
   const [priseEnCharge, setPriseEnCharge] = useState<{
     montant: number;
@@ -344,6 +366,12 @@ export function BillingManager() {
                         patientName={currentPatient?.name || "Patient"}
                         patientId={currentPatient?.idNumber}
                         invoiceNumber={inv.invoice_number}
+                        clinic={cabinet}
+                        practitionerName={user?.fullName}
+                        status={inv.status}
+                        issuedAt={inv.created_at}
+                        paidAt={inv.paid_at}
+                        paymentMethod={inv.payment_method}
                       />
                     }
                     fileName={`${inv.invoice_number}.pdf`}
@@ -440,6 +468,12 @@ export function BillingManager() {
                   patientName={currentPatient?.name || "Patient Anonyme"}
                   patientId={currentPatient?.idNumber}
                   invoiceNumber={invoice?.invoice_number || "BROUILLON"}
+                  clinic={cabinet}
+                  practitionerName={user?.fullName}
+                  status={invoice?.status}
+                  issuedAt={invoice?.created_at}
+                  paidAt={invoice?.paid_at}
+                  paymentMethod={invoice?.payment_method}
                 />
               }
               fileName={`Facture_${currentPatient?.name || "Patient"}_${invoice?.invoice_number || "brouillon"}.pdf`}
