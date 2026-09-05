@@ -30,12 +30,29 @@ export function PatientFollowUp() {
       });
   }, []);
 
+  // Notes vocales de CE patient.
+  //
+  // L'historique des dictées est global au navigateur : cet écran affichait
+  // donc, sous « Notes Vocales IA (Séance) », les dictées prises pour
+  // n'importe quel autre patient — des observations cliniques attribuées au
+  // mauvais dossier. On ne retient que celles rattachées au dossier ouvert.
   useEffect(() => {
-    const saved = localStorage.getItem("dentiste_lite_dictations");
-    if (saved) {
-      setDictations(JSON.parse(saved));
+    if (!currentPatient) {
+      setDictations([]);
+      return;
     }
-  }, []);
+    try {
+      const saved = localStorage.getItem("dentiste_lite_dictations");
+      const toutes = saved ? JSON.parse(saved) : [];
+      setDictations(
+        (Array.isArray(toutes) ? toutes : []).filter(
+          (d: { patientId?: string | null }) => d.patientId === currentPatient.id
+        )
+      );
+    } catch {
+      setDictations([]);
+    }
+  }, [currentPatient]);
 
   const handleFinalize = async () => {
     setError(null);
@@ -148,7 +165,7 @@ export function PatientFollowUp() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <Mic className="h-4 w-4 text-blue-600" />
-                <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Notes Vocales IA (Séance)</h4>
+                <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Notes vocales de ce dossier</h4>
               </div>
               <div className="bg-slate-50 border border-slate-200 rounded-sm p-4 space-y-3">
                 {dictations.map((d, i) => (

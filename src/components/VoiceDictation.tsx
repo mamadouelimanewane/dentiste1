@@ -5,6 +5,7 @@ import { Mic, MicOff, Globe, History, Brain, FileText, Pill, Activity, CheckCirc
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
+import { usePatient } from "@/lib/context";
 
 declare global {
   interface Window {
@@ -15,6 +16,7 @@ declare global {
 
 export function VoiceDictation() {
   const { user } = useAuth();
+  const { currentPatient } = usePatient();
   const [isRecording, setIsRecording] = useState(false);
   const [activeCategory, setActiveCategory] = useState<"note" | "ordonnance" | "plan">("note");
   const [language, setLanguage] = useState<"FR" | "EN">("FR");
@@ -61,15 +63,65 @@ export function VoiceDictation() {
     }
   }, [language]);
 
+  // Verser une dictée au dossier : elle devient une note clinique en base,
+  // conservée, datée et signée — le seul endroit où elle survit à ce
+  // navigateur. La dictée reste rattachée au dossier où elle a été prise :
+  // la verser dans un autre dossier écrirait dans le mauvais.
+  const [versementId, setVersementId] = useState<number | null>(null);
+  const [versementErreur, setVersementErreur] = useState<string | null>(null);
+
+  const verserAuDossier = async (item: any) => {
+    const cible = item.patientId || currentPatient?.id || null;
+    if (!cible) {
+      setVersementErreur(
+        "Aucun dossier n'était ouvert lors de cette dictée : ouvrez le dossier concerné puis redictez-la."
+      );
+      return;
+    }
+    if (item.patientId && currentPatient && item.patientId !== currentPatient.id) {
+      setVersementErreur(
+        `Cette dictée a été prise pour ${item.patientName || "un autre patient"} : ouvrez ce dossier avant de la verser.`
+      );
+      return;
+    }
+    setVersementId(item.id);
+    setVersementErreur(null);
+    try {
+      const res = await fetch("/api/clinical-notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: cible,
+          content: item.text,
+          type: item.category === "ordonnance" ? "ordonnance" : item.category === "plan" ? "plan" : "general",
+        }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error || "La dictée n'a pas pu être versée au dossier.");
+      setHistory(prev => prev.map(h => (h.id === item.id ? { ...h, enregistree: true } : h)));
+    } catch (e) {
+      setVersementErreur(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setVersementId(null);
+    }
+  };
+
   const toggleRecording = () => {
     if (isRecording) {
       if (recognition) recognition.stop();
       setIsRecording(false);
       if (transcript) {
+         // Une dictée sans dossier de rattachement se retrouvait affichée
+         // dans la clôture de séance de N'IMPORTE QUEL patient : l'historique
+         // était global au navigateur, et l'écran « Suivi » le présentait
+         // comme les notes vocales du patient courant. On note donc à qui
+         // appartient chaque dictée.
          setHistory(prev => [{
-            id: Date.now(), 
-            text: transcript, 
-            category: activeCategory, 
+            id: Date.now(),
+            text: transcript,
+            category: activeCategory,
+            patientId: currentPatient?.id || null,
+            patientName: currentPatient?.name || null,
             date: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
          }, ...prev]);
       }
@@ -279,6 +331,12 @@ export function VoiceDictation() {
               </div>
               <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded text-[8px] font-black uppercase">{history.length} Dictées</span>
             </div>
+
+            {versementErreur && (
+              <div className="mx-4 mt-3 rounded-sm border border-rose-200 bg-rose-50 p-2 text-[10px] font-bold text-rose-800 leading-relaxed">
+                {versementErreur}
+              </div>
+            )}
             
             {history.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
@@ -287,18 +345,38 @@ export function VoiceDictation() {
                  </div>
                  <div>
                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aucune dictée enregistrée.</p>
-                   <p className="text-[9px] font-medium text-slate-300 mt-1">Synchronisé avec le dossier patient</p>
+                   {/* Disait « Synchronisé avec le dossier patient » — le
+                       contraire de ce que l'encadré du bas annonce, et de ce
+                       que fait le module. */}
+                   <p className="text-[9px] font-medium text-slate-300 mt-1">Conservé dans ce navigateur</p>
                  </div>
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {history.map(item => (
-                  <div key={item.id} className="p-3 border border-slate-100 rounded bg-slate-50">
-                    <div className="flex justify-between items-center mb-2">
+                  <div key={item.id} className="p-3 border border-slate-100 rounded bg-slate-50 space-y-2">
+                    <div className="flex justify-between items-center">
                       <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest">{item.category}</span>
                       <span className="text-[9px] text-slate-400 font-bold">{item.date}</span>
                     </div>
-                    <p className="text-xs text-slate-700 italic">"{item.text}"</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                      {item.patientName ? `Dossier : ${item.patientName}` : "Aucun dossier ouvert lors de la dictée"}
+                    </p>
+                    <p className="text-xs text-slate-700 italic">&laquo;&nbsp;{item.text}&nbsp;&raquo;</p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => verserAuDossier(item)}
+                        disabled={versementId === item.id || item.enregistree}
+                        className="px-2.5 py-1 rounded-sm border border-slate-300 text-[9px] font-black uppercase tracking-widest text-slate-700 hover:bg-white disabled:opacity-50"
+                      >
+                        {item.enregistree
+                          ? "Au dossier"
+                          : versementId === item.id
+                            ? "Enregistrement…"
+                            : "Verser au dossier"}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -327,7 +405,10 @@ export function VoiceDictation() {
               </div>
 
               <p className="text-[10px] text-blue-200 leading-relaxed">
-                L'historique est enregistré localement dans ce navigateur uniquement (pas encore synchronisé avec le dossier patient en base).
+                L&apos;historique reste dans ce navigateur : il ne suit pas le praticien d&apos;un poste
+                à l&apos;autre et disparaît si les données du navigateur sont effacées. « Verser au
+                dossier » enregistre la dictée comme note clinique en base, où elle est
+                conservée, datée et signée.
               </p>
             </div>
           </div>
