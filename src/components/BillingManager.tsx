@@ -559,25 +559,28 @@ export function BillingManager() {
           </div>
         </div>
 
-        {/* ACCOUNTING / DESTINATAIRES */}
+        {/* FACTURE & COMPTABILITÉ
+            Ce bloc affichait deux cases « Envoyer copie à la Comptabilité » et
+            « Envoyer copie au Patient (Email) » — décoratives : `defaultChecked`
+            sans état, jamais lues. Et une confirmation verte annonçait que
+            « les exemplaires ont été transmis aux destinataires sélectionnés ».
+            Aucun e-mail n'est envoyé : l'application n'a pas de service
+            d'envoi de courriel. Le personnel croyait le patient et le
+            comptable servis, et ne remettait donc pas la facture en main. */}
         <div className="bg-white border border-slate-200 rounded-sm p-6 space-y-4 shadow-sm">
-          <h3 className="text-sm font-black text-blue-900 uppercase tracking-tight">Transmission Facture & Comptabilité</h3>
-          <div className="space-y-3">
-            {[
-              { id: 'compta', label: 'Envoyer copie à la Comptabilité du Cabinet', default: true },
-              { id: 'patient', label: 'Envoyer copie au Patient (Email)', default: true },
-            ].map((dest) => (
-              <label key={dest.id} className="flex items-center gap-3 p-3 border border-slate-100 rounded-sm cursor-pointer hover:bg-slate-50 transition-colors">
-                <input type="checkbox" defaultChecked={dest.default} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                <span className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">{dest.label}</span>
-              </label>
-            ))}
-          </div>
+          <h3 className="text-sm font-black text-blue-900 uppercase tracking-tight">Facture et comptabilité</h3>
+          <p className="text-[11px] text-slate-600 leading-relaxed">
+            La facture alimente <strong>automatiquement</strong> la Comptabilité dès son
+            émission : il n&apos;y a rien à transmettre. En revanche, l&apos;application{" "}
+            <strong>n&apos;envoie aucun e-mail</strong> — pour remettre son exemplaire au
+            patient, téléchargez le PDF ci-dessus et imprimez-le ou envoyez-le
+            vous-même.
+          </p>
           {isPaid && (
             <div className="mt-4 p-3 bg-emerald-50 border border-emerald-100 rounded-sm flex items-start gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5" />
               <p className="text-[10px] font-bold text-emerald-800 uppercase leading-relaxed">
-                Les écritures comptables ont été générées et les exemplaires transmis aux destinataires sélectionnés.
+                Facture réglée et enregistrée. Elle apparaît dans la Comptabilité.
               </p>
             </div>
           )}
