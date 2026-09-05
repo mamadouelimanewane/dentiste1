@@ -1,10 +1,30 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Calendar, User, Phone, CheckCircle2, Stethoscope, ArrowRight, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function PortailPatient() {
+  // Identité réelle du cabinet.
+  //
+  // Cette page est publique. Elle affichait pourtant un nom de cabinet, une
+  // adresse (« Dakar, Plateau ») et surtout un numéro de téléphone
+  // (« +221 77 000 00 00 ») entièrement inventés : un patient qui cherchait à
+  // joindre le cabinet appelait dans le vide.
+  const [cabinet, setCabinet] = useState<{
+    clinic_name?: string | null;
+    address?: string | null;
+    phone?: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/clinic-settings/public")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setCabinet(d?.settings || null))
+      .catch(() => {});
+  }, []);
+
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     patientName: "",
@@ -55,13 +75,15 @@ export default function PortailPatient() {
               <Stethoscope className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight">Clinique du Cap Vert</h1>
+              <h1 className="text-xl font-bold tracking-tight">
+                {cabinet?.clinic_name || "Cabinet dentaire"}
+              </h1>
               <p className="text-xs text-blue-200 uppercase tracking-widest">Espace Patient</p>
             </div>
           </div>
           <div className="hidden sm:block text-right">
-            <p className="text-sm font-bold">Contact: +221 77 000 00 00</p>
-            <p className="text-xs text-blue-200">Dakar, Plateau</p>
+            {!!cabinet?.phone && <p className="text-sm font-bold">Contact : {cabinet.phone}</p>}
+            {!!cabinet?.address && <p className="text-xs text-blue-200">{cabinet.address}</p>}
           </div>
         </div>
       </header>
@@ -145,7 +167,7 @@ export default function PortailPatient() {
                 </button>
                 <div>
                   <h2 className="text-2xl font-black text-slate-900 tracking-tight">Vos Coordonnées</h2>
-                  <p className="text-sm text-slate-500 mt-1">Dernière étape pour confirmer votre rendez-vous.</p>
+                  <p className="text-sm text-slate-500 mt-1">Dernière étape pour envoyer votre demande.</p>
                 </div>
               </div>
 
@@ -184,7 +206,7 @@ export default function PortailPatient() {
                   disabled={loading || !formData.patientName || !formData.phone}
                   className="w-full py-4 bg-[#1E3A8A] hover:bg-blue-900 text-white font-bold rounded-xl shadow-xl shadow-blue-900/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {loading ? "Confirmation..." : "Confirmer le rendez-vous"}
+                  {loading ? "Envoi…" : "Envoyer ma demande"}
                 </button>
               </form>
             </motion.div>
@@ -200,9 +222,19 @@ export default function PortailPatient() {
               <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle2 className="h-10 w-10" />
               </div>
-              <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-4">Rendez-vous Confirmé !</h2>
-              <p className="text-slate-600 mb-8 max-w-sm mx-auto">
-                Merci {formData.patientName}, votre rendez-vous pour <strong>{formData.reason}</strong> le <strong>{new Date(formData.date).toLocaleDateString('fr-FR')}</strong> à <strong>{formData.time}</strong> a bien été enregistré.
+              {/* Disait « Rendez-vous Confirmé ! ». Personne ne l'avait
+                  confirmé : aucun praticien n'y est affecté et rien ne
+                  garantit que le créneau soit libre. Le patient pouvait se
+                  présenter sans que le cabinet l'attende. */}
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-4">Demande enregistrée</h2>
+              <p className="text-slate-600 mb-4 max-w-sm mx-auto">
+                Merci {formData.patientName}, votre demande pour <strong>{formData.reason}</strong> le{" "}
+                <strong>{new Date(formData.date).toLocaleDateString('fr-FR')}</strong> à{" "}
+                <strong>{formData.time}</strong> est bien arrivée au cabinet.
+              </p>
+              <p className="text-sm text-slate-500 mb-8 max-w-sm mx-auto">
+                Le créneau n&apos;est pas encore confirmé : le cabinet vous rappellera au numéro
+                que vous avez indiqué. Ne vous déplacez pas avant cet appel.
               </p>
               <button
                 onClick={() => window.location.reload()}
@@ -215,8 +247,21 @@ export default function PortailPatient() {
         </AnimatePresence>
       </main>
       
-      <footer className="text-center p-6 text-sm text-slate-400">
-        &copy; {new Date().getFullYear()} Clinique du Cap Vert. Propulsé par Elite ERP.
+      {/* La page collecte un nom et un téléphone : le patient doit pouvoir
+          savoir ce qu'ils deviennent. */}
+      <footer className="text-center p-6 text-sm text-slate-400 space-y-1">
+        <p>
+          &copy; {new Date().getFullYear()} {cabinet?.clinic_name || "Cabinet dentaire"}
+        </p>
+        <p className="text-xs">
+          <Link href="/confidentialite" className="underline hover:text-slate-600">
+            Politique de confidentialité
+          </Link>
+          {" · "}
+          <Link href="/mentions-legales" className="underline hover:text-slate-600">
+            Mentions légales
+          </Link>
+        </p>
       </footer>
     </div>
   );

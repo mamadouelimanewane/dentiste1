@@ -11,6 +11,18 @@ const MAX_BOOKINGS_PER_WINDOW = 5;
 const WINDOW_MINUTES = 60;
 const MAX_DAYS_AHEAD = 180;
 
+// Bornes horaires de la réservation en ligne.
+//
+// Aucune heure n'était vérifiée : un patient pouvait réserver un dimanche à
+// 3 h du matin, et l'écran lui répondait « Rendez-vous confirmé ». Le cabinet
+// découvrait la demande dans son agenda. Le Sénégal étant à UTC+0, l'heure
+// UTC est l'heure locale — pas de conversion à faire.
+//
+// Ces bornes ne s'appliquent qu'à la prise de rendez-vous en ligne : le
+// cabinet reste libre de placer ce qu'il veut depuis son agenda.
+const HEURE_MIN = 8;
+const HEURE_MAX = 19;
+
 async function getClientIp() {
   const h = await headers();
   return h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown';
@@ -57,6 +69,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Date trop éloignée.' }, { status: 400 });
     }
 
+    const heure = scheduledAt.getUTCHours() + scheduledAt.getUTCMinutes() / 60;
+    if (heure < HEURE_MIN || heure >= HEURE_MAX) {
+      return NextResponse.json(
+        {
+          error: `Les demandes en ligne se prennent entre ${HEURE_MIN} h et ${HEURE_MAX} h. Pour une urgence en dehors de ces heures, appelez le cabinet.`,
+        },
+        { status: 400 }
+      );
+    }
+
     const ip = await getClientIp();
     const recent = await sql`
       select count(*)::int as count from public_booking_attempts
@@ -73,11 +95,22 @@ export async function POST(request: Request) {
     // Patient rattaché par téléphone s'il existe déjà, sinon créé avec le
     // statut "new" pour que l'accueil sache que le dossier vient du web et
     // reste à compléter.
-    const existing = await sql`select id from patients where phone = ${phone} limit 1`;
+    const existing = await sql`select id, full_name from patients where phone = ${phone} limit 1`;
     let patientId: string;
+
+    let nomDifferent: string | null = null;
 
     if (existing.length > 0) {
       patientId = existing[0].id as string;
+      // Un même téléphone sert souvent à toute une famille. Le dossier trouvé
+      // par le numéro n'est donc pas forcément celui de la personne à voir :
+      // le nom saisi était purement et simplement ignoré, et le rendez-vous
+      // portait celui du dossier existant. On le consigne pour que l'accueil
+      // puisse trancher.
+      const nomDossier = String(existing[0].full_name || '').trim().toLowerCase();
+      if (nomDossier && nomDossier !== patientName.toLowerCase()) {
+        nomDifferent = patientName;
+      }
     } else {
       const created = await sql`
         insert into patients (full_name, phone, status)
@@ -88,12 +121,21 @@ export async function POST(request: Request) {
     }
 
     // Non assigné : l'accueil affecte le praticien depuis l'Agenda.
+    const note = nomDifferent
+      ? `Demande enregistrée depuis le portail public. ATTENTION : le formulaire indiquait « ${nomDifferent} », un nom différent de celui du dossier rattaché à ce numéro — vérifiez de qui il s'agit avant la consultation.`
+      : 'Demande enregistrée depuis le portail public.';
+
     await sql`
       insert into appointments (patient_id, scheduled_at, duration_minutes, type, notes, status)
-      values (${patientId}, ${scheduledAt.toISOString()}, 30, ${reason}, 'Demande enregistrée depuis le portail public.', 'scheduled')
+      values (${patientId}, ${scheduledAt.toISOString()}, 30, ${reason}, ${note}, 'scheduled')
     `;
 
-    return NextResponse.json({ success: true, message: 'Rendez-vous confirmé' });
+    // « Rendez-vous confirmé » était faux : personne ne l'a validé, aucun
+    // praticien n'y est affecté, et rien ne garantit que le créneau soit libre.
+    return NextResponse.json({
+      success: true,
+      message: 'Demande enregistrée. Le cabinet vous rappellera pour confirmer le créneau.',
+    });
   } catch (error) {
     console.error('Erreur API public appointment:', error);
     return NextResponse.json({ error: 'Erreur interne' }, { status: 500 });
