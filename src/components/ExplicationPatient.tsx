@@ -125,7 +125,9 @@ export function ExplicationPatient() {
         .pied{margin-top:32pt;font-size:9pt;color:#666;border-top:1px solid #ccc;padding-top:8pt}
       </style></head><body>
       <h1>Cabinet Dentaire du Cap Vert</h1>
-      <p class="sous">Plan de soins — ${echapper(currentPatient?.name)} — ${new Date().toLocaleDateString("fr-FR")}</p>
+      <p class="sous">Plan de soins — ${echapper(currentPatient?.name)} — rédigé le ${echapper(
+        new Date(explication.created_at).toLocaleDateString("fr-FR")
+      )}</p>
       <div class="texte">${echapper(texte)}</div>
       <p class="pied">Ce document explique les soins proposés par votre praticien. Il ne remplace pas le devis, qui seul fait foi pour les montants.</p>
       </body></html>`);
@@ -145,6 +147,9 @@ export function ExplicationPatient() {
   }
 
   const texteAffiche = explication ? explication.texte_fr : null;
+  const estDuJour =
+    !!explication &&
+    new Date(explication.created_at).toDateString() === new Date().toDateString();
 
   return (
     <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
@@ -185,6 +190,23 @@ export function ExplicationPatient() {
             {/* Sélecteur de langue retiré : la traduction wolof est suspendue
                 (voir src/lib/integrations/explication.ts). Elle reviendra une
                 fois des formulations validées par un locuteur. */}
+            {/* Date de rédaction.
+                Le texte affiché est le DERNIER enregistré pour ce patient : il
+                peut dater de plusieurs semaines et décrire un plan de soins qui
+                n'existe plus. L'écran le présentait pourtant prêt à imprimer et
+                à envoyer, sans un mot sur son âge — et le PDF portait la date
+                du jour, pas celle de la rédaction. */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              Rédigé le {new Date(explication.created_at).toLocaleString("fr-FR")}
+            </p>
+            {!estDuJour && (
+              <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-sm p-2 leading-relaxed">
+                Ce texte n&apos;a pas été rédigé aujourd&apos;hui. Vérifiez qu&apos;il décrit
+                bien le plan de soins en cours avant de l&apos;imprimer ou de l&apos;envoyer,
+                ou cliquez sur <strong>Régénérer</strong>.
+              </p>
+            )}
+
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-sm">
               <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{texteAffiche}</p>
             </div>
