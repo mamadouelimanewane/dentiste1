@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { verifyWaveSignature, verifyWaveSession } from '@/lib/integrations/payment';
+import { recordAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,11 +46,38 @@ export async function POST(request: Request) {
   const { paid } = await verifyWaveSession(sessionId || String(invoice.id));
 
   if (paid && invoice.status !== 'paid') {
-    await sql`
+    // `payment_method` doit être renseigné, et pas seulement le fournisseur.
+    //
+    // La comptabilité ventile la trésorerie ainsi : `payment_method = 'cash'`
+    // en caisse, `payment_method <> 'cash'` en banque. Or en SQL, une
+    // comparaison avec NULL n'est pas vraie : une facture réglée par Wave,
+    // dont le moyen restait vide, n'entrait NI en caisse NI en banque — tout
+    // en étant comptée dans les encaissements. La trésorerie ne bouclait
+    // donc pas, et personne n'aurait su d'où venait l'écart.
+    const misesAJour = await sql`
       update invoices
-      set status = 'paid', paid_at = now(), payment_provider = 'wave'
+      set status = 'paid', paid_at = now(),
+          payment_method = 'mobile_money', payment_provider = 'wave'
       where id = ${invoice.id} and status <> 'paid'
+      returning id, total, patient_id
     `;
+
+    // Un règlement au comptoir laisse une trace ; un règlement arrivé par
+    // notification n'en laissait aucune.
+    if (misesAJour.length > 0) {
+      await recordAudit({
+        actorId: null,
+        action: 'Règlement facture (notification Wave)',
+        entityTable: 'invoices',
+        entityId: String(invoice.id),
+        meta: {
+          method: 'mobile_money',
+          provider: 'wave',
+          amount: Number(misesAJour[0].total),
+          patientId: misesAJour[0].patient_id,
+        },
+      });
+    }
   }
 
   return NextResponse.json({ received: true, paid });

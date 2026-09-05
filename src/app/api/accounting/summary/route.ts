@@ -73,8 +73,14 @@ export async function GET(request: Request) {
         (coalesce(sum(total) filter (where status = 'paid'), 0)
          + coalesce(sum(part_reglee) filter (where status = 'pending'), 0))::numeric as encaissements,
         coalesce(sum(total) filter (where status = 'paid' and payment_method = 'cash'), 0)::numeric as caisse,
-        (coalesce(sum(total) filter (where status = 'paid' and payment_method <> 'cash'), 0)
+        -- `<> 'cash'` n'était jamais vrai pour un moyen NULL : une facture
+        -- réglée sans moyen renseigné — ce que faisaient les notifications
+        -- mobile money — n'entrait NI en caisse NI en banque, tout en étant
+        -- comptée dans les encaissements. La trésorerie ne bouclait pas, et
+        -- rien ne signalait l'écart. `is distinct from` traite le NULL.
+        (coalesce(sum(total) filter (where status = 'paid' and payment_method is distinct from 'cash'), 0)
          + coalesce(sum(part_reglee) filter (where status = 'pending'), 0))::numeric as banque,
+        coalesce(sum(total) filter (where status = 'paid' and payment_method is null), 0)::numeric as sans_moyen,
         coalesce(sum(total - part_mutuelle - part_reglee) filter (where status = 'pending'), 0)::numeric as creances_patients,
         coalesce(sum(part_mutuelle) filter (where status = 'pending'), 0)::numeric as creances_mutuelles,
         coalesce(sum(total) filter (where status in ('paid', 'pending')), 0)::numeric as chiffre_affaires,
@@ -190,6 +196,10 @@ export async function GET(request: Request) {
       creancesMutuelles: Number(k.creances_mutuelles),
       chiffreAffaires: Number(k.chiffre_affaires),
       facturesImpayees: Number(k.factures_impayees),
+      // Encaissements dont le moyen n'est pas renseigné : ils sont rattachés
+      // à la banque faute de mieux, mais le comptable doit savoir qu'ils ne
+      // sont pas qualifiés.
+      encaissementsSansMoyen: Number(k.sans_moyen),
     },
     journal: journal.slice(0, 400),
     nbFactures: invoiceRows.length,

@@ -23,6 +23,9 @@ interface Summary {
     creancesMutuelles: number;
     chiffreAffaires: number;
     facturesImpayees: number;
+    // Encaissements dont le moyen n'est pas renseigné : rattachés à la banque
+    // faute de mieux, mais non qualifiés.
+    encaissementsSansMoyen?: number;
   };
   journal: JournalLine[];
   nbFactures: number;
@@ -131,6 +134,17 @@ export function AccountingDashboard() {
           </div>
         ))}
       </div>
+
+      {data && (data.kpis.encaissementsSansMoyen ?? 0) > 0 && (
+        <div className="flex items-start gap-3 rounded-sm border border-amber-200 bg-amber-50 p-4">
+          <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+          <p className="text-xs font-medium text-amber-900 leading-relaxed">
+            {fcfa(data.kpis.encaissementsSansMoyen ?? 0)} encaissés sans moyen de règlement
+            renseigné. Ces montants sont rattachés à la banque par défaut : vérifiez les factures
+            concernées avant de justifier la trésorerie.
+          </p>
+        </div>
+      )}
 
       {data && data.kpis.facturesImpayees > 0 && (
         <div className="bg-white border border-amber-200 rounded-sm shadow-sm overflow-hidden">

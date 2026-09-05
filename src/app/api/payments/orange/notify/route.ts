@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { sql } from '@/lib/db';
+import { recordAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,11 +62,31 @@ export async function POST(request: Request) {
   }
 
   if (statut === 'SUCCESS' && invoice.status !== 'paid') {
-    await sql`
+    // Voir la note du webhook Wave : sans `payment_method`, l'encaissement
+    // n'entrait ni en caisse ni en banque, la comparaison SQL avec NULL
+    // n'étant jamais vraie. La trésorerie ne bouclait pas.
+    const misesAJour = await sql`
       update invoices
-      set status = 'paid', paid_at = now(), payment_provider = 'orange_money'
+      set status = 'paid', paid_at = now(),
+          payment_method = 'mobile_money', payment_provider = 'orange_money'
       where id = ${invoice.id} and status <> 'paid'
+      returning id, total, patient_id
     `;
+
+    if (misesAJour.length > 0) {
+      await recordAudit({
+        actorId: null,
+        action: 'Règlement facture (notification Orange Money)',
+        entityTable: 'invoices',
+        entityId: String(invoice.id),
+        meta: {
+          method: 'mobile_money',
+          provider: 'orange_money',
+          amount: Number(misesAJour[0].total),
+          patientId: misesAJour[0].patient_id,
+        },
+      });
+    }
   }
 
   return NextResponse.json({ received: true, paid: statut === 'SUCCESS' });
