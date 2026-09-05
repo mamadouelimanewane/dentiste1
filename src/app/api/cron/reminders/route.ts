@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { sendWhatsAppMessage, MODELES } from '@/lib/integrations/whatsapp';
-import { sendSms } from '@/lib/integrations/sms';
+import { MODELES } from '@/lib/integrations/whatsapp';
 import { notifyPatient } from '@/lib/integrations/notify';
 
 export const dynamic = 'force-dynamic';
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
-async function dispatch(channel: string, params: { patientId?: string | null; phone: string; body: string }) {
-  return channel === 'sms' ? sendSms(params) : sendWhatsAppMessage(params);
-}
+// `dispatch` envoyait sur un canal unique, sans repli ni file manuelle : un
+// message programmé dont l'envoi échouait passait en « failed » et personne
+// ne le reprenait. Or, aucun canal automatique n'étant configuré dans ce
+// cabinet, TOUS les messages programmés mouraient ainsi chaque nuit —
+// l'assistante voyait « N envois programmés » le soir, et le patient n'était
+// jamais contacté. On passe donc par le même chemin que les rappels.
 
 export async function GET(request: Request) {
   // Vercel Cron envoie l'en-tête Authorization: Bearer <CRON_SECRET> défini
@@ -30,6 +32,9 @@ export async function GET(request: Request) {
   }
 
   const now = new Date();
+
+  const reglages = await sql`select clinic_name from clinic_settings limit 1`;
+  const nomCabinet = (reglages[0]?.clinic_name as string) || 'Cabinet Dentaire du Cap Vert';
   // `aEnvoyerManuellement` compte les messages qu'aucun canal automatique n'a
   // pu porter et qui attendent l'assistante. Les compter avec les envois
   // réussis donnerait un rapport de tâche flatteur et faux.
@@ -49,11 +54,20 @@ export async function GET(request: Request) {
   `;
 
   for (const msg of due) {
-    const result = await dispatch(msg.channel, { patientId: msg.patient_id, phone: msg.phone, body: msg.body });
+    const result = await notifyPatient({
+      patientId: msg.patient_id,
+      phone: msg.phone,
+      body: msg.body,
+    });
+    // « sent » quand un canal a porté le message, « a_envoyer » quand il
+    // attend l'assistante dans la file manuelle — pas « failed », qui
+    // laissait croire à une perte définitive.
+    const statut = result.error ? 'failed' : result.canal === 'manuel' ? 'a_envoyer' : 'sent';
     await sql`
-      update scheduled_messages set status = ${result.error ? 'failed' : 'sent'} where id = ${msg.id}
+      update scheduled_messages set status = ${statut} where id = ${msg.id}
     `;
     if (result.error) results.errors.push(`scheduled ${msg.id}: ${result.error}`);
+    else if (result.canal === 'manuel') results.aEnvoyerManuellement++;
     else results.scheduled++;
   }
 
@@ -82,7 +96,9 @@ export async function GET(request: Request) {
       hour: '2-digit',
       minute: '2-digit',
     });
-    const body = `Bonjour ${appt.full_name}, rappel de votre rendez-vous ${appt.type || ''} le ${when} au Cabinet Dentaire du Cap Vert.`;
+    // Nom du cabinet tel qu'il est paramétré : un rappel signé d'un nom que
+    // le patient ne reconnaît pas se lit comme une tentative d'arnaque.
+    const body = `Bonjour ${appt.full_name}, rappel de votre rendez-vous ${appt.type || ''} le ${when} au ${nomCabinet}.`;
     // Rappel à l'initiative du cabinet : hors fenêtre de 24h, Meta n'accepte
     // qu'un modèle approuvé. Variables du modèle : nom, puis date/heure.
     // Passe par notifyPatient plutôt que par WhatsApp seul : le rappel
