@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { put } from '@vercel/blob';
 import { sql } from '@/lib/db';
-import { PORTAL_COOKIE_NAME, verifyPortalSessionToken } from '@/lib/portal-session';
+import { chargerPatientDuPortail } from '@/lib/portal-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,13 +42,14 @@ function nomSur(nom: string) {
 }
 
 export async function POST(request: Request) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(PORTAL_COOKIE_NAME)?.value;
-  const session = token ? await verifyPortalSessionToken(token) : null;
-
-  if (!session) {
-    return NextResponse.json({ error: 'Session portail invalide.' }, { status: 401 });
+  // Le jeton ne suffit pas : le dossier doit encore être ouvert. Voir
+  // src/lib/portal-guard.ts — un dossier anonymisé restait consultable une
+  // semaine, le temps que le jeton expire.
+  const acces = await chargerPatientDuPortail();
+  if (acces.erreur) {
+    return NextResponse.json({ error: acces.erreur }, { status: acces.statut });
   }
+  const session = { patientId: acces.patientId };
 
   const formData = await request.formData();
   const file = formData.get('file') as File | null;

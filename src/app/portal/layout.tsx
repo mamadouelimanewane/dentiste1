@@ -15,14 +15,18 @@ export default async function PortalLayout({ children }: { children: React.React
   }
 
   const rows = await sql`
-    select id, full_name, phone, dossier_number
+    select id, full_name, phone, dossier_number, status
     from patients
     where id = ${session.patientId}
     limit 1
   `;
   const patient = rows[0];
 
-  if (!patient) {
+  // Le jeton vit sept jours. Un dossier clôturé au titre du droit à l'oubli
+  // restait donc consultable une semaine : l'anonymisation supprime les liens
+  // magiques, mais pas les sessions déjà ouvertes. Le porteur du téléphone
+  // continuait de lire documents et messages après la demande d'effacement.
+  if (!patient || patient.status === "anonymized") {
     redirect("/portal/invalid");
   }
 

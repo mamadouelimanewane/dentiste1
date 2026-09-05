@@ -1,19 +1,18 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { sql } from '@/lib/db';
-import { PORTAL_COOKIE_NAME, verifyPortalSessionToken } from '@/lib/portal-session';
+import { chargerPatientDuPortail } from '@/lib/portal-guard';
 
 export const dynamic = 'force-dynamic';
 
-async function getSession() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(PORTAL_COOKIE_NAME)?.value;
-  return token ? verifyPortalSessionToken(token) : null;
-}
-
 export async function GET() {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Session portail invalide.' }, { status: 401 });
+  // Le jeton ne suffit pas : le dossier doit encore être ouvert. Voir
+  // src/lib/portal-guard.ts — un dossier anonymisé restait consultable une
+  // semaine, le temps que le jeton expire.
+  const acces = await chargerPatientDuPortail();
+  if (acces.erreur) {
+    return NextResponse.json({ error: acces.erreur }, { status: acces.statut });
+  }
+  const session = { patientId: acces.patientId };
 
   const messages = await sql`
     select id, body, direction, status, created_at, media_url, media_type
@@ -27,8 +26,14 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Session portail invalide.' }, { status: 401 });
+  // Le jeton ne suffit pas : le dossier doit encore être ouvert. Voir
+  // src/lib/portal-guard.ts — un dossier anonymisé restait consultable une
+  // semaine, le temps que le jeton expire.
+  const acces = await chargerPatientDuPortail();
+  if (acces.erreur) {
+    return NextResponse.json({ error: acces.erreur }, { status: acces.statut });
+  }
+  const session = { patientId: acces.patientId };
 
   const { message } = await request.json();
   if (!message) return NextResponse.json({ error: 'message est requis.' }, { status: 400 });
