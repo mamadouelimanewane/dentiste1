@@ -43,10 +43,21 @@ export function PatientRegistration() {
     mutuelle: "",
     allergies: "",
   });
+  // Le dossier complet a-t-il été relu en base ? Tant que non, enregistrer
+  // reviendrait à effacer les champs que l'écran ne connaît pas.
+  const [dossierRelu, setDossierRelu] = useState(true);
+  const [chargeErreur, setChargeErreur] = useState<string | null>(null);
 
+  // Le dossier est relu en base, pas reconstruit depuis le contexte.
+  //
+  // Le contexte patient ne transporte que nom, date de naissance, téléphone
+  // et adresse : allergies et mutuelle n'y sont pas. Le formulaire les
+  // laissait donc vides — et les renvoyait vides au serveur. Corriger un
+  // simple numéro de téléphone depuis cet écran EFFAÇAIT l'allergie
+  // enregistrée. Le badge disparaissait de l'en-tête, et le praticien
+  // prescrivait sans le savoir.
   useEffect(() => {
     if (currentPatient) {
-      // Split full name back into first and last name for display
       const parts = currentPatient.name.split(" ");
       const lastName = parts.pop() || "";
       const firstName = parts.join(" ");
@@ -58,9 +69,34 @@ export function PatientRegistration() {
         birthDate: currentPatient.birthDate || "",
         phone: currentPatient.phone || "",
         address: currentPatient.address || "",
-        // Other fields not currently stored in Patient context, wait for backend support or just mock
       }));
       setIsEditing(false);
+
+      setDossierRelu(false);
+      setChargeErreur(null);
+      fetch(`/api/patients/${currentPatient.id}`)
+        .then(async (r) => {
+          const d = await r.json();
+          if (!r.ok) throw new Error(d?.error || "Dossier non relu.");
+          return d;
+        })
+        .then((d) => {
+          const p = d.patient || {};
+          setFormData(prev => ({
+            ...prev,
+            birthDate: p.birth_date ? String(p.birth_date).slice(0, 10) : prev.birthDate,
+            phone: p.phone || prev.phone,
+            address: p.address || prev.address,
+            allergies: p.allergies || "",
+            mutuelle: p.mutuelle || "",
+          }));
+          setDossierRelu(true);
+        })
+        .catch(() =>
+          setChargeErreur(
+            "Le dossier n'a pas pu être relu en entier. Allergies et mutuelle sont peut-être absentes de l'écran : n'enregistrez pas, vous les effaceriez. Rechargez la page."
+          )
+        );
     } else {
       setFormData({
         firstName: "",
@@ -73,11 +109,19 @@ export function PatientRegistration() {
         allergies: "",
       });
       setIsEditing(true); // Auto-edit if no patient
+      setDossierRelu(true); // création : rien à écraser
+      setChargeErreur(null);
     }
   }, [currentPatient]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Garde-fou : enregistrer un dossier qu'on n'a pas pu relire en entier
+    // écraserait les champs absents de l'écran — allergies au premier chef.
+    if (currentPatient && !dossierRelu) {
+      setError("Dossier non relu en entier : enregistrement bloqué pour ne pas effacer les allergies ou la mutuelle. Rechargez la page.");
+      return;
+    }
     setSaving(true);
     setError(null);
     
@@ -188,6 +232,12 @@ export function PatientRegistration() {
         </div>
 
         <form onSubmit={handleSubmit} className="p-8">
+          {chargeErreur && (
+            <div className="mb-6 bg-amber-50 border border-amber-300 text-amber-900 text-sm font-bold rounded-sm p-3 flex items-start gap-2 leading-relaxed">
+              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+              <p>{chargeErreur}</p>
+            </div>
+          )}
           {error && (
             <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm rounded-sm p-3 flex items-start gap-2">
               <AlertTriangle className="h-5 w-5 flex-shrink-0" />
@@ -365,7 +415,8 @@ export function PatientRegistration() {
                 )}
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || !!chargeErreur}
+                  title={chargeErreur ? "Dossier non relu en entier : enregistrement bloqué." : undefined}
                   className={cn(
                     "h-10 px-6 rounded-md text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 disabled:opacity-60",
                     isSaved ? "bg-emerald-600 text-white" : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-200"

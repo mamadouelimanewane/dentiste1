@@ -34,17 +34,32 @@ export function MedicalQuestionnaire() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
+  // Distingue « ce patient n'a pas d'antécédent » de « je n'ai pas pu les
+  // relire ». Sans cette distinction, un échec de relecture affichait toutes
+  // les cases décochées — et un enregistrement écrasait alors les
+  // antécédents réels par des valeurs vides.
+  const [relu, setRelu] = useState(false);
+  const [chargeErreur, setChargeErreur] = useState<string | null>(null);
 
   const load = useCallback(async (patientId: string) => {
+    setRelu(false);
+    setChargeErreur(null);
     try {
       const res = await fetch(`/api/patients/${patientId}`);
       const data = await res.json();
+      // `res.ok` n'était pas vérifié : une erreur serveur renvoyait un objet
+      // sans `patient`, donc un historique vide indiscernable d'un patient
+      // sans antécédent.
+      if (!res.ok) throw new Error(data?.error || "Antécédents non relus.");
       const hist: MedicalHistory | null = data?.patient?.medical_history || null;
       setAnswers(hist?.answers || {});
       setNotes(hist?.notes || "");
       setLastUpdate(hist?.updatedAt || null);
+      setRelu(true);
     } catch {
-      /* le formulaire reste utilisable même si la relecture échoue */
+      setChargeErreur(
+        "Les antécédents de ce patient n'ont pas pu être relus. Les cases ci-dessous sont vides par défaut : n'enregistrez pas, vous effaceriez ce qui est au dossier. Rechargez la page."
+      );
     }
   }, []);
 
@@ -54,6 +69,8 @@ export function MedicalQuestionnaire() {
       setAnswers({});
       setNotes("");
       setLastUpdate(null);
+      setRelu(false);
+      setChargeErreur(null);
     }
   }, [currentPatient, load]);
 
@@ -64,6 +81,14 @@ export function MedicalQuestionnaire() {
 
   const handleSave = async () => {
     if (!currentPatient) return;
+    // Garde-fou : enregistrer un formulaire qu'on n'a pas pu relire revient à
+    // effacer les antécédents du dossier. Une coagulopathie ou une grossesse
+    // disparaîtrait, et le praticien verrait un historique vierge avant une
+    // anesthésie ou une prescription.
+    if (!relu) {
+      setError("Antécédents non relus : enregistrement bloqué pour ne pas effacer le dossier. Rechargez la page.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -168,6 +193,13 @@ export function MedicalQuestionnaire() {
           />
         </div>
 
+        {/* L'avertissement est au-dessus du bouton, pas en tête de page : c'est
+            là que se prend la décision d'enregistrer. */}
+        {chargeErreur && (
+          <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold rounded-sm p-3 leading-relaxed">
+            {chargeErreur}
+          </div>
+        )}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm p-3">{error}</div>
         )}
@@ -175,7 +207,8 @@ export function MedicalQuestionnaire() {
         <div className="flex justify-end pt-2">
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !!chargeErreur}
+            title={chargeErreur ? "Antécédents non relus : enregistrement bloqué." : undefined}
             className={cn(
               "h-11 px-6 rounded-sm text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2 disabled:opacity-50",
               saved ? "bg-emerald-600 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"
