@@ -280,6 +280,19 @@ export function BillingManager() {
 
   return (
     <div className="space-y-6">
+    {/* Mentions légales manquantes : la facture PDF sort sans elles. Elles ne
+        sont plus inventées (voir InvoicePDF), mais leur absence doit se voir
+        ici plutôt que d'être découverte par le patient ou la mutuelle. */}
+    {cabinet && !cabinet.ninea && (
+      <div className="flex items-start gap-2 rounded-sm border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-900 leading-relaxed">
+        <ShieldAlert className="h-4 w-4 flex-shrink-0 mt-0.5" />
+        <span>
+          Le NINEA du cabinet n&apos;est pas renseigné : les factures éditées ici sortiront sans
+          cette mention. Complétez l&apos;identité du cabinet dans Configuration.
+        </span>
+      </div>
+    )}
+
     {chargeErreur && (
       <div className="flex items-start gap-2 rounded-sm border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
         <ShieldAlert className="h-4 w-4 flex-shrink-0 mt-0.5" />

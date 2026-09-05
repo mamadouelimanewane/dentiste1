@@ -4,16 +4,26 @@ import React, { useState, useEffect } from "react";
 import { Settings, Building2, Phone, Mail, MapPin, Globe, FileText, UploadCloud, Save, CheckCircle2, ShieldCheck, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Aucune mention légale pré-remplie.
+//
+// Ces champs portaient des valeurs inventées mais parfaitement plausibles :
+// NINEA « 001234567 2V2 », RCCM « SN-DKR-2026-B-1234 », RPPS
+// « 10123456789 », téléphone « +221 33 800 00 00 ». Un administrateur
+// ouvrant cet écran voyait des champs déjà remplis, pouvait les croire
+// exacts et enregistrer — le cabinet se retrouvait alors avec un NINEA
+// fabriqué, qui partait ensuite sur toutes ses factures.
+//
+// Un champ vide se voit et se remplit ; un faux numéro passe inaperçu.
 const DEFAULT_SETTINGS = {
   clinicName: "CABINET DENTAIRE DU CAP VERT",
-  slogan: "L'excellence dentaire au Cap Vert",
-  phone: "+221 33 800 00 00",
-  email: "contact@capvert-dentaire.sn",
-  website: "www.capvert-dentaire.sn",
-  address: "Avenue du Cap Vert, Dakar, Sénégal",
-  rpps: "10123456789",
-  ninea: "001234567 2V2",
-  rccm: "SN-DKR-2026-B-1234",
+  slogan: "",
+  phone: "",
+  email: "",
+  website: "",
+  address: "",
+  rpps: "",
+  ninea: "",
+  rccm: "",
   currency: "FCFA",
   // Valeur par défaut de la lettre-clé D, en FCFA.
   valeurD: "1200",
@@ -235,6 +245,7 @@ export function ClinicSettings() {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
+                    placeholder="Non renseigné — apparaîtra vide sur les factures et devis"
                     className="w-full bg-slate-50 border border-slate-200 rounded p-2.5 text-sm font-bold text-slate-900 outline-none focus:border-emerald-500"
                   />
                 </div>
@@ -255,6 +266,7 @@ export function ClinicSettings() {
                     name="address"
                     value={formData.address}
                     onChange={handleChange}
+                    placeholder="Non renseignée — apparaîtra vide sur les factures et devis"
                     className="w-full bg-slate-50 border border-slate-200 rounded p-2.5 text-sm font-bold text-slate-900 outline-none focus:border-emerald-500"
                   />
                 </div>
@@ -285,6 +297,7 @@ export function ClinicSettings() {
                     name="rpps"
                     value={formData.rpps}
                     onChange={handleChange}
+                    placeholder="Non renseigné — apparaîtra vide sur les factures et devis"
                     className="w-full bg-slate-50 border border-slate-200 rounded p-2.5 text-sm font-bold text-slate-900 outline-none focus:border-amber-500"
                   />
                 </div>
@@ -295,6 +308,7 @@ export function ClinicSettings() {
                     name="ninea"
                     value={formData.ninea}
                     onChange={handleChange}
+                    placeholder="Non renseigné — apparaîtra vide sur les factures et devis"
                     className="w-full bg-slate-50 border border-slate-200 rounded p-2.5 text-sm font-bold text-slate-900 outline-none focus:border-amber-500"
                   />
                 </div>
@@ -305,6 +319,7 @@ export function ClinicSettings() {
                     name="rccm"
                     value={formData.rccm}
                     onChange={handleChange}
+                    placeholder="Non renseigné — apparaîtra vide sur les factures et devis"
                     className="w-full bg-slate-50 border border-slate-200 rounded p-2.5 text-sm font-bold text-slate-900 outline-none focus:border-amber-500"
                   />
                 </div>
