@@ -29,6 +29,7 @@ export function SmileDesignStudio() {
   const [images, setImages] = useState<PatientImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
   const [leftId, setLeftId] = useState<string | null>(null);
   const [rightId, setRightId] = useState<string | null>(null);
   const [sliderPos, setSliderPos] = useState(50);
@@ -43,7 +44,14 @@ export function SmileDesignStudio() {
         return;
       }
       const data = await res.json();
-      if (res.ok) {
+      if (!res.ok) {
+        // Un échec autre que 403 laissait la galerie vide en silence : le
+        // praticien concluait que le patient n'avait aucun cliché.
+        setErreur(data?.error || "Clichés non chargés — ne concluez pas que ce dossier est vide.");
+        return;
+      }
+      {
+        setErreur(null);
         const list: PatientImage[] = data.images || [];
         setImages(list);
         // Par défaut : le plus ancien à gauche, le plus récent à droite.
@@ -114,6 +122,11 @@ export function SmileDesignStudio() {
         </div>
       </div>
 
+      {erreur && (
+        <div className="mb-4 rounded-sm border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800 leading-relaxed">
+          {erreur}
+        </div>
+      )}
       {forbidden ? (
         <div className="bg-white border border-slate-200 rounded-sm p-10 text-center shadow-sm">
           <p className="text-sm font-bold text-slate-700">Accès restreint</p>

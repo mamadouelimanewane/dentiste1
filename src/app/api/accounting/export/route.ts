@@ -41,9 +41,14 @@ export async function GET(request: Request) {
   const rows = await sql`
     select i.invoice_number, i.total, i.status, i.payment_method, i.created_at, i.paid_at,
            p.full_name as patient_name, p.dossier_number,
+           -- Mêmes statuts que le résumé comptable : une demande « soumise »
+           -- ou « validée » reste due par l'organisme. L'export ne retenait
+           -- que « en attente », si bien que le CSV et le tableau de bord
+           -- donnaient deux parts mutuelle différentes pour la même période.
            coalesce((
              select sum(c.amount) from insurance_claims c
-             where c.invoice_id = i.id and c.status = 'pending'
+             where c.invoice_id = i.id
+               and c.status in ('pending', 'submitted', 'approved')
            ), 0)::numeric as part_mutuelle
     from invoices i
     join patients p on p.id = i.patient_id
