@@ -22,12 +22,23 @@ export function PatientFollowUp() {
   const [seanceCloturee, setSeanceCloturee] = useState<boolean | null>(null);
   const [duration, setDuration] = useState(30);
 
+  // La liste des praticiens alimente le choix du prochain rendez-vous. Un
+  // échec la laissait vide, sans un mot et sans même de `.catch` : le
+  // sélecteur restait sur « Non assigné » et le rendez-vous partait sans
+  // praticien, ce qui ressemblait à un choix.
   useEffect(() => {
     fetch("/api/practitioners")
-      .then(res => res.json())
-      .then(data => {
-        if (data.practitioners) setPractitioners(data.practitioners);
-      });
+      .then(async (res) => {
+        const d = await res.json();
+        if (!res.ok) throw new Error(d?.error || "Praticiens non chargés.");
+        return d;
+      })
+      .then((data) => setPractitioners(data.practitioners || []))
+      .catch((e) =>
+        setError(
+          `${e instanceof Error && e.message ? e.message : "Praticiens non chargés."} Le rendez-vous serait créé sans praticien affecté.`
+        )
+      );
   }, []);
 
   // Notes vocales de CE patient.

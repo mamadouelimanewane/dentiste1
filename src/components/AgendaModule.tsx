@@ -348,11 +348,22 @@ export function AgendaModule() {
     }
   }, [agendaView, weekStart, activeDate.getTime(), selectedPractitioner]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Un échec laissait la liste vide en silence : le filtre par praticien
+  // n'affichait plus personne et l'on pouvait croire le cabinet sans
+  // praticien enregistré.
   useEffect(() => {
     fetch("/api/practitioners")
-      .then(res => res.json())
-      .then(data => setPractitioners(data.practitioners || []))
-      .catch(() => {});
+      .then(async (res) => {
+        const d = await res.json();
+        if (!res.ok) throw new Error(d?.error || "Praticiens non chargés.");
+        return d;
+      })
+      .then((data) => setPractitioners(data.practitioners || []))
+      .catch((e) =>
+        setPriseEnChargeErreur(
+          e instanceof Error && e.message ? e.message : "Praticiens non chargés."
+        )
+      );
   }, []);
 
   useEffect(() => {

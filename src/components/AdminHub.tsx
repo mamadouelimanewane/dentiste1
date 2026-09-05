@@ -94,6 +94,11 @@ export function AdminHub() {
   const [templateBody, setTemplateBody] = useState("");
   const [templateSaving, setTemplateSaving] = useState(false);
   const [templateError, setTemplateError] = useState<string | null>(null);
+  // Aucun de ces chargements ne vérifiait la réponse du serveur : un refus
+  // renvoie un objet sans données, et l'écran affichait une liste vide. Le
+  // plus trompeur était le journal d'audit — « aucune entrée » alors que la
+  // lecture avait échoué, devant quelqu'un qui enquête sur un incident.
+  const [chargeErreur, setChargeErreur] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   // Total réel des entrées du journal : la page n'en montre qu'une partie.
   const [auditTotal, setAuditTotal] = useState(0);
@@ -106,17 +111,37 @@ export function AdminHub() {
   useEffect(() => {
     if (activeTab !== "utilisateurs") return;
     fetch("/api/admin/users")
-      .then((res) => res.json())
-      .then((data) => setUsers(data.users || []))
-      .catch(() => setUsers([]));
+      .then(async (res) => {
+        const d = await res.json();
+        if (!res.ok) throw new Error(d?.error || "Comptes non chargés.");
+        return d;
+      })
+      .then((data) => {
+        setUsers(data.users || []);
+        setChargeErreur(null);
+      })
+      .catch((e) => {
+        setUsers([]);
+        setChargeErreur(e instanceof Error ? e.message : "Comptes non chargés.");
+      });
   }, [activeTab]);
 
   const loadTemplates = () => {
     setTemplatesLoading(true);
     fetch("/api/document-templates")
-      .then((res) => res.json())
-      .then((data) => setTemplates(data.templates || []))
-      .catch(() => setTemplates([]))
+      .then(async (res) => {
+        const d = await res.json();
+        if (!res.ok) throw new Error(d?.error || "Modèles non chargés.");
+        return d;
+      })
+      .then((data) => {
+        setTemplates(data.templates || []);
+        setChargeErreur(null);
+      })
+      .catch((e) => {
+        setTemplates([]);
+        setChargeErreur(e instanceof Error ? e.message : "Modèles non chargés.");
+      })
       .finally(() => setTemplatesLoading(false));
   };
 
@@ -186,12 +211,22 @@ export function AdminHub() {
     if (activeTab !== "audit") return;
     setAuditLoading(true);
     fetch("/api/admin/audit-logs")
-      .then((res) => res.json())
+      .then(async (res) => {
+        const d = await res.json();
+        if (!res.ok) throw new Error(d?.error || "Journal d'audit non chargé.");
+        return d;
+      })
       .then((data) => {
         setAuditLogs(data.logs || []);
         setAuditTotal(typeof data.total === "number" ? data.total : (data.logs || []).length);
+        setChargeErreur(null);
       })
-      .catch(() => setAuditLogs([]))
+      .catch((e) => {
+        setAuditLogs([]);
+        setChargeErreur(
+          `${e instanceof Error && e.message ? e.message : "Journal d'audit non chargé."} Un journal vide ici ne veut PAS dire qu'aucune action n'a été enregistrée.`
+        );
+      })
       .finally(() => setAuditLoading(false));
   }, [activeTab]);
 
@@ -199,16 +234,28 @@ export function AdminHub() {
     if (activeTab !== "bi") return;
     setBiLoading(true);
     Promise.all([
-      fetch(`/api/stats/overview?period=${biPeriod}`).then((res) => res.json()),
-      fetch(`/api/stats/practitioners?period=${biPeriod}`).then((res) => res.json()),
+      fetch(`/api/stats/overview?period=${biPeriod}`).then(async (res) => {
+        const d = await res.json();
+        if (!res.ok) throw new Error(d?.error || "Indicateurs non chargés.");
+        return d;
+      }),
+      fetch(`/api/stats/practitioners?period=${biPeriod}`).then(async (res) => {
+        const d = await res.json();
+        if (!res.ok) throw new Error(d?.error || "Activité des praticiens non chargée.");
+        return d;
+      }),
     ])
       .then(([overview, practitioners]) => {
         setBiOverview(overview);
         setBiPractitioners(practitioners.practitioners || []);
+        setChargeErreur(null);
       })
-      .catch(() => {
+      .catch((e) => {
         setBiOverview(null);
         setBiPractitioners([]);
+        setChargeErreur(
+          `${e instanceof Error && e.message ? e.message : "Indicateurs non chargés."} Des chiffres absents ne valent pas des chiffres à zéro.`
+        );
       })
       .finally(() => setBiLoading(false));
   }, [activeTab, biPeriod]);
@@ -251,6 +298,13 @@ export function AdminHub() {
         </div>
         <ShieldAlert className="absolute -right-4 -top-4 h-32 w-32 text-slate-800 opacity-50 z-0" />
       </div>
+
+      {chargeErreur && (
+        <div className="flex items-start gap-2 rounded-sm border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800 leading-relaxed">
+          <ShieldAlert className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          {chargeErreur}
+        </div>
+      )}
 
       <div className="flex flex-col md:flex-row gap-6 h-[700px]">
         {/* SIDEBAR NAVIGATION */}
