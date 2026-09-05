@@ -5,6 +5,7 @@ import { Calendar, Archive, FileCheck, Star, ArrowRight, MessageSquare, Mic, Ale
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
 import { PatientImaging } from "./PatientImaging";
+import { PatientDocuments } from "./PatientDocuments";
 
 export function PatientFollowUp() {
   const { currentPatient } = usePatient();
@@ -73,6 +74,10 @@ export function PatientFollowUp() {
     <div className="max-w-4xl mx-auto space-y-8">
       {/* IMAGING GALLERY */}
       <PatientImaging />
+
+      {/* Documents du dossier : ce que le patient a envoyé depuis son portail
+          n'était visible nulle part côté cabinet. */}
+      <PatientDocuments />
 
       {/* CLOTURE */}
       <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
