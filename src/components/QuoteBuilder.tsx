@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { DENTAL_NOMENCLATURE, DentalProcedure } from "@/lib/pricing";
+import { D_VALUE, DENTAL_NOMENCLATURE, DentalProcedure } from "@/lib/pricing";
 import { Plus, Trash2, FileText, Download, CheckCircle2, Eraser, ShoppingCart, Save, AlertTriangle, PenTool } from "lucide-react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { QuotePDF } from "./QuotePDF";
@@ -76,7 +76,16 @@ export function QuoteBuilder() {
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[500px]">
           <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
             <h3 className="text-sm font-black text-blue-900 uppercase tracking-tight">Catalogue des Actes</h3>
-            <span className="text-[9px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded uppercase">Tarif Conventionnel</span>
+            {/* Le badge annonçait « Tarif Conventionnel » sans dire sur quelle
+                base. Les prix sont pourtant une cotation multipliée par la
+                valeur de D, qui varie selon la convention : un praticien
+                devait pouvoir vérifier celle qui s'applique à son devis. */}
+            <span
+              title={`Prix = cotation × ${D_VALUE.toLocaleString("fr-FR")} F. Pour changer cette base, modifier D_VALUE dans src/lib/pricing.ts.`}
+              className="text-[9px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded uppercase"
+            >
+              Base D = {D_VALUE.toLocaleString("fr-FR")} F
+            </span>
           </div>
           
           <div className="flex-1 min-h-0">
