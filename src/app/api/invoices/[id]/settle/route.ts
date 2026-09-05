@@ -16,11 +16,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await request.json();
-  const { method, insuranceProvider, insurancePolicyNumber, coverageRate } = body as {
+  const { method, insuranceProvider, insurancePolicyNumber, coverageRate, annulerPriseEnCharge } = body as {
     method?: 'cash' | 'card' | 'insurance';
     insuranceProvider?: string;
     insurancePolicyNumber?: string;
     coverageRate?: number;
+    // Encaisser la totalité alors qu'une prise en charge est en cours : le
+    // cabinet doit le dire explicitement, car cela annule la demande.
+    annulerPriseEnCharge?: boolean;
   };
 
   if (!method) {
@@ -91,6 +94,37 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ invoice: updatedRows[0], claim: claimRows[0] });
   }
 
+  // Encaissement direct alors qu'une prise en charge court encore.
+  //
+  // Constaté en jouant un parcours complet : une facture de 42 000 transmise
+  // à une mutuelle pour 29 400 pouvait ensuite être soldée « espèces » pour
+  // la totalité, sans un mot — la demande restant « en attente ». Le cabinet
+  // réclamait donc à l'assureur une somme déjà encaissée auprès du patient.
+  // Les deux issues sont légitimes (le patient paie tout et l'on renonce à la
+  // mutuelle, ou il ne règle que son reste à charge), mais c'est au cabinet
+  // de trancher — pas au logiciel de choisir en silence.
+  const enAttente = await sql`
+    select id, amount, provider from insurance_claims
+    where invoice_id = ${params.id} and status in ('pending', 'submitted')
+    limit 1
+  `;
+
+  if (enAttente.length > 0 && !annulerPriseEnCharge) {
+    return NextResponse.json(
+      {
+        error:
+          `Une prise en charge de ${Number(enAttente[0].amount).toLocaleString('fr-FR')} F est en cours ` +
+          `auprès de ${enAttente[0].provider}. Encaisser la totalité annulerait cette demande — ` +
+          `confirmez pour continuer, ou n'encaissez que le reste à charge du patient.`,
+        priseEnChargeEnCours: {
+          montant: Number(enAttente[0].amount),
+          assureur: enAttente[0].provider,
+        },
+      },
+      { status: 409 }
+    );
+  }
+
   const rows = await sql`
     update invoices
     set status = 'paid', payment_method = ${method}, payment_provider = 'manual', paid_at = now()
@@ -100,6 +134,22 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   if (rows.length === 0) {
     return NextResponse.json({ error: 'Facture introuvable.' }, { status: 404 });
+  }
+
+  // La demande est close en même temps que l'encaissement : la laisser
+  // ouverte ferait relancer l'assureur pour une facture déjà réglée.
+  if (enAttente.length > 0 && annulerPriseEnCharge) {
+    await sql`
+      update insurance_claims set status = 'rejected'
+      where id = ${enAttente[0].id}
+    `;
+    await recordAudit({
+      actorId: session!.userId,
+      action: 'Annulation prise en charge (facture encaissée en totalité)',
+      entityTable: 'insurance_claims',
+      entityId: enAttente[0].id as string,
+      meta: { montant: Number(enAttente[0].amount), assureur: enAttente[0].provider },
+    });
   }
 
   await recordAudit({

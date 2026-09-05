@@ -104,7 +104,13 @@ export function BillingManager() {
     loadPendingInvoices();
   }, [loadActs, loadPendingInvoices]);
 
-  const settleExistingInvoice = async (inv: PendingInvoice, method: PaymentMethod) => {
+  // Encaissement d'une facture déjà transmise à une mutuelle.
+  //
+  // Le serveur refuse (409) tant que le cabinet n'a pas tranché : soit le
+  // patient règle la totalité et l'on renonce à la prise en charge, soit il
+  // ne règle que son reste à charge. On lui pose donc la question au lieu de
+  // laisser une demande courir sur une somme déjà encaissée.
+  const settleExistingInvoice = async (inv: PendingInvoice, method: PaymentMethod, annuler = false) => {
     setSettlingId(inv.id);
     setError(null);
     try {
@@ -113,13 +119,23 @@ export function BillingManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           method,
+          ...(annuler ? { annulerPriseEnCharge: true } : {}),
           ...(method === "insurance"
             ? { insuranceProvider: insuranceProvider.trim() || "Mutuelle", insurancePolicyNumber: insurancePolicyNumber.trim() }
             : {}),
         }),
       });
       const data = await res.json();
+      if (res.status === 409 && data.priseEnChargeEnCours) {
+        setPriseEnCharge({
+          montant: data.priseEnChargeEnCours.montant,
+          assureur: data.priseEnChargeEnCours.assureur,
+          rejouer: () => settleExistingInvoice(inv, method, true),
+        });
+        return;
+      }
       if (!res.ok) throw new Error(data.error || "Échec du règlement.");
+      setPriseEnCharge(null);
       await loadPendingInvoices();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue.");
@@ -127,6 +143,12 @@ export function BillingManager() {
       setSettlingId(null);
     }
   };
+
+  const [priseEnCharge, setPriseEnCharge] = useState<{
+    montant: number;
+    assureur: string;
+    rejouer: () => Promise<void>;
+  } | null>(null);
 
   const [confirmPayment, setConfirmPayment] = useState(false);
   const [coverageRate, setCoverageRate] = useState<number>(80);
@@ -183,19 +205,35 @@ export function BillingManager() {
         setLienPaiement(data.redirectUrl);
         window.open(data.redirectUrl, "_blank");
       } else {
-        const res = await fetch(`/api/invoices/${currentInvoice!.id}/settle`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            method: paymentMethod,
-            ...(paymentMethod === "insurance"
-              ? { insuranceProvider: insuranceProvider.trim(), insurancePolicyNumber: insurancePolicyNumber.trim(), coverageRate }
-              : {}),
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Échec du règlement.");
-        setInvoice(data.invoice);
+        // Même règle qu'au comptoir (voir settleExistingInvoice) : si une
+        // prise en charge court encore sur cette facture, le serveur répond
+        // 409 et l'on demande au cabinet de trancher avant d'encaisser.
+        const reglerFacture = async (annuler: boolean) => {
+          const res = await fetch(`/api/invoices/${currentInvoice!.id}/settle`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              method: paymentMethod,
+              ...(annuler ? { annulerPriseEnCharge: true } : {}),
+              ...(paymentMethod === "insurance"
+                ? { insuranceProvider: insuranceProvider.trim(), insurancePolicyNumber: insurancePolicyNumber.trim(), coverageRate }
+                : {}),
+            }),
+          });
+          const data = await res.json();
+          if (res.status === 409 && data.priseEnChargeEnCours) {
+            setPriseEnCharge({
+              montant: data.priseEnChargeEnCours.montant,
+              assureur: data.priseEnChargeEnCours.assureur,
+              rejouer: () => reglerFacture(true),
+            });
+            return;
+          }
+          if (!res.ok) throw new Error(data.error || "Échec du règlement.");
+          setPriseEnCharge(null);
+          setInvoice(data.invoice);
+        };
+        await reglerFacture(false);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue.");
@@ -224,6 +262,41 @@ export function BillingManager() {
       <div className="flex items-start gap-2 rounded-sm border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
         <ShieldAlert className="h-4 w-4 flex-shrink-0 mt-0.5" />
         {chargeErreur}
+      </div>
+    )}
+
+    {/* Encaissement bloqué : une prise en charge court encore sur cette
+        facture. Sans cet arrêt, le cabinet encaissait la totalité auprès du
+        patient tout en laissant la demande partir chez l'assureur. */}
+    {priseEnCharge && (
+      <div className="rounded-sm border border-amber-300 bg-amber-50 p-4 space-y-3">
+        <div className="flex items-start gap-2">
+          <ShieldAlert className="h-4 w-4 flex-shrink-0 mt-0.5 text-amber-700" />
+          <div className="text-xs font-bold text-amber-900 leading-relaxed">
+            Une prise en charge de {priseEnCharge.montant.toLocaleString("fr-FR")} F est en cours auprès de{" "}
+            {priseEnCharge.assureur}. Encaisser la totalité auprès du patient annulerait cette demande.
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => priseEnCharge.rejouer()}
+            className="px-4 py-2 bg-amber-700 text-white text-[10px] font-black uppercase tracking-[0.15em] rounded-sm hover:bg-amber-800"
+          >
+            Le patient paie tout — annuler la prise en charge
+          </button>
+          <button
+            type="button"
+            onClick={() => setPriseEnCharge(null)}
+            className="px-4 py-2 bg-white border border-slate-300 text-slate-700 text-[10px] font-black uppercase tracking-[0.15em] rounded-sm hover:bg-slate-50"
+          >
+            Ne rien encaisser
+          </button>
+        </div>
+        <p className="text-[10px] text-amber-800 leading-relaxed">
+          Si le patient ne règle que son reste à charge, ne rien encaisser ici : la prise en charge sera soldée
+          depuis le module Mutuelles au paiement de l&apos;assureur.
+        </p>
       </div>
     )}
 
