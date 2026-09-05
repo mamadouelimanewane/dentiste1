@@ -86,12 +86,27 @@ export function CommunicationCenter() {
   const [programmes, setProgrammes] = useState<{ id: string; patient_name: string | null; phone: string; body: string; send_at: string; channel: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // `res.ok` n'était vérifié nulle part ici : un refus du serveur renvoie un
+  // objet sans `threads`, et l'écran affichait « aucune conversation » — le
+  // .catch ne se déclenchant que sur une panne réseau. L'assistante concluait
+  // que personne n'avait écrit, alors que des patients attendaient une réponse.
   const loadThreads = useCallback(() => {
     setLoadingThreads(true);
     fetch("/api/messages/threads")
-      .then((res) => res.json())
-      .then((data) => setThreads(data.threads || []))
-      .catch(() => setError("Impossible de charger les conversations."))
+      .then(async (res) => {
+        const d = await res.json();
+        if (!res.ok) throw new Error(d?.error || "Conversations non chargées.");
+        return d;
+      })
+      .then((data) => {
+        setThreads(data.threads || []);
+        setError(null);
+      })
+      .catch((e) =>
+        setError(
+          `${e instanceof Error && e.message ? e.message : "Impossible de charger les conversations."} Ne concluez pas que personne n'a écrit.`
+        )
+      )
       .finally(() => setLoadingThreads(false));
   }, []);
 
@@ -102,9 +117,20 @@ export function CommunicationCenter() {
   const loadMessages = useCallback((patientId: string) => {
     setLoadingMessages(true);
     fetch(`/api/messages/threads?patientId=${patientId}`)
-      .then((res) => res.json())
-      .then((data) => setMessages(data.messages || []))
-      .catch(() => setError("Impossible de charger le fil de discussion."))
+      .then(async (res) => {
+        const d = await res.json();
+        if (!res.ok) throw new Error(d?.error || "Fil de discussion non chargé.");
+        return d;
+      })
+      .then((data) => {
+        setMessages(data.messages || []);
+        setError(null);
+      })
+      .catch((e) =>
+        setError(
+          `${e instanceof Error && e.message ? e.message : "Impossible de charger le fil de discussion."} Le fil affiché peut être incomplet.`
+        )
+      )
       .finally(() => setLoadingMessages(false));
   }, []);
 
@@ -124,18 +150,47 @@ export function CommunicationCenter() {
     }
     const t = setTimeout(() => {
       fetch(`/api/patients?q=${encodeURIComponent(patientQuery)}`)
-        .then((res) => res.json())
-        .then((data) => setPatientHits(data.patients || []))
-        .catch(() => setPatientHits([]));
+        .then(async (res) => {
+          const d = await res.json();
+          if (!res.ok) throw new Error(d?.error || "Recherche indisponible.");
+          return d;
+        })
+        .then((data) => {
+          setPatientHits(data.patients || []);
+          setError(null);
+        })
+        // Une recherche en échec affichait « aucun résultat » : on croyait le
+        // patient absent du fichier et on rouvrait un dossier.
+        .catch((e) => {
+          setPatientHits([]);
+          setError(
+            `${e instanceof Error && e.message ? e.message : "Recherche indisponible."} Aucun résultat affiché ne signifie pas que le patient est absent du fichier.`
+          );
+        });
     }, 300);
     return () => clearTimeout(t);
   }, [patientQuery, showNew]);
 
+  // Les messages programmés disparaissaient en silence sur erreur : on
+  // croyait qu'aucun envoi n'était prévu, et personne ne les reprogrammait.
+  const [programmesErreur, setProgrammesErreur] = useState<string | null>(null);
+
   const chargerProgrammes = useCallback(() => {
     fetch("/api/messages/schedule")
-      .then((r) => (r.ok ? r.json() : { programmes: [] }))
-      .then((d) => setProgrammes(d.programmes || []))
-      .catch(() => {});
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d?.error || "Messages programmés non chargés.");
+        return d;
+      })
+      .then((d) => {
+        setProgrammes(d.programmes || []);
+        setProgrammesErreur(null);
+      })
+      .catch((e) =>
+        setProgrammesErreur(
+          `${e instanceof Error && e.message ? e.message : "Messages programmés non chargés."} Ne concluez pas qu'aucun envoi n'est prévu.`
+        )
+      );
   }, []);
 
   useEffect(() => {
@@ -646,6 +701,12 @@ export function CommunicationCenter() {
                   <span className="text-[10px] text-slate-400">
                     Envoi au prochain passage de la tâche quotidienne, pas à la minute près.
                   </span>
+                </div>
+              )}
+
+              {programmesErreur && (
+                <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] font-bold text-rose-800 leading-relaxed">
+                  {programmesErreur}
                 </div>
               )}
 
