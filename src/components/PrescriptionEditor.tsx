@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowLeft, History, Printer, Save, Plus, Pill, Star, Search, User, FileText, Sparkles } from "lucide-react";
+import { ArrowLeft, History, Printer, Save, Plus, Pill, Star, Search, User, FileText, Sparkles, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
 import { rappelsAllergie } from "@/lib/allergies";
@@ -173,13 +173,78 @@ export function PrescriptionEditor() {
                 </div>
                 <div>
                   <p className="text-sm font-black text-slate-900">{currentPatient.name}</p>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase">Patient actif</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase">
+                    Patient actif{currentPatient.idNumber ? ` · ${currentPatient.idNumber}` : ""}
+                  </p>
                 </div>
               </div>
             ) : (
               <p className="text-xs text-slate-400 font-medium">Sélectionnez un patient depuis l'étape Accueil pour rédiger une ordonnance.</p>
             )}
+
+            {/* Ce que porte le dossier, là où l'on prescrit.
+                L'écran ne montrait que le nom : le praticien devait se
+                souvenir d'aller lire les allergies dans un autre module. */}
+            {currentPatient && (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-0.5">
+                    Allergies
+                  </span>
+                  <span
+                    className={cn(
+                      "text-xs font-bold",
+                      currentPatient.allergies ? "text-rose-700" : "text-slate-400"
+                    )}
+                  >
+                    {currentPatient.allergies || "aucune notée au dossier"}
+                  </span>
+                </div>
+                {currentPatient.vigilances && currentPatient.vigilances.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      Vigilances
+                    </span>
+                    {currentPatient.vigilances.map((v) => (
+                      <span
+                        key={v}
+                        className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-black uppercase tracking-widest"
+                      >
+                        {v}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Rapprochement entre l'allergie notée et ce qui est en train
+              d'être prescrit. Voir src/lib/allergies.ts : ce rappel ne couvre
+              que quelques familles courantes, et l'écran le dit — se fier à
+              son silence serait pire que de n'avoir aucun rappel. */}
+          {rappels.length > 0 && (
+            <div className="border-2 border-rose-400 bg-rose-50 rounded-sm p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-rose-700" />
+                <h3 className="text-xs font-black uppercase tracking-widest text-rose-800">
+                  Allergie notée au dossier
+                </h3>
+              </div>
+              <ul className="space-y-1">
+                {rappels.map((r, i) => (
+                  <li key={i} className="text-xs font-bold text-rose-800 leading-relaxed">
+                    « {r.medicament} » appartient aux {r.famille}, et le dossier note :{" "}
+                    <span className="underline">{r.allergieNotee}</span>.
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[10px] text-rose-700 leading-relaxed">
+                Rappel limité à quelques familles courantes. Il ne remplace aucun contrôle
+                d&apos;interactions : l&apos;absence d&apos;alerte ne signifie rien.
+              </p>
+            </div>
+          )}
 
           {/* Prescription Form */}
           <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-6">
