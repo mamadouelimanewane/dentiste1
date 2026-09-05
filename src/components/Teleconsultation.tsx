@@ -32,6 +32,23 @@ export function Teleconsultation({ onNavigate }: { onNavigate?: (step: number) =
   const [appointments, setAppointments] = useState<UpcomingAppointment[]>([]);
   const [joining, setJoining] = useState<string | null>(null);
   const [simulatedMode, setSimulatedMode] = useState(false);
+  // Un échec de création de salle ne disait rien : le praticien cliquait
+  // « Rejoindre », rien ne se passait, et il recliquait — avec le patient
+  // qui attend de l'autre côté.
+  const [appelErreur, setAppelErreur] = useState<string | null>(null);
+
+  // Deux des quatre indicateurs de cet écran étaient écrits en dur : une
+  // durée moyenne de « 28 min » et une satisfaction de « 4.9/5 » qu'aucune
+  // donnée ne fondait — le logiciel ne recueillait alors aucune note. Le
+  // troisième annonçait « Daily.co » que la visio soit configurée ou non.
+  const [videoConfiguree, setVideoConfiguree] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/config/status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setVideoConfiguree(d ? !!d.video : null))
+      .catch(() => setVideoConfiguree(null));
+  }, []);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const callFrameRef = useRef<DailyCall | null>(null);
 
@@ -97,15 +114,20 @@ export function Teleconsultation({ onNavigate }: { onNavigate?: (step: number) =
     setActivePatientId(patientId);
     setNotesMsg(null);
     setNotesErr(null);
+    setAppelErreur(null);
     try {
       const res = await fetch("/api/video/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ appointmentId }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        setAppelErreur(
+          data.error ||
+            "La salle de téléconsultation n'a pas pu être ouverte. Prévenez le patient par téléphone plutôt que de le laisser attendre."
+        );
         setJoining(null);
         return;
       }
@@ -134,6 +156,10 @@ export function Teleconsultation({ onNavigate }: { onNavigate?: (step: number) =
         });
         callFrameRef.current = callFrame;
       }, 50);
+    } catch {
+      setAppelErreur(
+        "Réseau indisponible : la salle de téléconsultation n'a pas pu être ouverte. Prévenez le patient par téléphone."
+      );
     } finally {
       setJoining(null);
     }
@@ -154,8 +180,23 @@ export function Teleconsultation({ onNavigate }: { onNavigate?: (step: number) =
     };
   }, []);
 
+  // Durée réellement prévue pour les rendez-vous chargés, plutôt qu'un
+  // chiffre écrit en dur.
+  const dureeMoyenne = appointments.length
+    ? Math.round(
+        appointments.reduce((s, a) => s + (Number(a.duration_minutes) || 0), 0) / appointments.length
+      )
+    : null;
+
   return (
     <div className="space-y-6">
+      {appelErreur && (
+        <div className="flex items-start gap-2 rounded-sm border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          {appelErreur}
+        </div>
+      )}
+
       {/* Header Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-sm border border-slate-200 shadow-sm flex items-center gap-4">
@@ -173,7 +214,13 @@ export function Teleconsultation({ onNavigate }: { onNavigate?: (step: number) =
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Statut vidéo</p>
-            <p className="text-sm font-black text-slate-900">Daily.co</p>
+            <p className="text-sm font-black text-slate-900">
+              {videoConfiguree === null
+                ? "—"
+                : videoConfiguree
+                  ? "Daily.co actif"
+                  : "Non configuré"}
+            </p>
           </div>
         </div>
         <div className="bg-white p-4 rounded-sm border border-slate-200 shadow-sm flex items-center gap-4">
@@ -181,8 +228,10 @@ export function Teleconsultation({ onNavigate }: { onNavigate?: (step: number) =
             <Clock className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Durée moyenne</p>
-            <p className="text-xl font-black text-slate-900">28 min</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Durée prévue moyenne</p>
+            <p className="text-xl font-black text-slate-900">
+              {dureeMoyenne !== null ? `${dureeMoyenne} min` : "—"}
+            </p>
           </div>
         </div>
         <div className="bg-white p-4 rounded-sm border border-slate-200 shadow-sm flex items-center gap-4">
@@ -190,8 +239,10 @@ export function Teleconsultation({ onNavigate }: { onNavigate?: (step: number) =
             <Star className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Satisfaction</p>
-            <p className="text-xl font-black text-slate-900">4.9/5</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Salle déjà ouverte</p>
+            <p className="text-xl font-black text-slate-900">
+              {appointments.filter((a) => a.daily_room_url).length}
+            </p>
           </div>
         </div>
       </div>
