@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { D_VALUE, DENTAL_NOMENCLATURE, DentalProcedure, prixSelonD } from "@/lib/pricing";
 import { Plus, Trash2, FileText, Download, CheckCircle2, Eraser, ShoppingCart, Save, AlertTriangle, PenTool } from "lucide-react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
@@ -12,6 +12,33 @@ import { usePatient } from "@/lib/context";
 import { SignaturePadModal } from "./SignaturePadModal";
 import { ActCatalogPicker } from "@/components/ActCatalogPicker";
 import { ExplicationPatient } from "@/components/ExplicationPatient";
+
+type StatutDevis = "draft" | "sent" | "accepted" | "rejected";
+
+interface DevisEnregistre {
+  id: string;
+  total: string | number;
+  status: StatutDevis;
+  signed: boolean;
+  convention: string | null;
+  valeur_d: number | null;
+  created_at: string;
+  items: { label: string; qty: number; price: number }[] | null;
+}
+
+const LIBELLE_STATUT: Record<StatutDevis, string> = {
+  draft: "Brouillon",
+  sent: "Présenté",
+  accepted: "Accepté",
+  rejected: "Refusé",
+};
+
+const BADGE_STATUT: Record<StatutDevis, string> = {
+  draft: "bg-slate-100 text-slate-600",
+  sent: "bg-amber-100 text-amber-700",
+  accepted: "bg-emerald-100 text-emerald-700",
+  rejected: "bg-rose-100 text-rose-700",
+};
 
 export function QuoteBuilder() {
   const { currentPatient } = usePatient();
@@ -70,6 +97,59 @@ export function QuoteBuilder() {
     setIsSigned(false);
   };
 
+  // Devis déjà établis pour ce patient.
+  //
+  // Aucun écran ne les affichait : `GET /api/quotes` n'était appelé nulle
+  // part. Un devis établi disparaissait dès qu'on changeait de phase ou de
+  // patient — impossible de le retrouver, d'en rééditer le PDF, ni de noter
+  // que le patient l'avait accepté ou refusé.
+  const [devisExistants, setDevisExistants] = useState<DevisEnregistre[]>([]);
+  const [devisErreur, setDevisErreur] = useState<string | null>(null);
+  const [majDevis, setMajDevis] = useState<string | null>(null);
+
+  const chargerDevis = useCallback(async () => {
+    if (!currentPatient) {
+      setDevisExistants([]);
+      setDevisErreur(null);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/quotes?patientId=${currentPatient.id}`);
+      const data = await res.json();
+      if (res.ok) {
+        setDevisExistants(data.quotes || []);
+        setDevisErreur(null);
+      } else {
+        setDevisErreur(data.error || "Les devis de ce patient n'ont pas pu être chargés.");
+      }
+    } catch {
+      setDevisErreur("Réseau indisponible : les devis de ce patient n'ont pas pu être chargés.");
+    }
+  }, [currentPatient]);
+
+  useEffect(() => {
+    chargerDevis();
+  }, [chargerDevis]);
+
+  const changerStatutDevis = async (id: string, statut: StatutDevis) => {
+    setMajDevis(id);
+    setDevisErreur(null);
+    try {
+      const res = await fetch("/api/quotes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: statut }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Le statut du devis n'a pas pu être modifié.");
+      await chargerDevis();
+    } catch (e) {
+      setDevisErreur(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setMajDevis(null);
+    }
+  };
+
   const prixLigne = (acte: DentalProcedure) => prixSelonD(acte, valeurD);
   const total = selected.reduce((s, i) => s + prixLigne(i) * i.qty, 0);
 
@@ -95,6 +175,7 @@ export function QuoteBuilder() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Échec de l'enregistrement du devis.");
       setSaved(true);
+      await chargerDevis();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue.");
     } finally {
@@ -247,6 +328,86 @@ export function QuoteBuilder() {
         </div>
       </div>
       
+      {/* Devis déjà établis : ils n'étaient affichés nulle part, et le
+          cabinet n'avait aucun moyen de noter la suite donnée. */}
+      {currentPatient && (
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-slate-600" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">
+                Devis de ce patient
+              </h3>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400">
+              {devisExistants.length} devis
+            </span>
+          </div>
+
+          <div className="p-5 space-y-3">
+            {devisErreur && (
+              <div className="flex items-start gap-2 rounded-sm border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                {devisErreur}
+              </div>
+            )}
+
+            {devisExistants.length === 0 && !devisErreur && (
+              <p className="text-xs text-slate-400 italic">Aucun devis établi pour ce patient.</p>
+            )}
+
+            {devisExistants.map((d) => (
+              <div
+                key={d.id}
+                className="flex flex-wrap items-center gap-3 border border-slate-200 rounded-sm px-3 py-2"
+              >
+                <div className="flex-1 min-w-[180px]">
+                  <p className="text-sm font-black text-slate-900">
+                    {Number(d.total).toLocaleString("fr-FR")} FCFA
+                  </p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                    {new Date(d.created_at).toLocaleDateString("fr-FR")}
+                    {d.convention ? ` · ${d.convention}` : ""}
+                    {d.valeur_d ? ` · D = ${d.valeur_d} F` : ""}
+                    {d.signed ? " · Signé" : ""}
+                  </p>
+                </div>
+
+                <span
+                  className={cn(
+                    "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
+                    BADGE_STATUT[d.status] || BADGE_STATUT.draft
+                  )}
+                >
+                  {LIBELLE_STATUT[d.status] || d.status}
+                </span>
+
+                {d.status !== "accepted" && (
+                  <button
+                    type="button"
+                    onClick={() => changerStatutDevis(d.id, "accepted")}
+                    disabled={majDevis === d.id}
+                    className="px-3 py-1.5 border border-emerald-200 rounded-sm text-[10px] font-black uppercase tracking-widest text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                  >
+                    Accepté
+                  </button>
+                )}
+                {d.status !== "rejected" && (
+                  <button
+                    type="button"
+                    onClick={() => changerStatutDevis(d.id, "rejected")}
+                    disabled={majDevis === d.id}
+                    className="px-3 py-1.5 border border-rose-200 rounded-sm text-[10px] font-black uppercase tracking-widest text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                  >
+                    Refusé
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Reformulation du plan en mots que le patient comprend : c'est au
           moment du devis que se joue son acceptation. */}
       <ExplicationPatient />

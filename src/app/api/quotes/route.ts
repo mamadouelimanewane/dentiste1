@@ -61,9 +61,22 @@ export async function POST(request: Request) {
       ? Math.round(valeurDBrute)
       : null;
 
+  // Statut réel du devis.
+  //
+  // La colonne restait à sa valeur par défaut `draft`, et RIEN dans
+  // l'application ne l'en faisait sortir. Or le portail patient n'affiche que
+  // les devis dont le statut est différent de `draft` : la rubrique « Mes
+  // devis » était donc structurellement vide, pour toujours. Un patient
+  // signait son plan de traitement sur la tablette, rentrait chez lui, et ne
+  // retrouvait rien.
+  //
+  // Un devis établi depuis le fauteuil est un devis présenté : il est
+  // `sent`, et `accepted` s'il a été signé séance tenante.
+  const statutInitial = signed ? 'accepted' : 'sent';
+
   const rows = await sql`
-    insert into quotes (patient_id, practitioner_id, items, total, signed, created_by, convention, valeur_d)
-    values (${patientId}, ${session!.userId}, ${JSON.stringify(lignes.valeur)}::jsonb, ${totalCalcule}, ${!!signed}, ${session!.userId}, ${convention}, ${valeurD})
+    insert into quotes (patient_id, practitioner_id, items, total, signed, status, created_by, convention, valeur_d)
+    values (${patientId}, ${session!.userId}, ${JSON.stringify(lignes.valeur)}::jsonb, ${totalCalcule}, ${!!signed}, ${statutInitial}, ${session!.userId}, ${convention}, ${valeurD})
     returning *
   `;
 
@@ -74,8 +87,54 @@ export async function POST(request: Request) {
     action: 'Création devis',
     entityTable: 'quotes',
     entityId: quote.id,
-    meta: { patientId, total: quote.total, itemsCount: items.length },
+    meta: { patientId, total: quote.total, itemsCount: items.length, statut: statutInitial },
   });
 
   return NextResponse.json({ quote });
+}
+
+const STATUTS = ['draft', 'sent', 'accepted', 'rejected'] as const;
+type StatutDevis = (typeof STATUTS)[number];
+
+// Suite donnée à un devis.
+//
+// Aucun chemin ne permettait de faire évoluer un devis : il restait « en
+// brouillon » à vie, le patient ne le voyait jamais sur son portail, et le
+// cabinet n'avait aucun moyen de noter un refus.
+export async function PATCH(request: Request) {
+  const { session, error, status } = await requirePermission(4, 'manage');
+  if (error) return NextResponse.json({ error }, { status });
+
+  const { id, status: nouveauStatut } = (await request.json()) as {
+    id?: string;
+    status?: StatutDevis;
+  };
+
+  if (!id || !nouveauStatut) {
+    return NextResponse.json({ error: 'id et status sont requis.' }, { status: 400 });
+  }
+  if (!STATUTS.includes(nouveauStatut)) {
+    return NextResponse.json(
+      { error: `Statut invalide. Valeurs acceptées : ${STATUTS.join(', ')}.` },
+      { status: 400 }
+    );
+  }
+
+  const rows = await sql`
+    update quotes set status = ${nouveauStatut} where id = ${id}
+    returning *
+  `;
+  if (rows.length === 0) {
+    return NextResponse.json({ error: 'Devis introuvable.' }, { status: 404 });
+  }
+
+  await recordAudit({
+    actorId: session!.userId,
+    action: `Devis ${nouveauStatut === 'accepted' ? 'accepté' : nouveauStatut === 'rejected' ? 'refusé' : 'mis à jour'}`,
+    entityTable: 'quotes',
+    entityId: id,
+    meta: { patientId: rows[0].patient_id, total: rows[0].total, statut: nouveauStatut },
+  });
+
+  return NextResponse.json({ quote: rows[0] });
 }
