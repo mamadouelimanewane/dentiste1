@@ -23,11 +23,25 @@ export function ClinicSettings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState(DEFAULT_SETTINGS);
+  // Les paramètres ont-ils été relus en base ? Tant que non, enregistrer
+  // écraserait le vrai paramétrage du cabinet par les valeurs par défaut —
+  // nom, téléphone, NINEA et RCCM compris, alors qu'ils figurent sur les
+  // factures.
+  const [relu, setRelu] = useState(false);
+  const [chargeErreur, setChargeErreur] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/clinic-settings")
-      .then((res) => res.json())
+      .then(async (res) => {
+        const d = await res.json();
+        // `res.ok` n'était pas vérifié : une erreur serveur laissait le
+        // formulaire sur ses valeurs par défaut, indiscernables d'un cabinet
+        // non encore paramétré.
+        if (!res.ok) throw new Error(d?.error || "Paramètres non relus.");
+        return d;
+      })
       .then((data) => {
+        setRelu(true);
         if (data.settings) {
           setFormData({
             clinicName: data.settings.clinic_name ?? DEFAULT_SETTINGS.clinicName,
@@ -43,7 +57,11 @@ export function ClinicSettings() {
           });
         }
       })
-      .catch(() => {})
+      .catch(() =>
+        setChargeErreur(
+          "Les paramètres du cabinet n'ont pas pu être relus. Les champs ci-dessous affichent des valeurs par défaut : n'enregistrez pas, vous remplaceriez le paramétrage réel (nom, NINEA, RCCM…). Rechargez la page."
+        )
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -53,6 +71,10 @@ export function ClinicSettings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!relu) {
+      setError("Paramètres non relus : enregistrement bloqué pour ne pas écraser le paramétrage du cabinet. Rechargez la page.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -247,12 +269,19 @@ export function ClinicSettings() {
           </div>
         </div>
 
+        {chargeErreur && (
+          <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold rounded-sm p-3 leading-relaxed">
+            {chargeErreur}
+          </div>
+        )}
+
         {/* SUBMIT BUTTON */}
         <div className="flex items-center justify-end gap-4">
           {error && <p className="text-xs font-bold text-red-600">{error}</p>}
           <button
             type="submit"
-            disabled={saving || loading}
+            disabled={saving || loading || !!chargeErreur}
+            title={chargeErreur ? "Paramètres non relus : enregistrement bloqué." : undefined}
             className={cn(
               "h-12 px-8 rounded-sm text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-60",
               isSaved
