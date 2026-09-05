@@ -19,6 +19,7 @@ export function PatientFollowUp() {
   const [practitioners, setPractitioners] = useState<any[]>([]);
   const [selectedPractitioner, setSelectedPractitioner] = useState<string>("");
   const [apptType, setApptType] = useState("Contrôle");
+  const [seanceCloturee, setSeanceCloturee] = useState<boolean | null>(null);
   const [duration, setDuration] = useState(30);
 
   useEffect(() => {
@@ -38,6 +39,53 @@ export function PatientFollowUp() {
 
   const handleFinalize = async () => {
     setError(null);
+
+    // Clôture réelle de la séance.
+    //
+    // Le bouton disait « Finaliser & archiver la séance » et ne faisait
+    // qu'une chose : créer le prochain rendez-vous. Le rendez-vous du jour
+    // restait « programmé » en base — la séance n'était archivée nulle part,
+    // et la note de satisfaction saisie juste au-dessus était simplement
+    // perdue. On clôt donc le rendez-vous du jour et on y attache la note.
+    if (currentPatient) {
+      setSaving(true);
+      try {
+        const debut = new Date();
+        debut.setHours(0, 0, 0, 0);
+        const fin = new Date(debut);
+        fin.setDate(fin.getDate() + 1);
+        const params = new URLSearchParams({ from: debut.toISOString(), to: fin.toISOString() });
+        const res = await fetch(`/api/appointments?${params}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "L'agenda du jour n'a pas pu être lu.");
+
+        const duJour = (data.appointments || []).find(
+          (a: { patient_id?: string; status?: string }) =>
+            a.patient_id === currentPatient.id && a.status !== "cancelled" && a.status !== "no_show"
+        );
+
+        if (duJour) {
+          const maj = await fetch(`/api/appointments/${duJour.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "complete", satisfaction }),
+          });
+          const majData = await maj.json().catch(() => ({}));
+          if (!maj.ok) throw new Error(majData.error || "La séance n'a pas pu être clôturée.");
+          setSeanceCloturee(true);
+        } else {
+          // Dire ce qui n'a pas eu lieu plutôt que d'afficher « archivé ».
+          setSeanceCloturee(false);
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Erreur inconnue.");
+        setSaving(false);
+        return;
+      } finally {
+        setSaving(false);
+      }
+    }
+
     if (nextAppointment && currentPatient) {
       setSaving(true);
       try {
@@ -199,6 +247,10 @@ export function PatientFollowUp() {
               ))}
               <span className="text-[10px] font-bold text-slate-500 uppercase ml-2">Note: {satisfaction}/5</span>
             </div>
+            <p className="text-[10px] text-slate-400 leading-relaxed">
+              Cette note est rattachée à la séance lors de la clôture. Elle n&apos;est pas visible du
+              patient.
+            </p>
           </div>
 
           {/* Final Action */}
@@ -232,13 +284,20 @@ export function PatientFollowUp() {
         </div>
       </div>
 
+      {/* Dire ce qui a réellement eu lieu. « Séance clôturée » s'affichait
+          quoi qu'il arrive, alors que rien n'était enregistré. */}
       {isArchived && (
-        <div className="text-center">
+        <div className="text-center space-y-1">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            {appointmentCreated
-              ? "Prochain rendez-vous programmé et ajouté à l'agenda."
-              : "Séance clôturée."}
+            {seanceCloturee
+              ? `Séance clôturée dans l'agenda, satisfaction ${satisfaction}/5 enregistrée.`
+              : "Aucun rendez-vous du jour à clôturer pour ce patient : la note de satisfaction n'a pas été enregistrée."}
           </p>
+          {appointmentCreated && (
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              Prochain rendez-vous programmé et ajouté à l&apos;agenda.
+            </p>
+          )}
         </div>
       )}
     </div>

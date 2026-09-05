@@ -65,6 +65,7 @@ export async function GET(request: Request) {
     monthlyRows,
     panierRows,
     totalActsRows,
+    satisfactionRows,
   ] = await Promise.all([
     sql`select coalesce(sum(total), 0)::numeric as total from invoices where status in ('paid','pending') and created_at >= ${start} and created_at <= ${now}`,
     sql`select coalesce(sum(total), 0)::numeric as total from invoices where status in ('paid','pending') and created_at >= ${prevStart} and created_at < ${prevEnd}`,
@@ -95,6 +96,16 @@ export async function GET(request: Request) {
     // « Panier Moyen : 0 F ». Même population que le CA.
     sql`select coalesce(avg(total), 0)::numeric as avg from invoices where status in ('paid','pending') and created_at >= ${start} and created_at <= ${now}`,
     sql`select count(*)::int as count from executed_acts where performed_at >= ${start} and performed_at <= ${now}`,
+    // Satisfaction recueillie à la clôture des séances. Elle n'était nulle
+    // part exploitée : la note saisie à l'écran n'était même pas enregistrée
+    // (voir migration 0031). On expose la moyenne ET le nombre d'avis — une
+    // moyenne sur deux séances ne se lit pas comme une moyenne sur cent.
+    sql`
+      select avg(satisfaction)::numeric as moyenne, count(satisfaction)::int as avis
+      from appointments
+      where satisfaction is not null
+        and satisfaction_at >= ${start} and satisfaction_at <= ${now}
+    `,
   ]);
 
   const ca = Number(caRows[0].total);
@@ -137,6 +148,10 @@ export async function GET(request: Request) {
       encaissements: { value: encaissements, trend: pctChange(encaissements, prevEncaissements) },
       panierMoyen: { value: panierMoyen },
       actesRealises: { value: Number(totalActsRows[0].count) },
+      satisfaction: {
+        value: satisfactionRows[0].moyenne !== null ? Number(satisfactionRows[0].moyenne) : null,
+        avis: Number(satisfactionRows[0].avis),
+      },
     },
     topActs: (topActsRows as any[]).map((r) => ({
       name: r.label,

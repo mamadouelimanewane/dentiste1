@@ -11,7 +11,8 @@ import {
   Activity,
   UserCheck,
   CreditCard,
-  Briefcase
+  Briefcase,
+  Star
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -26,6 +27,9 @@ interface StatsOverview {
     encaissements: { value: number; trend: number | null };
     panierMoyen: { value: number };
     actesRealises: { value: number };
+    // Moyenne des notes de fin de séance, avec le nombre d'avis : une
+    // moyenne sur deux séances ne se lit pas comme une moyenne sur cent.
+    satisfaction?: { value: number | null; avis: number };
   };
   evolutionCa: { label: string; total: number; heightPct: number }[];
   topActs: { name: string; count: number; revenue: number }[];
@@ -206,10 +210,22 @@ export function StatsDashboard() {
           </div>
 
           {/* FOOTER STATS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { label: "Panier Moyen", value: formatFcfa(data.kpis.panierMoyen.value), icon: Briefcase },
-              { label: "Actes Réalisés", value: String(data.kpis.actesRealises.value), icon: UserCheck },
+              { label: "Panier Moyen", value: formatFcfa(data.kpis.panierMoyen.value), icon: Briefcase, detail: null as string | null },
+              { label: "Actes Réalisés", value: String(data.kpis.actesRealises.value), icon: UserCheck, detail: null as string | null },
+              {
+                label: "Satisfaction",
+                value:
+                  data.kpis.satisfaction?.value != null
+                    ? `${data.kpis.satisfaction.value.toFixed(1)}/5`
+                    : "—",
+                icon: Star,
+                detail:
+                  data.kpis.satisfaction && data.kpis.satisfaction.avis > 0
+                    ? `${data.kpis.satisfaction.avis} séance(s) notée(s)`
+                    : "Aucune séance notée sur la période",
+              },
             ].map((item, i) => (
               <div key={i} className="bg-slate-50 border border-slate-200 p-5 rounded-sm flex items-center gap-4">
                 <div className="h-10 w-10 bg-white border border-slate-200 rounded flex items-center justify-center text-slate-900 shadow-sm">
@@ -218,6 +234,9 @@ export function StatsDashboard() {
                 <div>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{item.label}</p>
                   <span className="text-lg font-black text-slate-900">{item.value}</span>
+                  {item.detail && (
+                    <p className="text-[10px] font-bold text-slate-400">{item.detail}</p>
+                  )}
                 </div>
               </div>
             ))}

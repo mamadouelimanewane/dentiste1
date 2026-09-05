@@ -53,6 +53,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const { action, scheduledAt } = body as {
     action?: 'check-in' | 'complete' | 'cancel' | 'no-show' | 'reschedule';
     scheduledAt?: string;
+    satisfaction?: number;
   };
 
   if (!action) {
@@ -73,11 +74,23 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         update appointments set checked_in_at = now() where id = ${params.id} returning *
       `;
       break;
-    case 'complete':
+    case 'complete': {
+      // Note de satisfaction saisie à la clôture. Elle était recueillie à
+      // l'écran puis perdue : aucune colonne ne l'accueillait. Voir la
+      // migration 0031.
+      const note = Number(body.satisfaction);
+      const noteRetenue = Number.isInteger(note) && note >= 1 && note <= 5 ? note : null;
       rows = await sql`
-        update appointments set status = 'completed', completed_at = now() where id = ${params.id} returning *
+        update appointments
+        set status = 'completed',
+            completed_at = now(),
+            satisfaction = coalesce(${noteRetenue}, satisfaction),
+            satisfaction_at = case when ${noteRetenue}::int is null then satisfaction_at else now() end
+        where id = ${params.id}
+        returning *
       `;
       break;
+    }
     case 'cancel': {
       // On relit l'heure AVANT de modifier : le message doit citer le
       // créneau que le patient avait noté.
