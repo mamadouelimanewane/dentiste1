@@ -98,13 +98,25 @@ export function ExplicationPatient() {
     }
   };
 
+  // Cette fenêtre est construite à la main, hors React : rien n'y est échappé
+  // automatiquement. Le nom du patient ne l'était pas — or il peut venir d'une
+  // prise de rendez-vous en ligne, où le patient le saisit lui-même. Un nom
+  // contenant du balisage s'exécutait donc dans une fenêtre ouverte depuis la
+  // session du praticien, et de même origine que l'application.
+  const echapper = (v: unknown) =>
+    String(v ?? "").replace(
+      /[<>&"']/g,
+      (c) =>
+        ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c] as string)
+    );
+
   const imprimer = () => {
     if (!explication) return;
     const texte = explication.texte_fr;
     const w = window.open("", "_blank", "width=800,height=900");
     if (!w) return;
     w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8">
-      <title>Plan de soins — ${currentPatient?.name || ""}</title>
+      <title>Plan de soins — ${echapper(currentPatient?.name)}</title>
       <style>
         body{font-family:Georgia,serif;max-width:17cm;margin:2cm auto;line-height:1.7;color:#111}
         h1{font-size:16pt;margin-bottom:4pt}
@@ -113,8 +125,8 @@ export function ExplicationPatient() {
         .pied{margin-top:32pt;font-size:9pt;color:#666;border-top:1px solid #ccc;padding-top:8pt}
       </style></head><body>
       <h1>Cabinet Dentaire du Cap Vert</h1>
-      <p class="sous">Plan de soins — ${currentPatient?.name || ""} — ${new Date().toLocaleDateString("fr-FR")}</p>
-      <div class="texte">${(texte || "").replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] as string))}</div>
+      <p class="sous">Plan de soins — ${echapper(currentPatient?.name)} — ${new Date().toLocaleDateString("fr-FR")}</p>
+      <div class="texte">${echapper(texte)}</div>
       <p class="pied">Ce document explique les soins proposés par votre praticien. Il ne remplace pas le devis, qui seul fait foi pour les montants.</p>
       </body></html>`);
     w.document.close();
