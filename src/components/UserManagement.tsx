@@ -87,6 +87,10 @@ export function UserManagement() {
       if (rolesRes.ok) {
         setRoles(rolesData.roles);
         setInviteForm((f) => ({ ...f, roleId: f.roleId || rolesData.roles[0]?.id || "" }));
+      } else {
+        // Sans rôles chargés, la liste déroulante est vide et l'invitation
+        // échoue sans que rien n'explique pourquoi.
+        throw new Error(rolesData?.error || "Les rôles n'ont pas pu être chargés : impossible d'inviter ou de changer un rôle.");
       }
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : "Erreur inconnue.");
@@ -121,13 +125,34 @@ export function UserManagement() {
     }
   };
 
+  // Changer un rôle ou désactiver un compte est un geste de sécurité, pas un
+  // réglage d'affichage. L'échec était pourtant muet : l'administrateur voyait
+  // la case revenir à son état d'origine et pouvait croire à un rendu lent,
+  // alors que la personne qu'il pensait avoir révoquée gardait son accès.
   const updateUser = async (userId: string, updates: { roleId?: string; isActive?: boolean }) => {
-    const res = await fetch("/api/admin/users", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, ...updates }),
-    });
-    if (res.ok) loadAll();
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, ...updates }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          d.error ||
+            (updates.isActive === false
+              ? "Ce compte n'a PAS été désactivé : son accès reste ouvert."
+              : "La modification n'a pas été enregistrée.")
+        );
+      }
+      await loadAll();
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : "Erreur inconnue.");
+      // On recharge pour que l'écran montre l'état réel du serveur, et non
+      // celui que l'administrateur croyait avoir appliqué.
+      await loadAll();
+    }
   };
 
   const activeCount = users.filter((u) => u.is_active).length;

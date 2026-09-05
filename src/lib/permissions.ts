@@ -79,6 +79,20 @@ async function chargerCompteVivant() {
   };
 }
 
+// Compte et rôle courants pour le rendu d'une PAGE (layout du tableau de
+// bord, pages serveur), par opposition aux routes API.
+//
+// Le layout lisait le rôle depuis `session.roleId`, c'est-à-dire depuis le
+// jeton — le même défaut que celui corrigé côté API, mais côté interface.
+// Un compte désactivé gardait donc tout le tableau de bord affiché pendant
+// sept jours : les appels API échouaient bien, mais l'écran restait ouvert
+// et le collaborateur parti voyait l'organisation du cabinet au lieu d'être
+// mis dehors. Un utilisateur rétrogradé, lui, gardait les menus et le libellé
+// de son ancien rôle, alors que chaque action était refusée.
+export async function chargerCompteVivantPourPage() {
+  return chargerCompteVivant();
+}
+
 // Vérifie la session et le privilège requis (module + action) depuis une
 // route API. Compte, rôle et permissions sont relus en base à chaque requête
 // pour qu'une désactivation ou un changement de rôle prenne effet
