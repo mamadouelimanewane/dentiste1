@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { ArrowLeft, History, Printer, Save, Plus, Pill, Star, Search, User, FileText, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
+import { rappelsAllergie } from "@/lib/allergies";
 import { useAuth } from "@/lib/auth-context";
 import dynamic from "next/dynamic";
 
@@ -63,6 +64,8 @@ export function PrescriptionEditor() {
       { id: Date.now() + 2, name: "Bain de bouche Eludril", dosage: "Flacon", duration: "7 jours", posology: "1 bain de bouche 2 fois par jour, après brossage" }
     ]);
   };
+
+  const rappels = rappelsAllergie(currentPatient?.allergies, meds);
 
   const handleSave = async () => {
     if (!currentPatient || meds.length === 0) return;
