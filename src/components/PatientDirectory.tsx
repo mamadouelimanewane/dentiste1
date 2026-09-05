@@ -26,6 +26,7 @@ export function PatientDirectory() {
   const [portalFeedback, setPortalFeedback] = useState<string | null>(null);
   const [confirmingAnonymizeId, setConfirmingAnonymizeId] = useState<string | null>(null);
   const [anonymizing, setAnonymizing] = useState<string | null>(null);
+  const [rechercheErreur, setRechercheErreur] = useState<string | null>(null);
 
   const search = useCallback(async (q: string) => {
     setLoading(true);
@@ -36,7 +37,19 @@ export function PatientDirectory() {
         setPatients(data.patients);
         setTotal(typeof data.total === "number" ? data.total : data.patients.length);
         setTronque(!!data.tronque);
+        setRechercheErreur(null);
+      } else {
+        // Une recherche qui échouait laissait la liste en l'état, sans un mot :
+        // le comptoir en concluait que le patient n'existait pas et rouvrait un
+        // second dossier au même nom.
+        setRechercheErreur(
+          data.error || "La recherche a échoué. Ne créez pas de dossier avant d'avoir rechargé cet écran."
+        );
       }
+    } catch {
+      setRechercheErreur(
+        "Réseau indisponible : la recherche n'a pas abouti. Ne créez pas de dossier avant d'avoir rechargé cet écran."
+      );
     } finally {
       setLoading(false);
     }
@@ -64,10 +77,22 @@ export function PatientDirectory() {
   };
 
   const openPatientFile = async (patient: PatientRow) => {
-    const res = await fetch(`/api/patients/${patient.id}`);
-    const data = await res.json();
-    if (res.ok) {
+    setRechercheErreur(null);
+    try {
+      const res = await fetch(`/api/patients/${patient.id}`);
+      const data = await res.json();
+      if (!res.ok || !data.patient) {
+        throw new Error(data.error || "Ce dossier n'a pas pu être ouvert.");
+      }
       setCurrentPatient(mapDbPatientToContext(data.patient));
+    } catch (e) {
+      // Un échec muet laissait le dossier PRÉCÉDENT actif : le praticien
+      // croyait avoir changé de patient et travaillait sur le mauvais.
+      setRechercheErreur(
+        e instanceof Error
+          ? `${e.message} Le dossier précédemment ouvert reste actif — vérifiez le bandeau « Patient actif ».`
+          : "Erreur inconnue."
+      );
     }
   };
 
@@ -117,6 +142,12 @@ export function PatientDirectory() {
           />
         </div>
       </div>
+
+      {rechercheErreur && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-sm p-3 leading-relaxed">
+          {rechercheErreur}
+        </div>
+      )}
 
       {portalFeedback && (
         <div className="bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold rounded-sm p-3 break-all">
