@@ -71,15 +71,44 @@ export function ProstheticsLab() {
   const load = useCallback(() => {
     setLoading(true);
     fetch("/api/lab-orders")
-      .then((res) => res.json())
+      .then(async (res) => {
+        const data = await res.json();
+        // `res.ok` n'était pas vérifié : un refus du serveur renvoyait un objet
+        // sans `orders`, et l'écran affichait une liste vide — indiscernable
+        // d'un laboratoire sans aucun travail en cours.
+        if (!res.ok) throw new Error(data?.error || "Travaux labo non chargés.");
+        return data;
+      })
       .then((data) => {
         setOrders(data.orders || []);
         setTotal(typeof data.total === "number" ? data.total : (data.orders || []).length);
         setTronque(!!data.tronque);
+        setError(null);
       })
-      .catch(() => setError("Impossible de charger les travaux labo."))
+      .catch((e) =>
+        setError(
+          e instanceof Error && e.message
+            ? `${e.message} Ne concluez pas qu'aucun travail n'est en cours.`
+            : "Impossible de charger les travaux labo."
+        )
+      )
       .finally(() => setLoading(false));
   }, []);
+
+  // Travaux en retard.
+  //
+  // La date de livraison prévue était affichée, mais rien ne signalait qu'elle
+  // était dépassée : un travail promis pour le 20 et toujours « en
+  // production » le 30 se lisait comme les autres. Le patient revenait pour
+  // la pose, et la prothèse n'était pas là.
+  const joursDeRetard = (o: LabOrder) => {
+    if (!o.expected_delivery || o.status === "completed") return 0;
+    const prevue = new Date(o.expected_delivery);
+    prevue.setHours(23, 59, 59, 999);
+    const jours = Math.floor((Date.now() - prevue.getTime()) / 86_400_000);
+    return jours > 0 ? jours : 0;
+  };
+  const enRetard = orders.filter((o) => joursDeRetard(o) > 0);
 
   useEffect(() => {
     load();
@@ -169,7 +198,22 @@ export function ProstheticsLab() {
         </div>
       </div>
 
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm p-3">{error}</div>}
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm p-3 leading-relaxed">{error}</div>}
+
+      {enRetard.length > 0 && (
+        <div className="flex items-start gap-2 rounded-sm border border-rose-300 bg-rose-50 p-3 text-xs font-bold text-rose-800 leading-relaxed">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span>
+            {enRetard.length} travail{enRetard.length > 1 ? "x" : ""} au-delà de la date de livraison
+            annoncée : {enRetard
+              .slice(0, 4)
+              .map((o) => `${o.patient_name} (${joursDeRetard(o)} j)`)
+              .join(", ")}
+            {enRetard.length > 4 ? "…" : ""}. Relancez le laboratoire avant de convoquer ces patients
+            pour la pose.
+          </span>
+        </div>
+      )}
 
       {showForm && (
         <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-5 space-y-4">
@@ -318,7 +362,19 @@ export function ProstheticsLab() {
               <div className="flex flex-col items-center md:items-end justify-between border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 min-w-[160px]">
                 <div className="text-center md:text-right">
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Livraison prévue</p>
-                  <p className="text-sm font-black text-slate-900">{order.expected_delivery ? new Date(order.expected_delivery).toLocaleDateString("fr-FR") : "—"}</p>
+                  <p
+                    className={cn(
+                      "text-sm font-black",
+                      joursDeRetard(order) > 0 ? "text-rose-700" : "text-slate-900"
+                    )}
+                  >
+                    {order.expected_delivery ? new Date(order.expected_delivery).toLocaleDateString("fr-FR") : "—"}
+                  </p>
+                  {joursDeRetard(order) > 0 && (
+                    <p className="text-[9px] font-black uppercase tracking-widest text-rose-700 mt-0.5">
+                      En retard de {joursDeRetard(order)} jour{joursDeRetard(order) > 1 ? "s" : ""}
+                    </p>
+                  )}
                 </div>
                 {NEXT_STATUS[order.status] && (
                   <button

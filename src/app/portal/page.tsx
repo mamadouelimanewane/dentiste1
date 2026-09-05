@@ -23,6 +23,17 @@ export default async function PortalHomePage() {
     limit 5
   `;
 
+  // La carte « Rendez-vous à venir » affichait la longueur de la liste, elle-même
+  // plafonnée à 5 : un patient qui en avait huit en lisait cinq. On compte
+  // séparément, et la liste dit ce qu'elle ne montre pas.
+  const compte = await sql`
+    select count(*)::int as n from appointments
+    where patient_id = ${patientId}
+      and scheduled_at >= now()
+      and status = 'scheduled'
+  `;
+  const nbAVenir = Number(compte[0]?.n ?? appointments.length);
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -42,7 +53,7 @@ export default async function PortalHomePage() {
         </Link>
         <div className="bg-white border border-slate-200 rounded p-5 shadow-sm">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rendez-vous à venir</p>
-          <p className="text-sm font-bold text-slate-900 mt-1">{appointments.length}</p>
+          <p className="text-sm font-bold text-slate-900 mt-1">{nbAVenir}</p>
         </div>
       </div>
 
@@ -80,6 +91,12 @@ export default async function PortalHomePage() {
               )}
             </div>
           ))}
+          {nbAVenir > appointments.length && (
+            <p className="p-5 text-xs text-slate-500">
+              {appointments.length} rendez-vous affichés sur {nbAVenir}. Contactez le cabinet pour
+              connaître les suivants.
+            </p>
+          )}
         </div>
       </div>
     </div>
