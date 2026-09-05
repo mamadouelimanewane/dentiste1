@@ -25,13 +25,30 @@ export function InventoryManager() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Toutes");
   const [adjusting, setAdjusting] = useState<string | null>(null);
+  const [formOuvert, setFormOuvert] = useState(false);
+  const [creation, setCreation] = useState(false);
+  const [nouvNom, setNouvNom] = useState("");
+  const [nouvCategorie, setNouvCategorie] = useState("");
+  const [nouvQte, setNouvQte] = useState("");
+  const [nouvSeuil, setNouvSeuil] = useState("");
+  const [nouvPrix, setNouvPrix] = useState("");
 
   const load = useCallback(() => {
     setLoading(true);
     fetch("/api/inventory")
-      .then((res) => res.json())
-      .then((data) => setItems(data.items || []))
-      .catch(() => setError("Impossible de charger le stock."))
+      .then(async (res) => {
+        const d = await res.json();
+        // `res.ok` n'était pas vérifié : une erreur serveur renvoyait un objet
+        // sans `items`, donc un stock vide indiscernable d'un stock réellement
+        // épuisé. Le cabinet aurait pu recommander ce qu'il a déjà.
+        if (!res.ok) throw new Error(d?.error || "Stock non chargé.");
+        return d;
+      })
+      .then((data) => {
+        setItems(data.items || []);
+        setError(null);
+      })
+      .catch(() => setError("Stock non chargé : ne commandez rien avant d'avoir rechargé cet écran."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -55,6 +72,37 @@ export function InventoryManager() {
       setError(e instanceof Error ? e.message : "Erreur inconnue.");
     } finally {
       setAdjusting(null);
+    }
+  };
+
+  // Création d'un article. La route POST existait et était validée, mais
+  // aucun écran ne l'appelait : le cabinet ne pouvait pas référencer un
+  // nouveau consommable, alors qu'il en achète en permanence. Le stock était
+  // donc figé sur les articles d'origine.
+  const ajouterArticle = async () => {
+    setError(null);
+    setCreation(true);
+    try {
+      const res = await fetch("/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: nouvNom.trim(),
+          category: nouvCategorie.trim() || "Divers",
+          quantity: Number(nouvQte) || 0,
+          minThreshold: Number(nouvSeuil) || 0,
+          unitPrice: Number(nouvPrix) || 0,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Création impossible.");
+      setNouvNom(""); setNouvCategorie(""); setNouvQte(""); setNouvSeuil(""); setNouvPrix("");
+      setFormOuvert(false);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setCreation(false);
     }
   };
 
@@ -90,7 +138,81 @@ export function InventoryManager() {
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{articlesReferences} article(s) référencé(s)</p>
             </div>
           </div>
+          <button
+            onClick={() => setFormOuvert((v) => !v)}
+            className="flex items-center gap-2 px-4 py-2 rounded-sm bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            {formOuvert ? "Annuler" : "Nouvel article"}
+          </button>
         </div>
+
+        {/* Référencer un consommable. Cette possibilité manquait : le stock
+            restait figé sur les articles d'origine alors qu'un cabinet en
+            achète de nouveaux en permanence. */}
+        {formOuvert && (
+          <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-5 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+              <div className="md:col-span-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Nom de l&apos;article</label>
+                <input
+                  value={nouvNom}
+                  onChange={(e) => setNouvNom(e.target.value)}
+                  placeholder="Ex : Gants nitrile taille M"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-sm text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Catégorie</label>
+                <input
+                  value={nouvCategorie}
+                  onChange={(e) => setNouvCategorie(e.target.value)}
+                  placeholder="Consommables"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-sm text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Quantité</label>
+                <input
+                  type="number" min={0}
+                  value={nouvQte}
+                  onChange={(e) => setNouvQte(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-sm text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Seuil d&apos;alerte</label>
+                <input
+                  type="number" min={0}
+                  value={nouvSeuil}
+                  onChange={(e) => setNouvSeuil(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-sm text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-40">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Prix unitaire (F)</label>
+                <input
+                  type="number" min={0}
+                  value={nouvPrix}
+                  onChange={(e) => setNouvPrix(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-sm text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <button
+                onClick={ajouterArticle}
+                disabled={creation || !nouvNom.trim()}
+                className="h-10 px-5 rounded-sm bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40 transition-colors"
+              >
+                {creation ? "Enregistrement…" : "Référencer l'article"}
+              </button>
+              <p className="text-[10px] text-slate-400">
+                Le seuil d&apos;alerte déclenche l&apos;avertissement « stock bas ».
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm p-3">{error}</div>}
