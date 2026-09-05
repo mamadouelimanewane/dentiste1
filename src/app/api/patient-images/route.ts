@@ -47,6 +47,14 @@ export async function POST(request: Request) {
   if (!file || !patientId) {
     return NextResponse.json({ error: 'file et patientId sont requis.' }, { status: 400 });
   }
+  // Le SVG passe le test « image/ » mais peut porter du script, et le fichier
+  // est stocké en accès public : on l'exclut explicitement.
+  if (file.type === 'image/svg+xml') {
+    return NextResponse.json(
+      { error: "Le format SVG n'est pas accepté pour un cliché." },
+      { status: 400 }
+    );
+  }
   if (!file.type.startsWith('image/')) {
     return NextResponse.json({ error: 'Seules les images sont acceptées.' }, { status: 400 });
   }
