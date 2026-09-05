@@ -13,6 +13,11 @@ interface Claim {
   amount: number;
   status: "pending" | "submitted" | "approved" | "rejected" | "paid";
   created_at: string;
+  // La facture rattachée est déjà encaissée en totalité alors que la demande
+  // court toujours : relancer l'assureur reviendrait à réclamer une somme
+  // déjà perçue auprès du patient.
+  facture_soldee?: boolean;
+  invoice_number?: string | null;
 }
 
 const STATUS_LABEL: Record<Claim["status"], string> = {
@@ -212,6 +217,12 @@ export function InsuranceManager() {
                       <span className={cn("px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest", STATUS_BADGE[claim.status])}>
                         {STATUS_LABEL[claim.status]}
                       </span>
+                      {claim.facture_soldee && (claim.status === "pending" || claim.status === "submitted") && (
+                        <p className="mt-1 text-[9px] font-bold text-rose-700 leading-tight">
+                          Facture {claim.invoice_number || ""} déjà encaissée en totalité — ne pas relancer
+                          l&apos;assureur sans vérifier.
+                        </p>
+                      )}
                     </td>
                     {/* Aucune action n'existait : une demande restait « en
                         attente » à vie, et les indicateurs de cet écran ne

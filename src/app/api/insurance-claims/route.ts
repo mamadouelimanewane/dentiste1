@@ -16,10 +16,19 @@ export async function GET() {
   // leur âge, et l'écran sait ce qu'il ne montre pas.
   const LIMITE = 200;
 
+  // `facture_soldee` : la facture rattachée a déjà été encaissée en totalité
+  // alors que la demande court toujours. Le règlement au comptoir refuse
+  // désormais ce cas (voir invoices/[id]/settle), mais un paiement mobile
+  // money confirmé par webhook solde la facture sans passer par là — l'argent
+  // est arrivé, on ne peut que le signaler. Sans ce drapeau, le cabinet
+  // relançait l'assureur pour une somme déjà perçue.
   const claims = await sql`
-    select ic.*, p.full_name as patient_name
+    select ic.*, p.full_name as patient_name,
+           (i.status = 'paid') as facture_soldee,
+           i.invoice_number
     from insurance_claims ic
     join patients p on p.id = ic.patient_id
+    left join invoices i on i.id = ic.invoice_id
     order by
       case ic.status
         when 'pending' then 0

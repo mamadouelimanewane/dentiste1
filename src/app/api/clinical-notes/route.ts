@@ -13,11 +13,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'patientId est requis' }, { status: 400 });
   }
 
+  // Le nom de l'auteur, pas seulement son identifiant : dans un cabinet à
+  // plusieurs praticiens, une note sans signature ne vaut pas grand-chose —
+  // et l'écran n'avait aucun moyen de l'afficher.
   const notes = await sql`
-    select id, content, type, created_at, updated_at, created_by
-    from clinical_notes
-    where patient_id = ${patientId}
-    order by created_at desc
+    select n.id, n.content, n.type, n.created_at, n.updated_at, n.created_by,
+           u.full_name as auteur
+    from clinical_notes n
+    left join users u on u.id = n.created_by
+    where n.patient_id = ${patientId} and n.deleted_at is null
+    order by n.created_at desc
   `;
 
   return NextResponse.json({ notes });
