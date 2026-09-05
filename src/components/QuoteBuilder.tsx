@@ -212,7 +212,7 @@ export function QuoteBuilder() {
           </div>
           
           <div className="flex-1 min-h-0">
-            <ActCatalogPicker onPick={add} ctaLabel="Ajouter au devis" />
+            <ActCatalogPicker onPick={add} ctaLabel="Ajouter au devis" valeurD={valeurD} />
           </div>
         </div>
 

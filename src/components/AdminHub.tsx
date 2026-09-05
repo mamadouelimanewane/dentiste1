@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { RoleManager } from "@/components/RoleManager";
-import { DENTAL_NOMENCLATURE } from "@/lib/pricing";
+import { DENTAL_NOMENCLATURE, D_VALUE, prixSelonD } from "@/lib/pricing";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { TemplateDocumentPDF } from "@/components/TemplateDocumentPDF";
 import { usePatient } from "@/lib/context";
@@ -448,7 +448,9 @@ export function AdminHub() {
                         <td className="p-3 font-bold text-slate-700 text-xs">{acte.label}</td>
                         <td className="p-3 text-[10px] font-black uppercase text-slate-500">{acte.category}</td>
                         <td className="p-3 text-xs font-medium text-slate-500">{acte.cotation || "—"}</td>
-                        <td className="p-3 text-right font-black text-slate-900 text-sm">{(acte.price || 0).toLocaleString()} F</td>
+                        {/* Prix calculé depuis la cotation : le catalogue portait
+                            aussi un prix figé, qui pouvait la contredire. */}
+                        <td className="p-3 text-right font-black text-slate-900 text-sm">{prixSelonD(acte, D_VALUE).toLocaleString()} F</td>
                       </tr>
                     ))}
                   </tbody>

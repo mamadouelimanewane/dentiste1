@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Activity, ShieldCheck, Clock, Plus, Check } from "lucide-react";
-import { DENTAL_NOMENCLATURE, DentalProcedure } from "@/lib/pricing";
+import { DENTAL_NOMENCLATURE, DentalProcedure, D_VALUE, prixSelonD } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
 import { Odontogram } from "@/components/Odontogram";
@@ -31,6 +31,60 @@ export function ProcedureExecution() {
   // été enregistré et ressaisir toute la séance.
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
+
+  // Base tarifaire de la séance.
+  //
+  // Les actes étaient enregistrés au prix figé du catalogue, c'est-à-dire au
+  // tarif du cabinet — quelle que soit la convention. Le devis, lui, avait été
+  // rendu paramétrable : un patient couvert par une IPM signait donc un devis
+  // calculé sur SA lettre-clé, puis était facturé sur celle du cabinet. Le
+  // décalage n'apparaissait nulle part.
+  //
+  // La séance suit désormais la base du devis accepté le plus récent, à défaut
+  // celle du cabinet, et l'écran dit laquelle il applique.
+  const [valeurD, setValeurD] = useState<number>(D_VALUE);
+  const [nomBase, setNomBase] = useState<string>("Tarif du cabinet");
+  const [baseErreur, setBaseErreur] = useState<string | null>(null);
+
+  const chargerBase = useCallback(async () => {
+    if (!currentPatient) return;
+    try {
+      const [convRes, devisRes] = await Promise.all([
+        fetch("/api/conventions"),
+        fetch(`/api/quotes?patientId=${currentPatient.id}`),
+      ]);
+      const conv = await convRes.json();
+      const devis = await devisRes.json();
+      if (!convRes.ok) throw new Error(conv?.error || "Base tarifaire du cabinet non chargée.");
+
+      const baseCabinet =
+        typeof conv?.valeurCabinet === "number" ? conv.valeurCabinet : D_VALUE;
+
+      const accepte = devisRes.ok
+        ? (devis.quotes || []).find(
+            (q: { status?: string; valeur_d?: number | null }) =>
+              q.status === "accepted" && q.valeur_d
+          )
+        : null;
+
+      if (accepte) {
+        setValeurD(Number(accepte.valeur_d));
+        setNomBase(accepte.convention || "Base du devis accepté");
+      } else {
+        setValeurD(baseCabinet);
+        setNomBase("Tarif du cabinet");
+      }
+      setBaseErreur(null);
+    } catch (e) {
+      // Sans base chargée, on reste sur celle par défaut et on le dit plutôt
+      // que d'enregistrer des actes à un tarif peut-être faux.
+      setBaseErreur(
+        e instanceof Error
+          ? `${e.message} Les actes seraient enregistrés au tarif par défaut (D = ${D_VALUE} F).`
+          : "Base tarifaire non chargée."
+      );
+    }
+  }, [currentPatient]);
 
   const loadActs = useCallback(async () => {
     if (!currentPatient) return;
@@ -69,7 +123,8 @@ export function ProcedureExecution() {
   useEffect(() => {
     loadActs();
     loadHistory();
-  }, [loadActs, loadHistory]);
+    chargerBase();
+  }, [loadActs, loadHistory, chargerBase]);
 
   // État des dents déduit uniquement des actes réellement enregistrés — on
   // ne marque jamais une carie "supposée", seulement ce qui a été fait :
@@ -99,7 +154,7 @@ export function ProcedureExecution() {
         code: procedure.id,
         label: procedure.label,
         tooth: selectedTooth || undefined,
-        price: procedure.price || 0,
+        price: prixSelonD(procedure, valeurD),
       }),
     });
     // Un échec restait muet : l'acte n'apparaissait pas et le praticien
@@ -204,8 +259,18 @@ export function ProcedureExecution() {
                {selectedTooth ? `Cible: Dent ${selectedTooth}` : "Cible Générale"}
              </span>
           </div>
+          {/* Base tarifaire appliquée : les actes étaient enregistrés au tarif
+              du cabinet même quand le devis signé retenait une autre lettre-clé. */}
+          <div className="px-4 py-2 border-b border-slate-100 bg-white">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              {nomBase} — D = {valeurD.toLocaleString("fr-FR")} F
+            </p>
+            {baseErreur && (
+              <p className="mt-1 text-[10px] font-bold text-rose-700 leading-relaxed">{baseErreur}</p>
+            )}
+          </div>
           <div className="flex-1 min-h-0 max-h-[420px]">
-            <ActCatalogPicker onPick={addAct} ctaLabel="Enregistrer l'acte" />
+            <ActCatalogPicker onPick={addAct} ctaLabel="Enregistrer l'acte" valeurD={valeurD} />
           </div>
         </div>
 

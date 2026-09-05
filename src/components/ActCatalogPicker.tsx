@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { Search, Plus } from "lucide-react";
-import { DENTAL_NOMENCLATURE, DentalProcedure } from "@/lib/pricing";
+import { DENTAL_NOMENCLATURE, DentalProcedure, D_VALUE, prixSelonD } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 // Sélecteur d'actes partagé par la Consultation (devis) et la Réalisation.
@@ -12,9 +12,15 @@ import { cn } from "@/lib/utils";
 export function ActCatalogPicker({
   onPick,
   ctaLabel,
+  // Base tarifaire appliquée. Le catalogue affichait les prix figés à
+  // D = 1 200 quelle que soit la convention choisie : un praticien chiffrant
+  // pour une IPM à D = 1 000 lisait des montants qui n'étaient pas ceux du
+  // devis qu'il était en train de bâtir.
+  valeurD = D_VALUE,
 }: {
   onPick: (procedure: DentalProcedure) => void;
   ctaLabel?: string;
+  valeurD?: number;
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Toutes");
@@ -80,7 +86,7 @@ export function ActCatalogPicker({
             <div className="min-w-0">
               <p className="text-xs font-semibold text-slate-900">{p.label}</p>
               <p className="text-[10px] font-bold text-blue-600 uppercase">
-                {p.price?.toLocaleString("fr-FR")} FCFA
+                {prixSelonD(p, valeurD).toLocaleString("fr-FR")} FCFA
                 {p.cotation && <span className="text-slate-400 ml-2">{p.cotation}</span>}
               </p>
             </div>

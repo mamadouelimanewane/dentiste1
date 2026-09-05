@@ -10,7 +10,20 @@ import { verifyPassword, createStaffSessionToken, STAFF_COOKIE_NAME, STAFF_COOKI
 // pas, pour ne pas révéler par le timing de réponse qu'un email est inconnu.
 const DUMMY_HASH = '$2b$10$CwTycUXWue0Thq9StjUM0uJ8kn3.SIiF3rBpN9zfp1z/Ehk4xUuMS';
 
-const MAX_ATTEMPTS = 5;
+// Limitation des tentatives de connexion.
+//
+// Le réglage précédent — 5 échecs par compte sur 15 minutes — réunissait les
+// deux inconvénients. Trop strict d'abord : au fauteuil, la tablette est
+// partagée et une assistante qui se trompe cinq fois se retrouve bloquée un
+// quart d'heure en pleine consultation, sans aucun moyen de se débloquer. Et
+// inefficace ensuite, car le compteur ne portait que sur l'adresse saisie :
+// un balayage de mots de passe sur plusieurs comptes n'était jamais freiné,
+// il suffisait de changer d'email tous les quatre essais.
+//
+// On desserre donc la contrainte sur le compte légitime et on ajoute un
+// plafond par poste, qui est ce qui arrête réellement un balayage.
+const MAX_ATTEMPTS = 10;
+const MAX_ATTEMPTS_IP = 30;
 const WINDOW_MINUTES = 15;
 
 async function getClientIp() {
@@ -49,13 +62,46 @@ export async function signIn(_prevState: { error: string | null }, formData: For
 
   const ip = await getClientIp();
 
-  const recentFailures = await sql`
-    select count(*) as count from login_attempts
+  // Seuls les échecs POSTÉRIEURS à la dernière connexion réussie comptent.
+  // Sans cela, quatre erreurs de frappe suivies d'une connexion réussie
+  // laissaient le compteur chargé un quart d'heure : la connexion suivante
+  // pouvait être refusée alors qu'on venait de prouver qu'on avait le bon
+  // mot de passe.
+  const echecsCompte = await sql`
+    select count(*) as count,
+           max(created_at) as dernier
+    from login_attempts
     where email = ${email} and success = false
       and created_at > now() - make_interval(mins => ${WINDOW_MINUTES})
+      and created_at > coalesce(
+        (select max(created_at) from login_attempts
+          where email = ${email} and success = true),
+        'epoch'::timestamptz
+      )
   `;
-  if (Number(recentFailures[0]?.count || 0) >= MAX_ATTEMPTS) {
-    return { error: 'Trop de tentatives. Réessayez dans quelques minutes.' };
+
+  const echecsPoste = await sql`
+    select count(*) as count, max(created_at) as dernier
+    from login_attempts
+    where ip = ${ip} and success = false
+      and created_at > now() - make_interval(mins => ${WINDOW_MINUTES})
+  `;
+
+  const bloque =
+    Number(echecsCompte[0]?.count || 0) >= MAX_ATTEMPTS
+      ? echecsCompte[0]?.dernier
+      : Number(echecsPoste[0]?.count || 0) >= MAX_ATTEMPTS_IP && ip !== 'unknown'
+        ? echecsPoste[0]?.dernier
+        : null;
+
+  if (bloque) {
+    // Dire l'attente restante : « réessayez dans quelques minutes » laissait
+    // le comptoir recliquer en boucle sans savoir quand cela rouvrirait.
+    const finBlocage = new Date(new Date(bloque as string).getTime() + WINDOW_MINUTES * 60_000);
+    const minutes = Math.max(1, Math.ceil((finBlocage.getTime() - Date.now()) / 60_000));
+    return {
+      error: `Trop de tentatives infructueuses. Réessayez dans ${minutes} minute${minutes > 1 ? 's' : ''}, ou demandez à un administrateur de réinitialiser ce mot de passe.`,
+    };
   }
 
   const rows = await sql`
