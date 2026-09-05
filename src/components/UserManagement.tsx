@@ -48,6 +48,27 @@ export function UserManagement() {
   const [inviting, setInviting] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [activiteDe, setActiviteDe] = useState<string | null>(null);
+  // Réinitialisation du mot de passe d'un collaborateur. Rien ne le permettait :
+  // un oubli faisait perdre définitivement l'accès au compte, le seul recours
+  // étant une intervention directe en base de données.
+  const [reinitialise, setReinitialise] = useState<{ nom: string; motDePasse: string } | null>(null);
+  const [reinitEnCours, setReinitEnCours] = useState<string | null>(null);
+
+  const reinitialiserMotDePasse = async (id: string, nom: string) => {
+    if (!window.confirm(`Réinitialiser le mot de passe de ${nom} ? L'ancien cessera immédiatement de fonctionner.`)) return;
+    setReinitEnCours(id);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`/api/admin/users/${id}/reset-password`, { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Réinitialisation impossible.");
+      setReinitialise({ nom, motDePasse: d.motDePasseTemporaire });
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setReinitEnCours(null);
+    }
+  };
 
   const loadAll = async () => {
     setLoading(true);
@@ -230,6 +251,13 @@ export function UserManagement() {
                         Historique
                       </button>
                       <button
+                        onClick={() => reinitialiserMotDePasse(user.id, user.full_name)}
+                        disabled={reinitEnCours === user.id}
+                        className="px-2 py-1 text-[9px] font-bold uppercase text-amber-700 hover:text-white hover:bg-amber-600 rounded transition-colors border border-amber-200 disabled:opacity-40"
+                      >
+                        {reinitEnCours === user.id ? "…" : "Mot de passe"}
+                      </button>
+                      <button
                         onClick={() => updateUser(user.id, { isActive: !user.is_active })}
                         className="px-2 py-1 text-[9px] font-bold uppercase text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors border border-slate-200"
                       >
@@ -300,6 +328,31 @@ export function UserManagement() {
                 Un mot de passe temporaire sera généré — communiquez-le au collaborateur, il pourra le changer ensuite.
               </p>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Mot de passe réinitialisé : affiché une seule fois, à l'administrateur
+          qui l'a demandé, pour qu'il le remette en main propre. Il n'est ni
+          stocké en clair ni envoyé par un canal quelconque. */}
+      {reinitialise && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 text-center space-y-4">
+            <Lock className="h-10 w-10 text-amber-500 mx-auto" />
+            <h3 className="text-sm font-black text-slate-900 uppercase">Mot de passe réinitialisé</h3>
+            <p className="text-xs text-slate-500">
+              Nouveau mot de passe de <strong>{reinitialise.nom}</strong> — remettez-le lui en
+              main propre, il ne sera plus affiché.
+            </p>
+            <p className="font-mono text-lg font-black tracking-widest bg-slate-100 border border-slate-200 rounded py-3">
+              {reinitialise.motDePasse}
+            </p>
+            <button
+              onClick={() => setReinitialise(null)}
+              className="w-full py-2 rounded bg-slate-900 hover:bg-black text-white text-[10px] font-black uppercase tracking-widest transition-colors"
+            >
+              J&apos;ai noté le mot de passe
+            </button>
           </div>
         </div>
       )}

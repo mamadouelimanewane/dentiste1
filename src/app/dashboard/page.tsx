@@ -15,6 +15,7 @@ import { Teleconsultation } from "@/components/Teleconsultation";
 import { VoiceDictation } from "@/components/VoiceDictation";
 import { AgendaModule } from "@/components/AgendaModule";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { ChangerMotDePasse } from "@/components/ChangerMotDePasse";
 import { AiRadioLab } from "@/components/AiRadioLab";
 import { SmileDesignStudio } from "@/components/SmileDesignStudio";
 import { ProstheticsLab } from "@/components/ProstheticsLab";
@@ -401,6 +402,9 @@ export default function Home() {
               <LayoutGrid className="h-4 w-4" />
             </button>
             <ThemeSwitcher compact />
+            {/* Changer son mot de passe : la fonction n'existait pas, alors que
+                l'écran de création de compte la promettait. */}
+            <ChangerMotDePasse />
             <button
               onClick={signOut}
               title="Déconnexion"
