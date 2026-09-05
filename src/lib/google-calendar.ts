@@ -15,6 +15,23 @@ export interface CalendarEventParams {
 }
 
 /**
+ * Échappe une valeur destinée à un champ iCalendar (RFC 5545).
+ *
+ * Un patient saisit lui-même son nom lors d'une prise de rendez-vous en ligne.
+ * Sans échappement, un nom contenant un retour à la ligne referme le champ
+ * SUMMARY et laisse écrire des propriétés arbitraires dans l'agenda que le
+ * cabinet importe : faux événements, ou flux illisible. Les caractères
+ * « \ », « ; » et « , » ont eux aussi un sens dans le format.
+ */
+export function echapperIcal(valeur: unknown): string {
+  return String(valeur ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r\n|\r|\n/g, '\\n');
+}
+
+/**
  * Formate une date au format ISO compact requis par Google Calendar (YYYYMMDDTHHmmssZ)
  */
 export function formatToGoogleCalendarDate(dateInput: string | Date): string {

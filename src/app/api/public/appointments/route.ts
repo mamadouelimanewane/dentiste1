@@ -24,9 +24,12 @@ function normalizePhone(raw: string) {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    const patientName = String(data?.patientName || '').trim();
+    // Les sauts de ligne et tabulations n'ont aucun sens dans un nom, mais en
+    // ont dans les formats que ce nom traverse ensuite (iCalendar, CSV) : on
+    // les neutralise à l'entrée, en plus de l'échappement à la sortie.
+    const patientName = String(data?.patientName || '').replace(/\s+/g, ' ').trim();
     const rawPhone = String(data?.phone || '').trim();
-    const reason = String(data?.reason || '').trim() || 'Consultation générale';
+    const reason = String(data?.reason || '').replace(/\s+/g, ' ').trim() || 'Consultation générale';
     const scheduledAtRaw = String(data?.scheduledAt || '');
 
     if (!patientName || !rawPhone || !scheduledAtRaw) {

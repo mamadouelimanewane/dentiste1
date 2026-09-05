@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { requirePermission } from "@/lib/permissions";
-import { formatToGoogleCalendarDate } from "@/lib/google-calendar";
+import { echapperIcal, formatToGoogleCalendarDate } from "@/lib/google-calendar";
 
 // Flux iCal toujours calculé à la demande : la route lit request.url et doit
 // refléter l'agenda en temps réel, jamais une version figée au build.
@@ -62,8 +62,13 @@ export async function GET(req: Request) {
 
       const startStr = formatToGoogleCalendarDate(startDate);
       const endStr = formatToGoogleCalendarDate(endDate);
-      const title = `RDV Dentaire - ${app.patient_name || 'Patient'} (${app.type || 'Consultation'})`;
-      const description = `Praticien: ${app.practitioner_name || 'Dr.'}\\nStatut: ${app.status}\\nCabinet Dentaire du Cap Vert`;
+      // Le nom du patient vient parfois d'une saisie publique (prise de RDV
+      // en ligne) : il est échappé avant d'entrer dans le flux, sinon un
+      // retour à la ligne y injecterait des propriétés iCalendar arbitraires.
+      const title = echapperIcal(`RDV Dentaire - ${app.patient_name || 'Patient'} (${app.type || 'Consultation'})`);
+      const description = echapperIcal(
+        `Praticien: ${app.practitioner_name || 'Dr.'}\nStatut: ${app.status}\nCabinet Dentaire du Cap Vert`
+      );
 
       return [
         "BEGIN:VEVENT",
