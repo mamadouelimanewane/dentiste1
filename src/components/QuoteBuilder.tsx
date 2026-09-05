@@ -206,7 +206,8 @@ export function QuoteBuilder() {
                     {saving ? "Enregistrement..." : saved ? "Devis Enregistré" : "Enregistrer"}
                   </button>
                   <PDFDownloadLink
-                    document={<QuotePDF items={selected.map(i => ({ label: i.label, qty: i.qty, price: prixLigne(i) }))} total={total} patientName={currentPatient?.name || "Patient non sélectionné"} signatureBase64={signatureData} />}
+                    document={<QuotePDF items={selected.map(i => ({ label: i.label, qty: i.qty, price: prixLigne(i) }))}
+                    baseTarifaire={{ nom: nomBase, valeurD }} total={total} patientName={currentPatient?.name || "Patient non sélectionné"} signatureBase64={signatureData} />}
                     fileName={`devis_${new Date().getTime()}.pdf`}
                   >
                     {/* @ts-ignore */}

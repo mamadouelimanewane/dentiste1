@@ -52,13 +52,19 @@ const styles = StyleSheet.create({
 });
 
 interface QuotePDFProps {
+  // Base tarifaire appliquée : le prix de chaque acte est une cotation
+  // multipliée par la valeur de la lettre-clé D, laquelle dépend de la
+  // convention. Sans cette mention, un devis présenté au patient ne permet
+  // pas de vérifier d'où viennent ses montants — ni de comprendre, des mois
+  // plus tard, pourquoi le même acte a été chiffré autrement.
+  baseTarifaire?: { nom: string; valeurD: number } | null;
   items: { label: string; qty: number; price: number }[];
   total: number;
   patientName: string;
   signatureBase64?: string | null;
 }
 
-export const QuotePDF = ({ items, total, patientName, signatureBase64 }: QuotePDFProps) => (
+export const QuotePDF = ({ items, total, patientName, signatureBase64, baseTarifaire }: QuotePDFProps) => (
   <Document>
     <Page size="A4" style={styles.page}>
       {/* Header Premium */}
