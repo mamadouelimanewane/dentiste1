@@ -219,6 +219,8 @@ export function AgendaModule() {
   // d'un report. Affiché après fermeture de la fiche, puisque c'est le
   // moment où l'assistante se demande si le patient est au courant.
   const [notifAnnulation, setNotifAnnulation] = useState<string | null>(null);
+  // Distingue « aucun rendez-vous » de « je n'ai pas pu les charger ».
+  const [chargeErreur, setChargeErreur] = useState<string | null>(null);
   const grilleRef = useRef<HTMLDivElement>(null);
   // Mémorise la vue déjà recadrée, pour ne pas repositionner la grille sous
   // les doigts de l'utilisateur à chaque rechargement des rendez-vous.
@@ -293,7 +295,17 @@ export function AgendaModule() {
       if (selectedPractitioner !== "all") params.set("practitionerId", selectedPractitioner);
       const res = await fetch(`/api/appointments?${params}`);
       const data = await res.json();
-      if (res.ok) setAppointments(data.appointments);
+      if (res.ok) {
+        setAppointments(data.appointments);
+        setChargeErreur(null);
+      } else {
+        // Un échec de chargement vidait la grille : l'écran annonçait alors
+        // « aucun rendez-vous » à un cabinet qui en avait. Le personnel
+        // pouvait croire la journée libre.
+        setChargeErreur(data.error || "Impossible de charger les rendez-vous. La grille peut être incomplète.");
+      }
+    } catch {
+      setChargeErreur("Réseau indisponible : la grille peut être incomplète.");
     } finally {
       setLoading(false);
     }
@@ -494,6 +506,13 @@ export function AgendaModule() {
       "animate-in fade-in duration-500",
       isFullscreen ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-4 sm:p-6 overflow-y-auto flex flex-col space-y-6" : "space-y-6"
     )}>
+      {chargeErreur && (
+        <div className="flex items-start gap-2 rounded-sm border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          {chargeErreur}
+        </div>
+      )}
+
       {/* Sort du patient après une annulation ou un report : a-t-il été
           prévenu, et par quel moyen ? */}
       {notifAnnulation && (

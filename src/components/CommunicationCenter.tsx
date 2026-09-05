@@ -77,6 +77,7 @@ export function CommunicationCenter() {
   // c'est l'écran du matin de l'assistante.
   const [fileEnvoi, setFileEnvoi] = useState<Envoi[]>([]);
   const [vueFile, setVueFile] = useState(false);
+  const [fileErreur, setFileErreur] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadThreads = useCallback(() => {
@@ -126,9 +127,18 @@ export function CommunicationCenter() {
 
   const chargerFile = useCallback(() => {
     fetch("/api/messages/a-envoyer")
-      .then((r) => (r.ok ? r.json() : { envois: [] }))
-      .then((d) => setFileEnvoi(d.envois || []))
-      .catch(() => setFileEnvoi([]));
+      .then((r) => {
+        if (!r.ok) throw new Error("file indisponible");
+        return r.json();
+      })
+      .then((d) => {
+        setFileEnvoi(d.envois || []);
+        setFileErreur(null);
+      })
+      // Vider la file sur erreur reviendrait à annoncer « rien à envoyer » :
+      // l'assistante passerait à autre chose et les patients ne seraient pas
+      // prévenus. On garde la dernière liste connue et on le dit.
+      .catch(() => setFileErreur("File d'envoi non chargée — rechargez avant de conclure qu'il n'y a rien à envoyer."));
   }, []);
 
   useEffect(() => {
@@ -274,6 +284,12 @@ export function CommunicationCenter() {
           {/* File d'envoi. Les rappels de la nuit atterrissent ici : sans cet
               accès visible, ils resteraient en base sans que personne ne
               sache qu'il y a quelque chose à envoyer. */}
+          {fileErreur && (
+            <p className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] font-bold text-rose-800">
+              <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+              {fileErreur}
+            </p>
+          )}
           {fileEnvoi.length > 0 && (
             <button
               onClick={() => {

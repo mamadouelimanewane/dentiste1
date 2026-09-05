@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { CreditCard, Banknote, Shield, Smartphone, Download, CheckCircle2, Receipt, FileText } from "lucide-react";
+import { CreditCard, Banknote, Shield, Smartphone, Download, CheckCircle2, Receipt, FileText , ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
 import dynamic from "next/dynamic";
@@ -48,12 +48,25 @@ export function BillingManager() {
   const [pendingInvoices, setPendingInvoices] = useState<PendingInvoice[]>([]);
   const [allActs, setAllActs] = useState<(ExecutedAct & { invoice_id: string | null })[]>([]);
   const [settlingId, setSettlingId] = useState<string | null>(null);
+  // Distingue « rien à facturer » de « je n'ai pas pu charger ».
+  const [chargeErreur, setChargeErreur] = useState<string | null>(null);
 
   const loadActs = useCallback(async () => {
     if (!currentPatient) return;
-    const res = await fetch(`/api/executed-acts?patientId=${currentPatient.id}&unbilled=true`);
-    const data = await res.json();
-    if (res.ok) setExecutedActs(data.acts);
+    try {
+      const res = await fetch(`/api/executed-acts?patientId=${currentPatient.id}&unbilled=true`);
+      const data = await res.json();
+      if (res.ok) {
+        setExecutedActs(data.acts);
+        setChargeErreur(null);
+      } else {
+        // Sans ce message, un échec affichait « Régler 0 FCFA » : la séance
+        // paraissait déjà facturée et le cabinet ne l'encaissait jamais.
+        setChargeErreur(data.error || "Impossible de charger les actes à facturer. N'encaissez pas sur cet écran tant qu'il n'est pas rechargé.");
+      }
+    } catch {
+      setChargeErreur("Réseau indisponible : les actes à facturer n'ont pas pu être chargés.");
+    }
   }, [currentPatient]);
 
   // Historique complet des factures du patient. Sans cela : (1) un patient
@@ -207,6 +220,13 @@ export function BillingManager() {
 
   return (
     <div className="space-y-6">
+    {chargeErreur && (
+      <div className="flex items-start gap-2 rounded-sm border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
+        <ShieldAlert className="h-4 w-4 flex-shrink-0 mt-0.5" />
+        {chargeErreur}
+      </div>
+    )}
+
     {/* Factures émises non soldées : permet d'encaisser un patient qui
         revient payer après coup, cas impossible auparavant. */}
     {pendingInvoices.length > 0 && (

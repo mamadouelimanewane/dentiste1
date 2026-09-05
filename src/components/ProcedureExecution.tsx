@@ -26,12 +26,26 @@ export function ProcedureExecution() {
   const [executedActs, setExecutedActs] = useState<ExecutedAct[]>([]);
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
   const [historyActs, setHistoryActs] = useState<ExecutedAct[]>([]);
+  // Un échec de chargement affichait « Aucun acte saisi » — indiscernable
+  // d'un dossier vierge. Le praticien pouvait conclure qu'aucun soin n'avait
+  // été enregistré et ressaisir toute la séance.
+  const [chargement, setChargement] = useState(true);
+  const [erreur, setErreur] = useState<string | null>(null);
 
   const loadActs = useCallback(async () => {
     if (!currentPatient) return;
-    const res = await fetch(`/api/executed-acts?patientId=${currentPatient.id}&unbilled=true`);
-    const data = await res.json();
-    if (res.ok) setExecutedActs(data.acts);
+    setChargement(true);
+    try {
+      const res = await fetch(`/api/executed-acts?patientId=${currentPatient.id}&unbilled=true`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Chargement des actes impossible.");
+      setExecutedActs(data.acts);
+      setErreur(null);
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "Chargement des actes impossible.");
+    } finally {
+      setChargement(false);
+    }
   }, [currentPatient]);
 
   // Historique complet (y compris les actes déjà facturés) : sert à colorer
@@ -39,9 +53,17 @@ export function ProcedureExecution() {
   // dents s'affichaient comme saines quel que soit le passé du patient.
   const loadHistory = useCallback(async () => {
     if (!currentPatient) return;
-    const res = await fetch(`/api/executed-acts?patientId=${currentPatient.id}`);
-    const data = await res.json();
-    if (res.ok) setHistoryActs(data.acts || []);
+    try {
+      const res = await fetch(`/api/executed-acts?patientId=${currentPatient.id}`);
+      const data = await res.json();
+      if (res.ok) setHistoryActs(data.acts || []);
+      // L'odontogramme se colore à partir de cet historique : s'il n'arrive
+      // pas, les dents s'affichent saines. Le message d'erreur ci-dessus
+      // prévient que l'écran n'est pas à jour.
+      else setErreur(data.error || "Historique indisponible : l'odontogramme peut être incomplet.");
+    } catch {
+      setErreur("Historique indisponible : l'odontogramme peut être incomplet.");
+    }
   }, [currentPatient]);
 
   useEffect(() => {
@@ -80,12 +102,31 @@ export function ProcedureExecution() {
         price: procedure.price || 0,
       }),
     });
-    if (res.ok) loadActs();
+    // Un échec restait muet : l'acte n'apparaissait pas et le praticien
+    // recliquait sans comprendre, au risque de l'enregistrer deux fois.
+    if (res.ok) {
+      setErreur(null);
+      loadActs();
+      loadHistory();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setErreur(d.error || "L'acte n'a pas été enregistré.");
+    }
   };
 
-  const removeAct = async (id: string) => {
-    await fetch(`/api/executed-acts/${id}`, { method: "DELETE" });
-    loadActs();
+  const removeAct = async (id: string, label: string) => {
+    // Retirer un acte réalisé est un geste sur le dossier de soins, pas un
+    // détail d'interface : il se confirme, et son échec se dit.
+    if (!window.confirm(`Retirer « ${label} » de la séance ?`)) return;
+    const res = await fetch(`/api/executed-acts/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setErreur(null);
+      loadActs();
+      loadHistory();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setErreur(d.error || "L'acte n'a pas pu être retiré.");
+    }
   };
 
   const toggleTooth = (tooth: number) => {
@@ -110,6 +151,13 @@ export function ProcedureExecution() {
 
   return (
     <div className="space-y-6">
+      {erreur && (
+        <div className="flex items-start gap-2 text-xs font-bold text-rose-800 bg-rose-50 border border-rose-200 rounded-sm p-3">
+          <ShieldCheck className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span>{erreur}</span>
+        </div>
+      )}
+
       {/* ODONTOGRAMME VISUEL */}
       <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
         <div className="bg-[#1E3A8A] p-4 text-white flex justify-between items-center">
@@ -168,7 +216,11 @@ export function ProcedureExecution() {
              <span className="text-xs font-black">{total.toLocaleString()} FCFA</span>
           </div>
           <div className="flex-1 overflow-y-auto max-h-[400px] p-4">
-            {executedActs.length === 0 ? (
+            {chargement ? (
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400 text-center py-10">
+                Chargement…
+              </p>
+            ) : executedActs.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-3 opacity-30 py-10">
                 <Activity className="h-10 w-10" />
                 <p className="text-xs font-bold uppercase tracking-widest">Aucun acte saisi</p>
@@ -193,8 +245,11 @@ export function ProcedureExecution() {
                     <div className="text-right">
                       <p className="text-[10px] font-black text-slate-900">{Number(act.price).toLocaleString()}</p>
                       <button
-                        onClick={() => removeAct(act.id)}
-                        className="text-[9px] font-bold text-rose-500 uppercase hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => removeAct(act.id, act.label)}
+                        // Le bouton n'apparaissait qu'au survol : sur une
+                        // tablette au fauteuil, sans survol, il était
+                        // inatteignable.
+                        className="text-[9px] font-bold text-rose-500 uppercase hover:underline"
                       >
                         Retirer
                       </button>
