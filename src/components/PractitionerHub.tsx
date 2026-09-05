@@ -232,7 +232,7 @@ export function PractitionerHub({ onNavigate }: { onNavigate?: (stepId: number) 
                     <Calendar className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-black uppercase tracking-tight">Agenda du Jour</h2>
+                    <h2 className="text-lg font-black uppercase tracking-tight">Rendez-vous d&apos;aujourd&apos;hui</h2>
                     <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mt-0.5">
                       {active.length} Patient{active.length > 1 ? "s" : ""} Prévu{active.length > 1 ? "s" : ""}
                     </p>

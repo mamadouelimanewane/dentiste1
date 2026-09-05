@@ -300,10 +300,15 @@ export function PrescriptionEditor() {
                       <p>QSP : {med.duration}</p>
                       <p className="italic">{med.posology}</p>
                     </div>
-                    {/* Delete button (only visible in UI, would not print) */}
-                    <button 
+                    {/* Retrait d'une ligne. Le bouton n'apparaissait qu'au
+                        survol : sur une tablette, un praticien ayant saisi le
+                        mauvais médicament ne pouvait pas le retirer de
+                        l'ordonnance. Toujours visible à l'écran, jamais
+                        imprimé (print:hidden). */}
+                    <button
                       onClick={() => removeMed(med.id)}
-                      className="absolute right-0 top-2 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 bg-red-50 p-1.5 rounded-full print:hidden transition-opacity"
+                      title={`Retirer ${med.name} de l'ordonnance`}
+                      className="absolute right-0 top-2 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded-full print:hidden transition-colors"
                     >
                       X
                     </button>

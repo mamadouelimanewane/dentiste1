@@ -295,9 +295,15 @@ export function InsuranceManager() {
          <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 flex-shrink-0">
             <FileText className="h-6 w-6" />
          </div>
+         {/* Annonçait un module « à venir dans une prochaine mise à jour »
+             alors que rien n'est engagé. Une promesse sans date ni plan est
+             une dette affichée au cabinet à chaque ouverture de l'écran. */}
          <div>
-            <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Conventions Nationales</h4>
-            <p className="text-xs text-blue-700 font-medium">Module de gestion des conventions à venir dans une prochaine mise à jour.</p>
+            <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight">Conventions</h4>
+            <p className="text-xs text-blue-700 font-medium">
+              Les taux de prise en charge se saisissent au cas par cas sur chaque facture.
+              Aucun barème de convention n&apos;est enregistré dans le logiciel.
+            </p>
          </div>
       </div>
     </div>

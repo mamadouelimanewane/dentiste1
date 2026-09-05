@@ -708,9 +708,15 @@ export function AdminHub() {
               <div className="h-20 w-20 bg-white rounded-full shadow-sm flex items-center justify-center border border-slate-200 mb-6">
                 <Building className="h-10 w-10 text-blue-500" />
               </div>
-              <h3 className="text-xl font-black uppercase tracking-widest text-slate-900 mb-2">Module en cours d'intégration</h3>
+              {/* Annonçait « L'infrastructure backend est prête, l'interface
+                  sera déployée en v1.4 ». Aucune table ni route n'existe pour
+                  le multi-sites, et l'application EST déjà en v1.4 : la
+                  promesse était doublement fausse. */}
+              <h3 className="text-xl font-black uppercase tracking-widest text-slate-900 mb-2">Fonction non développée</h3>
               <p className="text-sm font-medium text-slate-500 max-w-md">
-                L'infrastructure backend pour {tabLabels[activeTab]} est prête. L'interface utilisateur de ce composant sera déployée dans la prochaine mise à jour (v1.4).
+                La gestion multi-sites n&apos;existe pas dans ce logiciel : ni écran, ni
+                données. Ce cabinet est géré comme un site unique. Aucune date n&apos;est
+                promise — dites-le nous si le besoin devient réel.
               </p>
             </div>
           )}
