@@ -30,6 +30,16 @@ export function MedicalQuestionnaire() {
   const { currentPatient } = usePatient();
   const [answers, setAnswers] = useState<Record<string, boolean>>({});
   const [notes, setNotes] = useState("");
+  // Allergies : LESQUELLES.
+  //
+  // Le questionnaire ne posait qu'une case à cocher « Allergies (Anesthésie,
+  // Antibiotiques...) », sans jamais demander de quoi il s'agissait. Le
+  // dossier portait alors la vigilance « Allergie déclarée », mais le champ
+  // texte `allergies` — celui que lit le rappel de l'ordonnance — restait
+  // vide. Résultat : prescrire de l'Amoxicilline à un patient déclaré
+  // allergique aux pénicillines ne déclenchait rien. Le silence du rappel
+  // était garanti par l'écran censé le nourrir.
+  const [allergies, setAllergies] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,8 +62,13 @@ export function MedicalQuestionnaire() {
       // sans antécédent.
       if (!res.ok) throw new Error(data?.error || "Antécédents non relus.");
       const hist: MedicalHistory | null = data?.patient?.medical_history || null;
-      setAnswers(hist?.answers || {});
+      const allergiesDossier = String(data?.patient?.allergies || "").trim();
+      // La case suit le dossier : des allergies saisies ailleurs (fiche
+      // patient) la cochent d'office. Sans cela, enregistrer le questionnaire
+      // sans y toucher aurait effacé les allergies déjà connues.
+      setAnswers({ ...(hist?.answers || {}), ...(allergiesDossier ? { allergy: true } : {}) });
       setNotes(hist?.notes || "");
+      setAllergies(allergiesDossier);
       setLastUpdate(hist?.updatedAt || null);
       setRelu(true);
     } catch {
@@ -97,6 +112,9 @@ export function MedicalQuestionnaire() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           medical_history: { answers, notes, updatedAt: new Date().toISOString() },
+          // Enregistré sur le champ `allergies` du dossier, le seul que lisent
+          // le bandeau du patient actif et le rappel de l'ordonnance.
+          allergies: answers.allergy ? allergies.trim() : "",
         }),
       });
       const data = await res.json();
@@ -180,6 +198,32 @@ export function MedicalQuestionnaire() {
             </div>
           ))}
         </div>
+
+        {/* Ce champ conditionne le rappel affiché à la prescription : sans
+            lui, cocher « Allergies » ne protège de rien. */}
+        {answers.allergy && (
+          <div className="space-y-2 rounded-sm border-2 border-rose-200 bg-rose-50 p-4 mt-4">
+            <label className="text-sm font-black text-rose-900 uppercase tracking-tight">
+              Allergies — lesquelles ?
+            </label>
+            <input
+              type="text"
+              value={allergies}
+              onChange={(e) => { setAllergies(e.target.value); setSaved(false); }}
+              placeholder="Ex : pénicilline, AINS, latex, iode…"
+              className="w-full bg-white border border-rose-200 rounded p-3 text-sm font-bold text-slate-900 outline-none focus:border-rose-500"
+            />
+            <p className="text-[10px] font-bold text-rose-800 leading-relaxed">
+              Écrivez la substance, pas seulement « oui ». C&apos;est ce texte qui apparaît sur le
+              bandeau du patient et qui déclenche le rappel au moment de prescrire.
+            </p>
+            {!allergies.trim() && (
+              <p className="text-[10px] font-black uppercase tracking-widest text-rose-700">
+                Non renseigné : aucun rappel ne sera affiché à l&apos;ordonnance.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="space-y-2 border-b-2 border-blue-100 pb-3 mt-8">
           <label className="text-sm font-black text-blue-900 uppercase tracking-tight ml-1">
