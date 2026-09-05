@@ -307,18 +307,18 @@ export function NeuralAssistant() {
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "BILLING", content: cleanText, suggestion: "Ouvrir caisse & générer reçu", status: "pending" }, ...p]);
 
       } else if (/wave|orange money|free money|mobile money|paiement mobile|m-pesa|wizall|wari/.test(L)) {
-        botResponse = "Paiement Mobile Money accepté. Numéros : Wave (+221 77 XXX XX XX) · Orange Money (+221 77 XXX XX XX) · Free Money (+221 76 XXX XX XX). Reçu généré automatiquement.";
+        botResponse = "Je ne connais aucun numéro Mobile Money de ce cabinet — ceux qui figuraient ici étaient des exemples (« 77 XXX XX XX »), à ne jamais dicter à un patient. Encaissez depuis Facturation, qui génère le lien de paiement réel.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "BILLING", content: cleanText, suggestion: "Enregistrer paiement Mobile Money", status: "pending" }, ...p]);
 
       } else if (/virement|banque|chèque|cheque|carte bancaire|visa|mastercard|crédit|credit|débit|debit/.test(L)) {
-        botResponse = "Paiement bancaire noté. RIB : SGBS — IBAN SN XX XXXX XXXX XXXX. Chèque à l'ordre du Cabinet Dentaire Elite. Délai d'encaissement : 48h ouvrés.";
+        botResponse = "Je ne connais pas les coordonnées bancaires de ce cabinet — l'IBAN qui figurait ici était un exemple. Ne communiquez aucun RIB depuis cet assistant : demandez-le à la direction.";
 
       } else if (/devis|estimation|coût du traitement|cout|combien coûte|combien ça coûte|tarification|grille tarifaire|prix/.test(L)) {
         botResponse = "Je ne connais pas les tarifs de ce cabinet. Le catalogue réel est dans Devis et dans le Catalogue des actes ; établissez le devis à partir de là.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "BILLING", content: cleanText, suggestion: "Générer devis personnalisé", status: "pending" }, ...p]);
 
       } else if (/assurance|mutuelle|ipm|ipres|css|ram|sante|prise en charge|remboursement|tiers payant|ticket modérateur|assurance scolaire/.test(L)) {
-        botResponse = "Assurances acceptées : IPM, IPRES, CSS, RAM, mutuelles de santé et scolaires. Le ticket modérateur est applicable selon la couverture. Tiers payant possible.";
+        botResponse = "Je ne sais pas quelles mutuelles ce cabinet a conventionnées : cette liste n'existe nulle part dans le logiciel. Vérifiez auprès de la direction, puis enregistrez la prise en charge depuis Facturation.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "BILLING", content: cleanText, suggestion: "Ouvrir module Mutuelles", status: "pending" }, ...p]);
 
       } else if (/échelonner|echelonner|paiement en plusieurs fois|en deux fois|en trois fois|mensualité|mensualite|facilité de paiement|crédit dentaire/.test(L)) {
@@ -351,7 +351,7 @@ export function NeuralAssistant() {
       } else if (/rendez-vous|rdv|consulter|consultation|prendre rdv|appointment|programmer|planifier|réserver|reserver/.test(L)) {
         const t = L.match(/(\d{1,2})\s*h/); const time = t ? `${t[1]}h00` : "10h00";
         const day = /demain/.test(L) ? "demain" : /lundi/.test(L) ? "lundi" : /mardi/.test(L) ? "mardi" : /mercredi/.test(L) ? "mercredi" : /jeudi/.test(L) ? "jeudi" : /vendredi/.test(L) ? "vendredi" : /samedi/.test(L) ? "samedi" : "prochainement";
-        botResponse = `RDV enregistré pour ${day} à ${time}. Rappel SMS/WhatsApp envoyé au patient 24h avant.`;
+        botResponse = `Aucun rendez-vous n'a été créé et aucun rappel n'a été envoyé : cet assistant n'écrit pas dans l'agenda. Notez « ${day} à ${time} » et créez le rendez-vous depuis l'Agenda — le rappel part alors 24 h avant.`;
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RDV", content: cleanText, suggestion: `Créer RDV ${day} à ${time} + rappel auto`, status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
@@ -376,7 +376,7 @@ export function NeuralAssistant() {
       // 🧘 GESTION DU STRESS & BIEN-ÊTRE PRATICIEN
       // ═══════════════════════════════════════════════════════════
       } else if (/je suis fatigué|fatigué|journée difficile|burnout|besoin d'une pause|trop de patients|stresser/.test(L)) {
-        botResponse = "Docteur, votre santé mentale est la priorité. Je bloque les prochains créneaux d'urgence et j'active le mode 'Consultation Zen' (musique d'ambiance et lumières douces).";
+        botResponse = "Rien n'a été bloqué dans l'agenda : cet assistant ne le modifie pas, et le cabinet n'a pas de commande d'ambiance. Si vous avez besoin de souffler, fermez les créneaux vous-même depuis l'Agenda.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "RDV", content: cleanText, suggestion: "Bloquer un créneau de pause (30min)", status: "pending", meta: { priority: "URGENT" } }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
@@ -398,7 +398,7 @@ export function NeuralAssistant() {
       // 🚗 LOGISTIQUE, ACCÈS & CONFORT
       // ═══════════════════════════════════════════════════════════
       } else if (/embouteillage|bouchon|vdn|retard|taxi|ne trouve pas|parking|se garer|wifi|code wifi|en bas|ascenseur|fauteuil roulant/.test(L)) {
-        botResponse = "Message logistique reçu. Le secrétariat est prévenu de votre situation. Nous adaptons l'agenda en conséquence. Lien GPS ou code Wi-Fi disponible à l'accueil.";
+        botResponse = "Personne n'a été prévenu : cet assistant n'envoie aucun message et ne touche pas à l'agenda. Prévenez l'accueil directement, ou reportez le rendez-vous depuis l'Agenda.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "WHATSAPP", content: cleanText, suggestion: "Envoyer localisation GPS / Instructions d'accès", status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
@@ -413,7 +413,7 @@ export function NeuralAssistant() {
       // ⚠️ SITUATIONS MÉDICALES SPÉCIALES (ANAMNÈSE)
       // ═══════════════════════════════════════════════════════════
       } else if (/enceinte|j'allaite|grossesse|diabète|diabétique|diabetique|hypertension|anticoagulant|aspegic|sintrom|cardiaque|asthme|asthmatique/.test(L)) {
-        botResponse = "Anamnèse médicale critique mise à jour. Les protocoles de soins (anesthésie, radios, prescriptions) seront adaptés à ce contexte médical spécifique.";
+        botResponse = "Rien n'a été écrit au dossier : cet assistant ne met pas l'anamnèse à jour, et aucun protocole ne s'adapte tout seul. Reportez cette information dans le Questionnaire médical du patient — c'est elle qui déclenche les rappels d'allergie à l'ordonnance.";
         setChatHistory((p) => [...p, { role: "bot", text: "ALERTE MÉDICALE : Vérifier l'INR (si anticoagulants), l'HbA1c (si diabète), éviter les AINS (si grossesse/asthme). Adapter l'anesthésie (sans adrénaline si besoin).", type: "insight" }]);
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "PATIENT", content: cleanText, suggestion: "Mettre à jour le dossier médical (ALERTE ROUGE)", status: "pending", meta: { priority: "URGENT" } }, ...p]);
 
@@ -440,7 +440,7 @@ export function NeuralAssistant() {
       // 💬 WHATSAPP & COMMUNICATION
       // ═══════════════════════════════════════════════════════════
       } else if (/whatsapp|message|sms|envoyer|notifier|rappel|confirmer rdv|annuler rdv|contact patient/.test(L)) {
-        botResponse = "Hub Communication ouvert. Mamadou Dia attend une confirmation pour mardi 10h. Dois-je valider et envoyer le rappel automatique ?";
+        botResponse = "Aucun message n'est parti d'ici. Les confirmations et rappels se préparent dans Communication, qui montre ce qui est réellement en attente d'envoi.";
         setCommandQueue((p) => [{ id: Date.now().toString(36), type: "WHATSAPP", content: cleanText, suggestion: "Envoyer confirmation WhatsApp + rappel SMS", status: "pending" }, ...p]);
 
       // ═══════════════════════════════════════════════════════════
