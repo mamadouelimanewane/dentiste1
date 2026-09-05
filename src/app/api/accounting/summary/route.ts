@@ -73,11 +73,12 @@ export async function GET(request: Request) {
         (coalesce(sum(total) filter (where status = 'paid'), 0)
          + coalesce(sum(part_reglee) filter (where status = 'pending'), 0))::numeric as encaissements,
         coalesce(sum(total) filter (where status = 'paid' and payment_method = 'cash'), 0)::numeric as caisse,
-        -- `<> 'cash'` n'était jamais vrai pour un moyen NULL : une facture
-        -- réglée sans moyen renseigné — ce que faisaient les notifications
-        -- mobile money — n'entrait NI en caisse NI en banque, tout en étant
-        -- comptée dans les encaissements. La trésorerie ne bouclait pas, et
-        -- rien ne signalait l'écart. `is distinct from` traite le NULL.
+        -- Un simple <> 'cash' n'est jamais vrai pour un moyen NULL : une
+        -- facture réglée sans moyen renseigné — ce que faisaient les
+        -- notifications mobile money — n'entrait NI en caisse NI en banque,
+        -- tout en étant comptée dans les encaissements. La trésorerie ne
+        -- bouclait pas, et rien ne signalait l'écart. IS DISTINCT FROM
+        -- traite le NULL correctement.
         (coalesce(sum(total) filter (where status = 'paid' and payment_method is distinct from 'cash'), 0)
          + coalesce(sum(part_reglee) filter (where status = 'pending'), 0))::numeric as banque,
         coalesce(sum(total) filter (where status = 'paid' and payment_method is null), 0)::numeric as sans_moyen,
