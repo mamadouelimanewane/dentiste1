@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Activity, Calendar, X, Pill, Stethoscope, Syringe, BookOpen, ChevronRight, BrainCircuit } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { usePatient } from "@/lib/context";
+import { usePatient, mapDbPatientToContext } from "@/lib/context";
 
 interface TodayAppointment {
   id: string;
@@ -42,6 +42,39 @@ export function PractitionerHub({ onNavigate }: { onNavigate?: (stepId: number) 
   }, []);
   const [todayAppointments, setTodayAppointments] = useState<TodayAppointment[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Ouverture d'un dossier depuis la liste du jour.
+  //
+  // Le dossier courant était fabriqué de toutes pièces : téléphone vide,
+  // référence « — », ni date de naissance, ni allergies, ni mutuelle. Pire,
+  // `apt.patient_id || apt.id` retombait sur l'identifiant du RENDEZ-VOUS
+  // quand le lien patient manquait : tout l'écran travaillait alors sur un
+  // dossier inexistant, listes vides comprises. Et le rappel d'allergie de
+  // l'ordonnance, qui lit ce champ, ne pouvait rien signaler.
+  const [ouvertureErreur, setOuvertureErreur] = useState<string | null>(null);
+
+  const ouvrirDossier = async (apt: TodayAppointment) => {
+    setOuvertureErreur(null);
+    if (!apt.patient_id) {
+      setOuvertureErreur(`Ce rendez-vous n'est rattaché à aucun dossier patient. Ouvrez-le depuis le répertoire.`);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/patients/${apt.patient_id}`);
+      const data = await res.json();
+      if (!res.ok || !data.patient) {
+        throw new Error(data.error || "Le dossier de ce patient n'a pas pu être ouvert.");
+      }
+      setCurrentPatient?.(mapDbPatientToContext(data.patient));
+      setIsAgendaOpen(false);
+    } catch (e) {
+      setOuvertureErreur(
+        e instanceof Error
+          ? `${e.message} N'ouvrez pas de soins tant que le dossier n'est pas chargé.`
+          : "Erreur inconnue."
+      );
+    }
+  };
 
   const loadToday = useCallback(async () => {
     const from = new Date();
@@ -248,6 +281,11 @@ export function PractitionerHub({ onNavigate }: { onNavigate?: (stepId: number) 
 
               {/* Modal Body */}
               <div className="p-6 overflow-y-auto space-y-3 flex-1">
+                 {ouvertureErreur && (
+                   <div className="rounded-sm border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
+                     {ouvertureErreur}
+                   </div>
+                 )}
                  {active.length === 0 ? (
                    <div className="flex flex-col items-center justify-center text-center py-12 gap-3">
                      <Stethoscope className="h-8 w-8 text-slate-300" />
@@ -262,19 +300,7 @@ export function PractitionerHub({ onNavigate }: { onNavigate?: (stepId: number) 
                        return (
                           <button
                             key={apt.id}
-                            onClick={() => {
-                              if (setCurrentPatient) {
-                                setCurrentPatient({
-                                  id: apt.patient_id || apt.id,
-                                  name: apt.patient_name,
-                                  phone: "",
-                                  idNumber: "—",
-                                  birthDate: "",
-                                  address: ""
-                                });
-                              }
-                              setIsAgendaOpen(false);
-                            }}
+                            onClick={() => ouvrirDossier(apt)}
                             className={cn(
                               "w-full text-left flex items-center p-4 border rounded-md gap-6 transition-all",
                               label === "En attente" ? "border-blue-300 bg-blue-50 shadow-sm hover:bg-blue-100 cursor-pointer" : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50 cursor-pointer"

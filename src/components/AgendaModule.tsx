@@ -9,7 +9,7 @@ import {
   Maximize2, Minimize2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { usePatient } from "@/lib/context";
+import { usePatient, mapDbPatientToContext } from "@/lib/context";
 import { motion, AnimatePresence } from "framer-motion";
 import { createGoogleCalendarUrl, downloadIcsFile } from "@/lib/google-calendar";
 
@@ -195,6 +195,43 @@ export function AgendaModule() {
   const [selectedPractitioner, setSelectedPractitioner] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Prise en charge depuis la salle d'attente.
+  //
+  // Le dossier courant était fabriqué à partir des seules données du
+  // rendez-vous : nom, téléphone, et le reste inventé — référence de dossier
+  // « — », date de naissance, adresse, allergies et mutuelle vides. Deux
+  // conséquences concrètes : la facture éditée ensuite portait « — » comme
+  // référence de dossier, et surtout le rappel d'allergie de l'ordonnance,
+  // qui lit ce champ, ne pouvait RIEN signaler — le silence était garanti
+  // pour tout patient pris en charge par ce chemin.
+  //
+  // On relit donc la fiche complète, et on refuse d'ouvrir le dossier si la
+  // lecture échoue plutôt que d'en ouvrir un amputé.
+  const [priseEnChargeId, setPriseEnChargeId] = useState<string | null>(null);
+  const [priseEnChargeErreur, setPriseEnChargeErreur] = useState<string | null>(null);
+
+  const prendreEnCharge = async (appt: Appointment) => {
+    if (currentPatient?.id === appt.patient_id) return;
+    setPriseEnChargeId(appt.id);
+    setPriseEnChargeErreur(null);
+    try {
+      const res = await fetch(`/api/patients/${appt.patient_id}`);
+      const data = await res.json();
+      if (!res.ok || !data.patient) {
+        throw new Error(data.error || "Le dossier de ce patient n'a pas pu être ouvert.");
+      }
+      setCurrentPatient?.(mapDbPatientToContext(data.patient));
+    } catch (e) {
+      setPriseEnChargeErreur(
+        e instanceof Error
+          ? `${e.message} N'ouvrez pas de soins sur ce patient tant que son dossier n'est pas chargé.`
+          : "Erreur inconnue."
+      );
+    } finally {
+      setPriseEnChargeId(null);
+    }
+  };
 
   // Modal création RDV
   const [showModal, setShowModal] = useState(false);
@@ -1009,6 +1046,11 @@ export function AgendaModule() {
           ) : (
             /* SALLE D'ATTENTE */
             <div className="flex-1 overflow-y-auto p-6 space-y-3">
+              {priseEnChargeErreur && (
+                <div className="rounded-sm border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
+                  {priseEnChargeErreur}
+                </div>
+              )}
               {todaysAppointments.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-2 opacity-40 py-20">
                   <Users className="h-10 w-10" />
@@ -1032,21 +1074,11 @@ export function AgendaModule() {
                         <LogIn className="h-3.5 w-3.5" /> Arrivé {new Date(appt.checked_in_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                       </span>
                       <button
-                        onClick={() => {
-                          const patientInfo = {
-                            id: appt.patient_id,
-                            name: appt.patient_name,
-                            phone: appt.patient_phone || "",
-                            idNumber: "—",
-                            birthDate: "",
-                            address: ""
-                          };
-                          // @ts-ignore
-                          currentPatient?.id !== appt.patient_id && setCurrentPatient?.(patientInfo);
-                        }}
-                        className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all shadow-sm"
+                        onClick={() => prendreEnCharge(appt)}
+                        disabled={priseEnChargeId === appt.id}
+                        className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all shadow-sm disabled:opacity-50"
                       >
-                        Prendre en charge
+                        {priseEnChargeId === appt.id ? "Ouverture…" : "Prendre en charge"}
                       </button>
                     </div>
                   ) : (
