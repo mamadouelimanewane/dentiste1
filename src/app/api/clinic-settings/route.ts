@@ -23,6 +23,22 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Le nom du cabinet est requis.' }, { status: 400 });
   }
 
+  // Valeur de la lettre-clé D du cabinet. Elle multiplie chaque cotation du
+  // catalogue : une saisie erronée décale l'intégralité des devis et des
+  // factures, proportionnellement et sans rien signaler. D'où des bornes.
+  const valeurDBrute = (body as { valeurD?: unknown }).valeurD;
+  let valeurD: number | null = null;
+  if (valeurDBrute !== undefined && valeurDBrute !== null && valeurDBrute !== '') {
+    const n = Number(valeurDBrute);
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 100 || n > 100_000) {
+      return NextResponse.json(
+        { error: 'Valeur de D invalide : un entier entre 100 et 100 000 FCFA est attendu.' },
+        { status: 400 }
+      );
+    }
+    valeurD = n;
+  }
+
   const rows = await sql`
     update clinic_settings
     set
@@ -36,6 +52,9 @@ export async function PUT(request: Request) {
       ninea = ${ninea || null},
       rccm = ${rccm || null},
       currency = ${currency || 'FCFA'},
+      -- Absente du corps : on conserve la valeur en place plutôt que de la
+      -- remettre à la valeur par défaut.
+      valeur_d = coalesce(${valeurD}, valeur_d),
       updated_by = ${session!.userId},
       updated_at = now()
     where id = true

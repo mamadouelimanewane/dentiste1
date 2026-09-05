@@ -15,6 +15,8 @@ const DEFAULT_SETTINGS = {
   ninea: "001234567 2V2",
   rccm: "SN-DKR-2026-B-1234",
   currency: "FCFA",
+  // Valeur par défaut de la lettre-clé D, en FCFA.
+  valeurD: "1200",
 };
 
 export function ClinicSettings() {
@@ -29,6 +31,61 @@ export function ClinicSettings() {
   // factures.
   const [relu, setRelu] = useState(false);
   const [chargeErreur, setChargeErreur] = useState<string | null>(null);
+
+  // Bases tarifaires. Chaque prix du catalogue est une cotation multipliée par
+  // la valeur de la lettre-clé D, qui dépend de la convention appliquée. Une
+  // base erronée décale TOUS les devis et TOUTES les factures — d'où un écran
+  // dédié, plutôt qu'une constante dans le code.
+  const [conventions, setConventions] = useState<{ id: string; nom: string; valeur_d: number; actif: boolean }[]>([]);
+  const [nouvNom, setNouvNom] = useState("");
+  const [nouvD, setNouvD] = useState("");
+  const [convErreur, setConvErreur] = useState<string | null>(null);
+  const [convOccupe, setConvOccupe] = useState(false);
+
+  const chargerConventions = () => {
+    fetch("/api/conventions")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d) => setConventions(d.conventions || []))
+      .catch(() => setConvErreur("Conventions non chargées."));
+  };
+
+  useEffect(chargerConventions, []);
+
+  const ajouterConvention = async () => {
+    setConvErreur(null);
+    setConvOccupe(true);
+    try {
+      const res = await fetch("/api/conventions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nom: nouvNom.trim(), valeurD: Number(nouvD) }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Ajout impossible.");
+      setNouvNom("");
+      setNouvD("");
+      chargerConventions();
+    } catch (e) {
+      setConvErreur(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setConvOccupe(false);
+    }
+  };
+
+  const modifierConvention = async (id: string, valeurD: number) => {
+    setConvErreur(null);
+    const res = await fetch("/api/conventions", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, valeurD }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setConvErreur(d.error || "Modification impossible.");
+      return;
+    }
+    chargerConventions();
+  };
 
   useEffect(() => {
     fetch("/api/clinic-settings")
@@ -45,6 +102,7 @@ export function ClinicSettings() {
         if (data.settings) {
           setFormData({
             clinicName: data.settings.clinic_name ?? DEFAULT_SETTINGS.clinicName,
+            valeurD: String(data.settings.valeur_d ?? 1200),
             slogan: data.settings.slogan ?? "",
             phone: data.settings.phone ?? "",
             email: data.settings.email ?? "",
@@ -266,6 +324,108 @@ export function ClinicSettings() {
               </div>
             </div>
 
+          </div>
+        </div>
+
+        {/* BASES TARIFAIRES */}
+        <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-6 space-y-5">
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+            <FileText className="h-4 w-4 text-blue-600" /> Bases tarifaires
+          </h3>
+          <p className="text-[11px] text-slate-600 leading-relaxed">
+            Chaque prix du catalogue est une <strong>cotation</strong> (D5, D10, D15…)
+            multipliée par la valeur de la lettre-clé D. Cette valeur dépend de la
+            convention appliquée. <strong>Une base erronée décale tous les devis et
+            toutes les factures</strong>, proportionnellement et sans qu&apos;aucun écran
+            ne le signale : vérifiez-la auprès de chaque organisme.
+          </p>
+
+          <div className="max-w-xs">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
+              Tarif du cabinet — valeur de D
+            </label>
+            <input
+              type="number"
+              name="valeurD"
+              value={formData.valeurD}
+              onChange={handleChange}
+              min={100}
+              max={100000}
+              className="w-full px-3 py-2 border border-slate-200 rounded-sm text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-[10px] text-slate-400 mt-1">
+              S&apos;applique aux patients sans convention. Exemple : une consultation
+              cotée D5 vaut {(5 * (Number(formData.valeurD) || 0)).toLocaleString("fr-FR")} F.
+            </p>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4 space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              Conventions ({conventions.length})
+            </p>
+            {convErreur && (
+              <p className="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
+                {convErreur}
+              </p>
+            )}
+            {conventions.length === 0 && (
+              <p className="text-[11px] text-slate-500">
+                Aucune convention enregistrée : tous les devis utilisent le tarif du cabinet.
+              </p>
+            )}
+            {conventions.map((c) => (
+              <div key={c.id} className="flex items-center gap-3">
+                <span className="flex-1 text-sm font-bold text-slate-800 truncate">{c.nom}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">D =</span>
+                <input
+                  type="number"
+                  defaultValue={c.valeur_d}
+                  min={100}
+                  max={100000}
+                  onBlur={(e) => {
+                    const v = Number(e.target.value);
+                    if (v !== c.valeur_d) modifierConvention(c.id, v);
+                  }}
+                  className="w-28 px-2 py-1.5 border border-slate-200 rounded-sm text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            ))}
+
+            <div className="flex flex-wrap items-end gap-3 pt-2">
+              <div className="flex-1 min-w-[180px]">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
+                  Nouvelle convention
+                </label>
+                <input
+                  value={nouvNom}
+                  onChange={(e) => setNouvNom(e.target.value)}
+                  placeholder="Ex : IPM Cap Vert"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-sm text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="w-32">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
+                  Valeur de D
+                </label>
+                <input
+                  type="number"
+                  value={nouvD}
+                  onChange={(e) => setNouvD(e.target.value)}
+                  placeholder="1200"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-sm text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              {/* type="button" : ce bouton ne doit pas soumettre le formulaire
+                  des paramètres du cabinet, qui est un enregistrement distinct. */}
+              <button
+                type="button"
+                onClick={ajouterConvention}
+                disabled={convOccupe || !nouvNom.trim() || !nouvD}
+                className="h-10 px-4 rounded-sm bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40 transition-colors"
+              >
+                Ajouter
+              </button>
+            </div>
           </div>
         </div>
 

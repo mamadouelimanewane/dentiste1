@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import { validerListe, validerMontant, validerQuantite } from '@/lib/validation';
+import { bornerTexte, validerListe, validerMontant, validerQuantite } from '@/lib/validation';
 import { requirePermission } from '@/lib/permissions';
 import { recordAudit } from '@/lib/audit';
 
@@ -52,9 +52,18 @@ export async function POST(request: Request) {
     totalCalcule += prix.valeur * qte.valeur;
   }
 
+  // Base tarifaire appliquée, figée avec le devis : rééditer plus tard, après
+  // un changement de convention, doit redonner le montant présenté au patient.
+  const convention = bornerTexte((body as { convention?: string }).convention, 80);
+  const valeurDBrute = Number((body as { valeurD?: unknown }).valeurD);
+  const valeurD =
+    Number.isFinite(valeurDBrute) && valeurDBrute >= 100 && valeurDBrute <= 100_000
+      ? Math.round(valeurDBrute)
+      : null;
+
   const rows = await sql`
-    insert into quotes (patient_id, practitioner_id, items, total, signed, created_by)
-    values (${patientId}, ${session!.userId}, ${JSON.stringify(lignes.valeur)}::jsonb, ${totalCalcule}, ${!!signed}, ${session!.userId})
+    insert into quotes (patient_id, practitioner_id, items, total, signed, created_by, convention, valeur_d)
+    values (${patientId}, ${session!.userId}, ${JSON.stringify(lignes.valeur)}::jsonb, ${totalCalcule}, ${!!signed}, ${session!.userId}, ${convention}, ${valeurD})
     returning *
   `;
 

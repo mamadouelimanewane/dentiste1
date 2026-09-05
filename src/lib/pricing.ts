@@ -1,4 +1,38 @@
+// Valeur de la lettre-clé D par défaut, en FCFA.
+//
+// Elle ne fait plus autorité : la base réelle vient de `clinic_settings.valeur_d`
+// pour le tarif du cabinet, ou de la convention choisie. Cette constante ne
+// sert qu'à calculer les prix affichés tant que le paramétrage n'est pas
+// chargé, et à garder cohérents les `price` figés ci-dessous.
 export const D_VALUE = 1200;
+
+// Cotation « D15 » → 15. Renvoie null si l'acte n'en porte pas.
+export function coefficientCotation(cotation?: string): number | null {
+  if (!cotation) return null;
+  const m = /^D\s*(\d+(?:[.,]\d+)?)$/i.exec(cotation.trim());
+  if (!m) return null;
+  const n = Number(m[1].replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+
+// Prix d'un acte pour une valeur de D donnée.
+//
+// On met le prix du catalogue à l'échelle, plutôt que de le recalculer depuis
+// la cotation. La différence compte : « Appareil 13 à 14 dents » est coté D135
+// mais tarifé 180 000 F, là où 135 × 1 200 donnerait 162 000. Recalculer
+// depuis la cotation ferait donc BAISSER ce prix de 18 000 F sans que
+// personne ne l'ait décidé. La mise à l'échelle préserve le tarif voulu par le
+// cabinet et reste exacte pour tous les actes cohérents.
+//
+// La cotation ne sert de repli que pour un acte sans prix enregistré.
+export function prixSelonD(acte: DentalProcedure, valeurD: number): number {
+  if (typeof acte.price === 'number' && acte.price > 0) {
+    if (valeurD === D_VALUE) return acte.price;
+    return Math.round((acte.price * valeurD) / D_VALUE);
+  }
+  const coef = coefficientCotation(acte.cotation);
+  return coef === null ? 0 : Math.round(coef * valeurD);
+}
 
 export type DentalProcedure = {
   id: string;

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { D_VALUE, DENTAL_NOMENCLATURE, DentalProcedure } from "@/lib/pricing";
+import React, { useState, useRef, useEffect } from "react";
+import { D_VALUE, DENTAL_NOMENCLATURE, DentalProcedure, prixSelonD } from "@/lib/pricing";
 import { Plus, Trash2, FileText, Download, CheckCircle2, Eraser, ShoppingCart, Save, AlertTriangle, PenTool } from "lucide-react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { QuotePDF } from "./QuotePDF";
@@ -24,6 +24,34 @@ export function QuoteBuilder() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Base tarifaire du devis. Les prix du catalogue sont une cotation
+  // multipliée par la valeur de la lettre-clé D, qui dépend de la convention
+  // appliquée. Le praticien doit pouvoir la choisir AVANT de chiffrer : la
+  // changer après coup recalculerait un devis déjà présenté au patient.
+  const [conventions, setConventions] = useState<{ id: string; nom: string; valeur_d: number }[]>([]);
+  const [valeurCabinet, setValeurCabinet] = useState<number>(D_VALUE);
+  const [baseChoisie, setBaseChoisie] = useState<string>("cabinet");
+
+  useEffect(() => {
+    fetch("/api/conventions")
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d?.error || "Bases tarifaires non chargées.");
+        return d;
+      })
+      .then((d) => {
+        setConventions(d.conventions || []);
+        if (typeof d.valeurCabinet === "number") setValeurCabinet(d.valeurCabinet);
+      })
+      // Sans base chargée, on reste sur celle du cabinet et on le dit plutôt
+      // que de chiffrer en silence sur une valeur peut-être périmée.
+      .catch(() => setError("Bases tarifaires non chargées : le devis utilise la valeur par défaut."));
+  }, []);
+
+  const convention = conventions.find((c) => c.id === baseChoisie);
+  const valeurD = convention ? Number(convention.valeur_d) : valeurCabinet;
+  const nomBase = convention ? convention.nom : "Tarif du cabinet";
+
   const add = (p: DentalProcedure) => {
     setSelected(prev => {
       const ex = prev.find(i => i.id === p.id);
@@ -42,7 +70,8 @@ export function QuoteBuilder() {
     setIsSigned(false);
   };
 
-  const total = selected.reduce((s, i) => s + (i.price || 0) * i.qty, 0);
+  const prixLigne = (acte: DentalProcedure) => prixSelonD(acte, valeurD);
+  const total = selected.reduce((s, i) => s + prixLigne(i) * i.qty, 0);
 
   const handleSave = async () => {
     if (!currentPatient || selected.length === 0) return;
@@ -54,9 +83,13 @@ export function QuoteBuilder() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patientId: currentPatient.id,
-          items: selected.map(i => ({ id: i.id, label: i.label, qty: i.qty, price: i.price || 0 })),
+          items: selected.map(i => ({ id: i.id, label: i.label, qty: i.qty, price: prixLigne(i) })),
           total,
           signed: isSigned,
+          // Figée avec le devis : rééditer plus tard, après un changement de
+          // convention, doit redonner le montant signé par le patient.
+          convention: nomBase,
+          valeurD,
         }),
       });
       const data = await res.json();
@@ -77,15 +110,24 @@ export function QuoteBuilder() {
           <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
             <h3 className="text-sm font-black text-blue-900 uppercase tracking-tight">Catalogue des Actes</h3>
             {/* Le badge annonçait « Tarif Conventionnel » sans dire sur quelle
-                base. Les prix sont pourtant une cotation multipliée par la
-                valeur de D, qui varie selon la convention : un praticien
-                devait pouvoir vérifier celle qui s'applique à son devis. */}
-            <span
-              title={`Prix = cotation × ${D_VALUE.toLocaleString("fr-FR")} F. Pour changer cette base, modifier D_VALUE dans src/lib/pricing.ts.`}
-              className="text-[9px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded uppercase"
+                base, alors que chaque prix est une cotation multipliée par la
+                valeur de D — laquelle dépend de la convention. Le praticien
+                choisit désormais cette base, et voit le montant qu'elle donne. */}
+            <select
+              value={baseChoisie}
+              onChange={(e) => { setBaseChoisie(e.target.value); setSaved(false); }}
+              title="Base tarifaire appliquée à ce devis"
+              className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-400"
             >
-              Base D = {D_VALUE.toLocaleString("fr-FR")} F
-            </span>
+              <option value="cabinet">
+                Tarif du cabinet — D = {valeurCabinet.toLocaleString("fr-FR")} F
+              </option>
+              {conventions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nom} — D = {Number(c.valeur_d).toLocaleString("fr-FR")} F
+                </option>
+              ))}
+            </select>
           </div>
           
           <div className="flex-1 min-h-0">
@@ -129,7 +171,7 @@ export function QuoteBuilder() {
                         <p className="text-[10px] font-bold text-slate-500 uppercase">Quantité: {i.qty}</p>
                       </div>
                       <div className="flex items-center gap-4">
-                        <span className="font-bold text-blue-400">{(i.price! * i.qty).toLocaleString()}</span>
+                        <span className="font-bold text-blue-400">{(prixLigne(i) * i.qty).toLocaleString()}</span>
                         <button onClick={() => remove(i.id)} className="text-slate-600 hover:text-rose-400"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
                     </div>
@@ -164,7 +206,7 @@ export function QuoteBuilder() {
                     {saving ? "Enregistrement..." : saved ? "Devis Enregistré" : "Enregistrer"}
                   </button>
                   <PDFDownloadLink
-                    document={<QuotePDF items={selected.map(i => ({ label: i.label, qty: i.qty, price: i.price || 0 }))} total={total} patientName={currentPatient?.name || "Patient non sélectionné"} signatureBase64={signatureData} />}
+                    document={<QuotePDF items={selected.map(i => ({ label: i.label, qty: i.qty, price: prixLigne(i) }))} total={total} patientName={currentPatient?.name || "Patient non sélectionné"} signatureBase64={signatureData} />}
                     fileName={`devis_${new Date().getTime()}.pdf`}
                   >
                     {/* @ts-ignore */}
