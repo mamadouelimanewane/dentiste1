@@ -510,7 +510,7 @@ export function NeuralAssistant() {
           masquer un libellé de panneau sur téléphone. Elles tiennent
           désormais sur une seule ligne, plus petites, et portent un nom :
           deux ronds bleus sans libellé n'apprenaient rien à personne. */}
-      <div className="fixed bottom-6 right-[4.75rem] z-[9999]">
+      <div className="fixed bottom-3 right-[3.75rem] sm:bottom-6 sm:right-[4.75rem] z-[9999]">
         <motion.button
           whileHover={{ scale: 1.05, boxShadow: "0 0 24px rgba(59,130,246,0.5)" }}
           whileTap={{ scale: 0.95 }}
@@ -518,7 +518,7 @@ export function NeuralAssistant() {
           title={isOpen ? "Fermer l'assistant" : "Assistant du cabinet"}
           aria-label={isOpen ? "Fermer l'assistant" : "Assistant du cabinet"}
           className={cn(
-            "h-12 w-12 rounded-full flex items-center justify-center transition-all duration-500 border-2",
+            "h-10 w-10 sm:h-12 sm:w-12 rounded-full flex items-center justify-center transition-all duration-500 border-2",
             isOpen
               ? "bg-slate-900 border-slate-700 text-white rotate-90"
               : "bg-blue-600 border-blue-400 text-white shadow-2xl shadow-blue-500/40"

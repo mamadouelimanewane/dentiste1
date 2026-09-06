@@ -366,9 +366,12 @@ export default function Home() {
                 ) : (
                   <User className="h-3.5 w-3.5" />
                 )}
+                {/* Quand la place manque, c'est le NOM qui cède, jamais
+                    l'allergie : sur un écran étroit, l'alerte clinique est
+                    précisément ce qu'il faut garder sous les yeux. */}
                 <span
                   title={currentPatient?.name || undefined}
-                  className="text-xs font-semibold tracking-tight mr-2 truncate whitespace-nowrap"
+                  className="text-xs font-semibold tracking-tight mr-2 truncate whitespace-nowrap max-w-[7rem] sm:max-w-none"
                 >
                   {currentPatient ? currentPatient.name : "Aucun patient sélectionné"}
                 </span>
@@ -376,7 +379,7 @@ export default function Home() {
                     ni au bouton d'urgence décoratif, ni au retrait d'une ligne. */}
                 {currentPatient?.allergies && (
                   <span
-                    className="hidden sm:flex items-center gap-1 flex-shrink-0 text-[10px] font-bold uppercase tracking-wide text-white bg-red-600 px-2 py-0.5 rounded-full max-w-[14rem] truncate"
+                    className="flex items-center gap-1 flex-shrink-0 text-[10px] font-bold uppercase tracking-wide text-white bg-red-600 px-2 py-0.5 rounded-full max-w-[8rem] sm:max-w-[14rem] truncate"
                     title={`Allergies : ${currentPatient.allergies}`}
                   >
                     <ShieldAlert className="h-3 w-3 flex-shrink-0" />

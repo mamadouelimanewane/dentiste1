@@ -84,7 +84,7 @@ export function StaffChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-3 right-3 sm:bottom-6 sm:right-6 z-50">
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -191,7 +191,7 @@ export function StaffChatWidget() {
         title="Messagerie interne"
         aria-label="Messagerie interne"
         className={cn(
-          "h-12 w-12 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110",
+          "h-10 w-10 sm:h-12 sm:w-12 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110",
           isOpen ? "bg-slate-900 text-white" : "bg-blue-600 text-white"
         )}
       >
