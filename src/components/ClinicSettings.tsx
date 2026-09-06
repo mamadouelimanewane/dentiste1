@@ -246,7 +246,7 @@ export function ClinicSettings() {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    placeholder="Non renseigné — apparaîtra vide sur les factures et devis"
+                    placeholder="Non renseigné"
                     className="w-full bg-slate-50 border border-slate-200 rounded p-2.5 text-sm font-bold text-slate-900 outline-none focus:border-emerald-500"
                   />
                 </div>
@@ -267,7 +267,7 @@ export function ClinicSettings() {
                     name="address"
                     value={formData.address}
                     onChange={handleChange}
-                    placeholder="Non renseignée — apparaîtra vide sur les factures et devis"
+                    placeholder="Non renseignée"
                     className="w-full bg-slate-50 border border-slate-200 rounded p-2.5 text-sm font-bold text-slate-900 outline-none focus:border-emerald-500"
                   />
                 </div>
@@ -287,8 +287,14 @@ export function ClinicSettings() {
             {/* INFORMATIONS LEGALES & FISCALES */}
             <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-6">
               <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
-                <FileText className="h-4 w-4 text-amber-500" /> Informations Légales & Fiscales
+                <FileText className="h-4 w-4 text-amber-500" /> Informations légales et fiscales
               </h3>
+              {/* L'indication tenait dans le champ lui-même et s'y trouvait
+                  tronquée : « Non renseigné — apparaîtra vide sur les… ». */}
+              <p className="text-[11px] text-slate-500 leading-relaxed -mt-1">
+                Ces mentions figurent sur les factures, les devis et les ordonnances. Un champ laissé
+                vide n&apos;y apparaîtra pas — rien n&apos;est inventé à la place.
+              </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
@@ -298,7 +304,7 @@ export function ClinicSettings() {
                     name="rpps"
                     value={formData.rpps}
                     onChange={handleChange}
-                    placeholder="Non renseigné — apparaîtra vide sur les factures et devis"
+                    placeholder="Non renseigné"
                     className="w-full bg-slate-50 border border-slate-200 rounded p-2.5 text-sm font-bold text-slate-900 outline-none focus:border-amber-500"
                   />
                 </div>
@@ -309,7 +315,7 @@ export function ClinicSettings() {
                     name="ninea"
                     value={formData.ninea}
                     onChange={handleChange}
-                    placeholder="Non renseigné — apparaîtra vide sur les factures et devis"
+                    placeholder="Non renseigné"
                     className="w-full bg-slate-50 border border-slate-200 rounded p-2.5 text-sm font-bold text-slate-900 outline-none focus:border-amber-500"
                   />
                 </div>
@@ -320,7 +326,7 @@ export function ClinicSettings() {
                     name="rccm"
                     value={formData.rccm}
                     onChange={handleChange}
-                    placeholder="Non renseigné — apparaîtra vide sur les factures et devis"
+                    placeholder="Non renseigné"
                     className="w-full bg-slate-50 border border-slate-200 rounded p-2.5 text-sm font-bold text-slate-900 outline-none focus:border-amber-500"
                   />
                 </div>
