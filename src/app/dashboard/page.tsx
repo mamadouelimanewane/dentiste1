@@ -337,7 +337,11 @@ export default function Home() {
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-16 glass-panel border-b-0 flex items-center justify-between px-8 flex-shrink-0 z-10 sticky top-0">
+        {/* La barre débordait de 49 px sur tablette : le contenu réclamait
+            802 px pour 753 disponibles, et la dernière icône sortait du bord.
+            Le rembourrage se resserre et le bloc identité — l'information la
+            moins urgente — ne paraît qu'à partir du grand écran. */}
+        <header className="h-16 glass-panel border-b-0 flex items-center justify-between gap-2 px-3 lg:px-8 flex-shrink-0 z-10 sticky top-0 overflow-hidden">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -426,7 +430,7 @@ export default function Home() {
               <Zap className="h-3.5 w-3.5" />
               <span className="hidden sm:inline text-[11px] font-semibold">Urgence</span>
             </button>
-            <div className="hidden md:flex flex-col text-right mr-2 border-l border-slate-200 pl-4">
+            <div className="hidden lg:flex flex-col text-right mr-2 border-l border-slate-200 pl-4">
               <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">{user.roleLabel}</span>
               <span className="text-sm font-black text-slate-900 tracking-tight">{user.fullName}</span>
             </div>
