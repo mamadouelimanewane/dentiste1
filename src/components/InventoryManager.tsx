@@ -25,6 +25,9 @@ export function InventoryManager() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Toutes");
   const [adjusting, setAdjusting] = useState<string | null>(null);
+  // Quantité reçue, saisie ligne par ligne. À défaut, le bouton propose ce
+  // qu'il faut pour repasser juste au-dessus du seuil d'alerte.
+  const [reassort, setReassort] = useState<Record<string, string>>({});
   const [formOuvert, setFormOuvert] = useState(false);
   const [creation, setCreation] = useState(false);
   const [nouvNom, setNouvNom] = useState("");
@@ -315,22 +318,51 @@ export function InventoryManager() {
                       {s === 'low' && <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest"><AlertTriangle className="h-3 w-3" /> Bas</span>}
                       {s === 'out' && <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-700 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest"><AlertCircle className="h-3 w-3" /> Rupture</span>}
                     </td>
+                    {/* Le réassort se faisait par « +10 », quelle que soit
+                        l'unité : dix de plus sur un implant titane qui en
+                        compte deux, c'est un réassort de cinq cents pour
+                        cent ; dix de plus sur des gants dont le seuil est à
+                        vingt ne suffit pas. On saisit la quantité reçue —
+                        c'est ce que fait l'assistante quand le carton arrive. */}
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           disabled={adjusting === item.id || item.quantity === 0}
                           onClick={() => adjustQuantity(item.id, -1)}
+                          title="Retirer une unité (consommation)"
+                          aria-label="Retirer une unité"
                           className="h-7 w-7 flex items-center justify-center rounded bg-slate-50 border border-slate-200 hover:bg-slate-200 text-slate-500 disabled:opacity-40"
                         >
                           <Minus className="h-3.5 w-3.5" />
                         </button>
+                        <input
+                          type="number"
+                          min={1}
+                          inputMode="numeric"
+                          value={reassort[item.id] ?? ""}
+                          onChange={(e) =>
+                            setReassort((prev) => ({ ...prev, [item.id]: e.target.value }))
+                          }
+                          placeholder={String(Math.max(1, item.min_threshold - item.quantity + 1))}
+                          title="Quantité reçue"
+                          aria-label={`Quantité reçue pour ${item.name}`}
+                          className="h-7 w-14 rounded border border-slate-200 bg-white px-1.5 text-right text-xs font-semibold text-slate-900 outline-none focus:border-emerald-500"
+                        />
                         <button
                           disabled={adjusting === item.id}
-                          onClick={() => adjustQuantity(item.id, 10)}
-                          title="Réassort +10"
-                          className="h-7 px-2 flex items-center justify-center gap-1 rounded bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase disabled:opacity-40"
+                          onClick={() => {
+                            const saisi = Number(reassort[item.id]);
+                            const quantite =
+                              Number.isFinite(saisi) && saisi > 0
+                                ? Math.floor(saisi)
+                                : Math.max(1, item.min_threshold - item.quantity + 1);
+                            adjustQuantity(item.id, quantite);
+                            setReassort((prev) => ({ ...prev, [item.id]: "" }));
+                          }}
+                          title="Enregistrer la réception"
+                          className="h-7 px-2 flex items-center justify-center gap-1 rounded bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 text-[10px] font-semibold disabled:opacity-40"
                         >
-                          <Plus className="h-3.5 w-3.5" /> 10
+                          <Plus className="h-3.5 w-3.5" /> Reçu
                         </button>
                       </div>
                     </td>
@@ -348,7 +380,9 @@ export function InventoryManager() {
             <AlertTriangle className="h-4 w-4" /> Action Requise
           </h4>
           <p className="text-xs text-amber-900 font-medium leading-relaxed mt-2">
-            {alertesRupture} article(s) sont à ou sous leur seuil d'alerte. Utilisez le bouton "+10" pour réassortir.
+            {alertesRupture} article(s) sont à ou sous leur seuil d'alerte. Saisissez la quantité reçue
+            sur la ligne concernée, ou laissez le champ vide : la quantité proposée ramène l'article
+            juste au-dessus de son seuil.
           </p>
         </div>
       )}
