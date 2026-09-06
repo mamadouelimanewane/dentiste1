@@ -261,7 +261,7 @@ export function PatientRegistration() {
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleChange}
-                  placeholder="Mamadou"
+                  placeholder={isEditing ? "Mamadou" : "Non renseigné"}
                   disabled={!isEditing}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                   required
@@ -275,7 +275,7 @@ export function PatientRegistration() {
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleChange}
-                  placeholder="Diallo"
+                  placeholder={isEditing ? "Diallo" : "Non renseigné"}
                   disabled={!isEditing}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                   required
@@ -284,14 +284,25 @@ export function PatientRegistration() {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Né(e) le</label>
-                <input
-                  type="date"
-                  name="birthDate"
-                  value={formData.birthDate}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0"
-                />
+                {/* Un champ de date désactivé affiche « jj/mm/aaaa » quoi
+                    qu'on fasse : sur une fiche en lecture, ce masque se lisait
+                    comme une valeur. En consultation, on écrit la date — ou
+                    l'on dit qu'elle manque. */}
+                {isEditing ? (
+                  <input
+                    type="date"
+                    name="birthDate"
+                    value={formData.birthDate}
+                    onChange={handleChange}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  />
+                ) : (
+                  <p className={cn("text-sm py-2", formData.birthDate ? "font-bold text-slate-900" : "text-slate-400")}>
+                    {formData.birthDate
+                      ? new Date(formData.birthDate).toLocaleDateString("fr-FR")
+                      : "Non renseignée"}
+                  </p>
+                )}
               </div>
               
               <div className="space-y-1.5">
@@ -314,7 +325,7 @@ export function PatientRegistration() {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  placeholder="+221 77 000 00 00"
+                  placeholder={isEditing ? "+221 77 000 00 00" : "Non renseigné"}
                   disabled={!isEditing}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                 />
@@ -333,7 +344,7 @@ export function PatientRegistration() {
                   name="whatsappPhone"
                   value={formData.whatsappPhone}
                   onChange={handleChange}
-                  placeholder="Même numéro que ci-dessus"
+                  placeholder={isEditing ? "Même numéro que ci-dessus" : "Non renseigné"}
                   disabled={!isEditing}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                 />
@@ -346,7 +357,7 @@ export function PatientRegistration() {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="patient@email.com"
+                  placeholder={isEditing ? "patient@email.com" : "Non renseigné"}
                   disabled={!isEditing}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                 />
@@ -359,7 +370,7 @@ export function PatientRegistration() {
                   name="address"
                   value={formData.address}
                   onChange={handleChange}
-                  placeholder="Dakar, Plateau, Rue 12..."
+                  placeholder={isEditing ? "Dakar, Plateau, Rue 12..." : "Non renseignée"}
                   disabled={!isEditing}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                 />
@@ -378,7 +389,7 @@ export function PatientRegistration() {
                   name="mutuelle"
                   value={formData.mutuelle}
                   onChange={handleChange}
-                  placeholder="Ex: IPM Entreprise, AXA..."
+                  placeholder={isEditing ? "Ex : IPM Entreprise, AXA..." : "Aucune mutuelle renseignée"}
                   disabled={!isEditing}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm hover:border-blue-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                 />
@@ -391,7 +402,7 @@ export function PatientRegistration() {
                   name="allergies"
                   value={formData.allergies}
                   onChange={handleChange}
-                  placeholder="Ex: Pénicilline, Latex..."
+                  placeholder={isEditing ? "Ex : Pénicilline, Latex..." : "Aucune allergie notée"}
                   disabled={!isEditing}
                   className="w-full bg-red-50 border border-red-200 rounded-xl px-4 py-3.5 text-sm font-bold text-red-900 placeholder:text-red-300 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all shadow-sm hover:border-red-300 hover:bg-white disabled:opacity-60 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:shadow-none"
                 />
