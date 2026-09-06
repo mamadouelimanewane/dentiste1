@@ -78,8 +78,15 @@ export function NeuralLogsDashboard() {
             <Brain className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">Data Brain (Temps Réel)</h3>
-            <p className="text-xs text-slate-500 font-medium">Monitoring des flux NLP NeuralAssistant</p>
+            {/* « Data Brain », « monitoring des flux NLP » : du jargon qui
+                ne décrit rien pour un cabinet dentaire — et qui décrit mal
+                l'assistant lui-même, qui reconnaît des mots-clés et ne fait
+                aucun traitement du langage. */}
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight">Saisies dans l&apos;assistant</h3>
+            <p className="text-xs text-slate-500">
+              Ce que le personnel a écrit dans l&apos;assistant, et ce qu&apos;il a proposé en retour.
+              Aucune de ces lignes n&apos;a modifié un dossier.
+            </p>
           </div>
         </div>
         <button 
@@ -98,8 +105,8 @@ export function NeuralLogsDashboard() {
               <tr>
                 <th className="px-6 py-3">Statut</th>
                 <th className="px-6 py-3">Type</th>
-                <th className="px-6 py-3">Texte (Requête NLP)</th>
-                <th className="px-6 py-3">Action Suggerée (IA)</th>
+                <th className="px-6 py-3">Texte saisi</th>
+                <th className="px-6 py-3">Réponse proposée</th>
                 <th className="px-6 py-3">Date</th>
               </tr>
             </thead>

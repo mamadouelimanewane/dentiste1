@@ -183,7 +183,10 @@ export function ProstheticsLab() {
             {/* Affichait le nombre de lignes reçues comme s'il s'agissait du
                 total : un laboratoire à 250 travaux en lisait 100. */}
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">
-              {total || orders.length} travau(x) suivi(s)
+              {/* « travau(x) » : le singulier de travaux est travail. */}
+              {(total || orders.length) > 1
+                ? `${total || orders.length} travaux suivis`
+                : `${total || orders.length} travail suivi`}
               {tronque && ` — ${orders.length} affichés, en attente d'abord`}
             </p>
           </div>
