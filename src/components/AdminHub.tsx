@@ -21,6 +21,8 @@ interface AdminProfile {
   email: string;
   role: string;
   is_active: boolean;
+  // Dernière connexion réussie, ou null pour un compte jamais utilisé.
+  derniere_connexion?: string | null;
 }
 
 interface AuditLog {
@@ -274,12 +276,12 @@ export function AdminHub() {
   }
 
   const tabs = [
-    { id: "utilisateurs", label: "Utilisateurs & RBAC", icon: Users },
+    { id: "utilisateurs", label: "Comptes du personnel", icon: Users },
     { id: "roles", label: "Rôles & Privilèges", icon: Shield },
     { id: "audit", label: "Journal d'Audit", icon: ShieldAlert },
     { id: "catalogue", label: "Catalogue des Actes", icon: BookOpen },
     { id: "templates", label: "Modèles & Contrats", icon: FileText },
-    { id: "bi", label: "Business Intelligence", icon: BarChart3 },
+    { id: "bi", label: "Chiffres du cabinet", icon: BarChart3 },
     { id: "multisite", label: "Multi-Sites", icon: Building },
   ];
 
@@ -337,7 +339,7 @@ export function AdminHub() {
               <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
                 <div>
                   <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Gestion des Utilisateurs</h3>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase">Gérez les accès et les permissions (RBAC)</p>
+                  <p className="text-[11px] text-slate-500">Qui a accès à quoi, et depuis quand</p>
                 </div>
                 <button
                   onClick={() => alert('Ouvrez le module "Utilisateurs" (étape 10) pour inviter un nouveau collaborateur.')}
@@ -382,7 +384,17 @@ export function AdminHub() {
                             {user.role}
                           </span>
                         </td>
-                        <td className="p-3 text-xs font-medium text-slate-600">—</td>
+                        <td className="p-3 text-xs font-medium text-slate-600">
+                          {user.derniere_connexion
+                            ? new Date(user.derniere_connexion).toLocaleString("fr-FR", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "Jamais connecté"}
+                        </td>
                         <td className="p-3">
                           {user.is_active ? (
                             <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600">

@@ -164,7 +164,20 @@ export function MedicalQuestionnaire() {
         <div className="px-5 pt-4">
           <div className="bg-rose-50 border border-rose-200 rounded-sm p-3">
             <p className="text-[10px] font-black text-rose-800 uppercase tracking-widest">
-              À signaler au praticien : {vigilances.map((v) => v.label).join(" · ")}
+              {/* Reprenait le libellé de la question, exemples entre
+                  parenthèses compris — « Allergies (Anesthésie,
+                  Antibiotiques...) » — sans jamais dire à QUOI le patient est
+                  allergique, alors que la réponse est saisie juste en dessous. */}
+              À signaler au praticien :{" "}
+              {vigilances
+                .map((v) =>
+                  v.id === "allergy" && allergies.trim()
+                    ? `Allergie — ${allergies.trim()}`
+                    : v.id === "allergy"
+                      ? "Allergie déclarée, substance non précisée"
+                      : v.label
+                )
+                .join(" · ")}
             </p>
           </div>
         </div>

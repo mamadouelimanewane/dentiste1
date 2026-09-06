@@ -9,7 +9,17 @@ export async function GET() {
   if (error) return NextResponse.json({ error }, { status });
 
   const users = await sql`
-    select u.id, u.full_name, u.email, u.is_active, u.created_at, r.id as role_id, r.slug as role, r.label as role_label
+    -- La colonne « Dernière connexion » de l'écran d'administration
+    -- affichait un tiret écrit en dur : elle promettait une information
+    -- qu'elle n'avait jamais, alors que login_attempts la contient. Un
+    -- administrateur doit pouvoir voir qui ne s'est jamais connecté, et qui
+    -- ne vient plus.
+    select u.id, u.full_name, u.email, u.is_active, u.created_at,
+           r.id as role_id, r.slug as role, r.label as role_label,
+           (
+             select max(la.created_at) from login_attempts la
+             where la.email = u.email and la.success = true
+           ) as derniere_connexion
     from users u
     join roles r on r.id = u.role_id
     order by u.created_at desc
