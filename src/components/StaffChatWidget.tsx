@@ -189,12 +189,13 @@ export function StaffChatWidget() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         title="Messagerie interne"
+        aria-label="Messagerie interne"
         className={cn(
-          "h-14 w-14 rounded-full flex items-center justify-center shadow-2xl transition-all hover:scale-110",
+          "h-12 w-12 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110",
           isOpen ? "bg-slate-900 text-white" : "bg-blue-600 text-white"
         )}
       >
-        {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+        {isOpen ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
       </button>
     </div>
   );

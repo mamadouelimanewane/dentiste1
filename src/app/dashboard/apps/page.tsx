@@ -196,14 +196,22 @@ export default function DentalAppsHubPage() {
         </div>
 
         <div className="relative max-w-6xl mx-auto px-6 py-12">
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          {/* Le titre entrait en fondu depuis une opacité nulle : la première
+              image de la page — celle que voit quelqu'un qui arrive, ou une
+              capture — le montrait illisible sur le fond bleu nuit. Ce qui
+              doit être lu est visible dès le premier instant.
+
+              Le sous-titre annonçait « vos 24 outils métiers » : une fierté
+              d'éditeur. Un cabinet ne cherche pas 24 outils, il cherche celui
+              dont il a besoin maintenant. */}
+          <div>
             <h1 className="font-black text-4xl sm:text-5xl tracking-tight mb-2 text-white">
               Portail des Modules
             </h1>
-            <p className="text-slate-400 font-medium text-lg">
-              Accédez instantanément à vos {allModules.length} outils métiers.
+            <p className="text-slate-300 font-medium text-lg">
+              Cherchez un module par son nom, ou parcourez-les par domaine.
             </p>
-          </motion.div>
+          </div>
         </div>
       </div>
 

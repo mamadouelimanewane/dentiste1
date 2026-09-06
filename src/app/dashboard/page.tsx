@@ -105,6 +105,19 @@ const steps = [
 // bureau. Agenda, Comptabilité, Statistiques, Journal, Recherche, Super Admin.
 const MODULES_LARGES = [8, 13, 20, 22, 23, 24];
 
+// Colonne de droite : elle n'a pas à suivre partout.
+//
+// Le « Hub praticien » — salutation, heure, patients du jour, flux du jour —
+// occupait un quart de la largeur sur presque tous les écrans, y compris
+// pendant qu'on encaissait une facture ou qu'on rédigeait une ordonnance, où
+// il n'aide à rien. Son plus gros texte était « Bonjour ! ». Il n'apparaît
+// plus que là où l'état de la journée sert vraiment : l'accueil et l'arrivée.
+//
+// Les notes cliniques, elles, suivent le soin : consultation, réalisation,
+// suivi. Ailleurs, l'écran prend toute la largeur.
+const MODULES_AVEC_HUB = [1, 2, 3];
+const MODULES_AVEC_NOTES = [4, 5, 7];
+
 // Source de vérité unique pour la visibilité des étapes : privilège "view"
 // du rôle sur le module (table roles, gérable depuis l'admin), plus un
 // rôle en dur.
@@ -178,6 +191,12 @@ export default function Home() {
 
   const currentIndex = visibleSteps.findIndex(s => s.id === currentStep);
 
+  const afficherHub =
+    MODULES_AVEC_HUB.includes(currentStep) && hasPermission(permissions, 5, 'view');
+  const afficherNotes =
+    MODULES_AVEC_NOTES.includes(currentStep) && hasPermission(permissions, 5, 'view');
+  const colonneLaterale = afficherHub || afficherNotes;
+
   const nextStep = () => {
     if (currentIndex < visibleSteps.length - 1) setCurrentStep(visibleSteps[currentIndex + 1].id);
   };
@@ -231,8 +250,10 @@ export default function Home() {
               <div className="h-8 w-8 bg-blue-600 rounded flex items-center justify-center text-white">
                 <Activity className="h-5 w-5" />
               </div>
-              <h1 className="font-bold tracking-tight text-white text-base">
-                Elite ERP <span className="text-blue-400">Cap Vert</span>
+              {/* Le nom se coupait entre « Cap » et « Vert », chaque moitié
+                  dans une couleur différente. */}
+              <h1 className="font-bold tracking-tight text-white text-base whitespace-nowrap">
+                Elite ERP <span className="text-blue-400">Cap&nbsp;Vert</span>
               </h1>
             </div>
             <button
@@ -306,14 +327,10 @@ export default function Home() {
           </nav>
         </div>
 
-        <div className="p-6 border-t border-white/5">
-          <button
-            onClick={() => setShowResetModal(true)}
-            className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-500 transition-all duration-300 flex items-center justify-center gap-2 text-sm font-bold text-white shadow-[0_8px_20px_-6px_rgba(37,99,235,0.6)] micro-bounce"
-          >
-            <RotateCcw className="h-4 w-4" /> Nouveau Dossier
-          </button>
-        </div>
+        {/* Le bouton « Nouveau dossier » figurait ici ET dans l'en-tête du
+            module, en deux couleurs différentes, pour une même action. Il ne
+            subsiste qu'en tête d'écran, où il est visible quel que soit
+            l'état de cette barre. */}
       </aside>
 
       {/* MAIN CONTENT AREA */}
@@ -327,9 +344,15 @@ export default function Home() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="flex items-center gap-3">
+            {/* Bandeau du patient actif.
+                Il se laissait déformer par le nom : sur tablette il s'empilait
+                sur trois lignes, sur téléphone sur quatre, et la barre passait
+                de 64 à 120 px de haut en écrasant tout le reste. Il tient
+                désormais sur une ligne, le nom tronqué au besoin — le nom
+                complet reste dans l'infobulle et dans la fiche. */}
+            <div className="flex items-center gap-3 min-w-0">
               <div className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full transition-all border",
+                "flex items-center gap-2 px-4 py-2 rounded-full transition-all border min-w-0 max-w-[60vw] sm:max-w-none",
                 currentPatient
                   ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700"
                   : "bg-slate-100/50 border-slate-200 text-slate-500"
@@ -343,13 +366,21 @@ export default function Home() {
                 ) : (
                   <User className="h-3.5 w-3.5" />
                 )}
-                <span className="text-xs font-black uppercase tracking-wider mr-2">
-                  {currentPatient ? `Patient Actif : ${currentPatient.name}` : "Aucun Patient Sélectionné"}
+                <span
+                  title={currentPatient?.name || undefined}
+                  className="text-xs font-semibold tracking-tight mr-2 truncate whitespace-nowrap"
+                >
+                  {currentPatient ? currentPatient.name : "Aucun patient sélectionné"}
                 </span>
+                {/* Le rouge est réservé à l'alerte clinique : il ne sert plus
+                    ni au bouton d'urgence décoratif, ni au retrait d'une ligne. */}
                 {currentPatient?.allergies && (
-                  <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-red-100 bg-red-600/80 px-2 py-0.5 rounded-full" title={`Allergies : ${currentPatient.allergies}`}>
-                    <ShieldAlert className="h-3 w-3" />
-                    {currentPatient.allergies}
+                  <span
+                    className="hidden sm:flex items-center gap-1 flex-shrink-0 text-[10px] font-bold uppercase tracking-wide text-white bg-red-600 px-2 py-0.5 rounded-full max-w-[14rem] truncate"
+                    title={`Allergies : ${currentPatient.allergies}`}
+                  >
+                    <ShieldAlert className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">{currentPatient.allergies}</span>
                   </span>
                 )}
                 {/* Points de vigilance du questionnaire d'arrivée : visibles
@@ -358,9 +389,9 @@ export default function Home() {
                   <span
                     key={v}
                     title="Antécédent signalé lors de l'accueil"
-                    className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-amber-950 bg-amber-300 px-2 py-0.5 rounded-full"
+                    className="hidden md:flex items-center gap-1 flex-shrink-0 text-[10px] font-bold uppercase tracking-wide text-amber-950 bg-amber-300 px-2 py-0.5 rounded-full whitespace-nowrap"
                   >
-                    <ShieldAlert className="h-3 w-3" />
+                    <ShieldAlert className="h-3 w-3 flex-shrink-0" />
                     {v}
                   </span>
                 ))}
@@ -381,10 +412,15 @@ export default function Home() {
                 if (window.innerWidth < 1024) setIsSidebarOpen(false);
               }}
               title="Urgence — ouvrir l'écran d'enregistrement"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white transition-colors border border-rose-700 shadow-sm"
+              /* Le rouge plein est réservé à l'alerte clinique — une allergie
+                 au dossier. Ce bouton est un raccourci vers l'enregistrement,
+                 pas une alarme : il criait en permanence alors qu'aucune
+                 urgence n'était en cours, ce qui affaiblissait le seul rouge
+                 qui doit arrêter le regard. */
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-rose-700 border border-rose-300 hover:bg-rose-50 transition-colors flex-shrink-0"
             >
               <Zap className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest">Urgence</span>
+              <span className="hidden sm:inline text-[11px] font-semibold">Urgence</span>
             </button>
             <div className="hidden md:flex flex-col text-right mr-2 border-l border-slate-200 pl-4">
               <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">{user.roleLabel}</span>
@@ -436,30 +472,37 @@ export default function Home() {
               MODULES_LARGES.includes(currentStep) ? "max-w-[1400px]" : "max-w-5xl"
             )}
           >
-            {/* Phase Header */}
+            {/* En-tête du module.
+                Portait « Étape 5 », « Étape 13 », « Étape 22 » — un numérotage
+                qui promettait une séquence inexistante : on passe couramment
+                de l'agenda à la facturation, et personne ne traverse
+                vingt-et-une étapes pour atteindre les réglages. Le nom du
+                module suffit, sa description le situe. */}
             <div className="border-b border-foreground/10 pb-4 flex items-start justify-between">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Étape {currentStep}</span>
-                  <div className="h-1.5 w-1.5 rounded-full bg-foreground/20" />
-                  <span className="text-xs font-medium text-foreground/50 uppercase">{steps[currentStep-1].desc}</span>
-                </div>
                 <h2 className="text-2xl font-bold text-foreground tracking-tight">
                   {steps[currentStep-1].fullTitle}
                 </h2>
+                <p className="text-sm text-foreground/50 mt-1">
+                  {steps[currentStep-1].desc}
+                </p>
               </div>
+              {/* « Nouveau dossier » figurait deux fois à l'écran — en bleu au
+                  bas de la barre latérale, en vert ici — pour une seule et
+                  même action. Un seul bouton demeure, visible aussi sur
+                  téléphone où la barre latérale est repliée. */}
               <button
                 onClick={() => setShowResetModal(true)}
-                className="hidden sm:flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-500/30 transition-all micro-bounce"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-all flex-shrink-0"
               >
                 <UserPlus className="h-4 w-4" />
-                Nouveau Dossier
+                <span className="hidden sm:inline">Nouveau dossier</span>
               </button>
             </div>
 
             {/* Content Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className={cn("space-y-6", currentStep === 13 ? "lg:col-span-3" : "lg:col-span-2")}>
+              <div className={cn("space-y-6", colonneLaterale ? "lg:col-span-2" : "lg:col-span-3")}>
                 <motion.div
                     key={currentStep}
                     initial={{ opacity: 0 }}
@@ -504,10 +547,10 @@ export default function Home() {
                   </motion.div>
               </div>
 
-              {currentStep !== 13 && (
+              {colonneLaterale && (
                 <div className="space-y-6">
-                  {hasPermission(permissions, 5, 'view') && <PractitionerHub onNavigate={(step) => setCurrentStep(step)} />}
-                  {hasPermission(permissions, 5, 'view') && <ClinicalNotes phaseId={currentStep} />}
+                  {afficherHub && <PractitionerHub onNavigate={(step) => setCurrentStep(step)} />}
+                  {afficherNotes && <ClinicalNotes phaseId={currentStep} />}
                 </div>
               )}
             </div>

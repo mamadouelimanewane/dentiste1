@@ -186,3 +186,37 @@ body { padding-bottom: 7rem; }
 @media (min-width: 1280px) {
   body { padding-bottom: 5rem; }
 }
+
+/* ---------------------------------------------------------------------------
+   Densité typographique.
+
+   L'interface accentuait tout : `font-black` (900) sur les titres de blocs,
+   les libellés de champs, les boutons, les badges et les statuts, avec un
+   espacement de lettres élargi et des majuscules. Quand tout est accentué,
+   rien ne l'est : le nom du patient se lisait moins bien que le mot
+   « IDENTITÉ » posé au-dessus de lui.
+
+   Plutôt que de reprendre 590 occurrences une à une, on abaisse le poids et
+   l'espacement là où ils sont produits. Les hiérarchies relatives sont
+   conservées — un titre reste plus fort qu'un libellé — mais l'écran cesse
+   de crier. Réversible en une ligne.
+   ------------------------------------------------------------------------ */
+.font-black { font-weight: 700; }
+.tracking-widest { letter-spacing: 0.06em; }
+.tracking-\[0\.2em\] { letter-spacing: 0.1em; }
+.tracking-\[0\.15em\] { letter-spacing: 0.08em; }
+
+/* Les titres de page et de section gardent leur force : c'est là que la
+   hiérarchie doit se voir. */
+h1.font-black, h2.font-black { font-weight: 800; }
+
+/* Une phrase entière en majuscules ne se lit pas — elle se déchiffre. Les
+   avertissements cliniques, qui sont précisément ce qu'il faut lire, étaient
+   les plus mal servis : petites capitales, gris pâle, centrées. */
+.avertissement-clinique {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  text-align: left;
+}

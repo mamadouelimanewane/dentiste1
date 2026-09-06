@@ -240,7 +240,10 @@ export function ProcedureExecution() {
               <span className="h-3 w-3 rounded-sm border border-slate-300 bg-slate-100" /> Extraite
             </span>
           </div>
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center max-w-lg">
+          {/* Cet avertissement était en petites capitales gris pâle, centré
+              sur quatre lignes : la mise en forme qu'on réserve aux mentions
+              qu'on espère voir ignorées. C'est pourtant ce qu'il faut lire. */}
+          <p className="avertissement-clinique text-slate-600 max-w-xl">
             État reconstitué à partir des actes enregistrés dans ce logiciel — il ne remplace pas
             l&apos;examen clinique et ne reflète pas les soins réalisés ailleurs.
           </p>
@@ -314,7 +317,10 @@ export function ProcedureExecution() {
                         // Le bouton n'apparaissait qu'au survol : sur une
                         // tablette au fauteuil, sans survol, il était
                         // inatteignable.
-                        className="text-[9px] font-bold text-rose-500 uppercase hover:underline"
+                        // Le rouge revient à l'alerte clinique : retirer une
+                        // ligne saisie par erreur n'est pas un danger, et ce
+                        // bouton répété sur chaque acte dominait la liste.
+                        className="text-[10px] font-medium text-slate-500 hover:text-rose-700 hover:underline"
                       >
                         Retirer
                       </button>

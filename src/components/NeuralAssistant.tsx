@@ -503,27 +503,31 @@ export function NeuralAssistant() {
 
   return (
     <>
-      {/* Floating Action Button */}
-      {/* Aligné avec la messagerie interne : même largeur, même colonne,
-          un intervalle régulier. Le bouton faisait 64px contre 56px pour
-          l'autre, et l'écart entre les deux était de 8px — l'ensemble se
-          lisait comme deux bulles posées au hasard sur le contenu. */}
-      <div className="fixed bottom-[5.5rem] right-6 z-[9999]">
+      {/* Bouton flottant.
+          Les deux bulles — assistant et messagerie interne — étaient empilées
+          l'une au-dessus de l'autre : ensemble elles occupaient 130 px de haut
+          contre le bord droit et recouvraient le contenu de travail, jusqu'à
+          masquer un libellé de panneau sur téléphone. Elles tiennent
+          désormais sur une seule ligne, plus petites, et portent un nom :
+          deux ronds bleus sans libellé n'apprenaient rien à personne. */}
+      <div className="fixed bottom-6 right-[4.75rem] z-[9999]">
         <motion.button
           whileHover={{ scale: 1.05, boxShadow: "0 0 24px rgba(59,130,246,0.5)" }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsOpen(!isOpen)}
+          title={isOpen ? "Fermer l'assistant" : "Assistant du cabinet"}
+          aria-label={isOpen ? "Fermer l'assistant" : "Assistant du cabinet"}
           className={cn(
-            "h-14 w-14 rounded-full flex items-center justify-center transition-all duration-500 border-2",
+            "h-12 w-12 rounded-full flex items-center justify-center transition-all duration-500 border-2",
             isOpen
               ? "bg-slate-900 border-slate-700 text-white rotate-90"
               : "bg-blue-600 border-blue-400 text-white shadow-2xl shadow-blue-500/40"
           )}
         >
-          {isOpen ? <X className="h-7 w-7" /> : <Brain className="h-7 w-7" />}
+          {isOpen ? <X className="h-6 w-6" /> : <Brain className="h-6 w-6" />}
           {!isOpen && (
-            <div className="absolute -top-1 -right-1 h-5 w-5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
-              <Zap className="h-3 w-3 text-white fill-current" />
+            <div className="absolute -top-1 -right-1 h-4 w-4 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
+              <Zap className="h-2.5 w-2.5 text-white fill-current" />
             </div>
           )}
         </motion.button>
