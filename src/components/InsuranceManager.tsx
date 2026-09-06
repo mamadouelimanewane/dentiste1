@@ -44,19 +44,27 @@ export function InsuranceManager() {
   const [tronque, setTronque] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [erreurMaj, setErreurMaj] = useState<string | null>(null);
   const [form, setForm] = useState({ provider: "", policyNumber: "", claimType: "IPM", amount: "" });
   const [submitting, setSubmitting] = useState(false);
 
+  // Un refus du serveur laissait la file vide sans un mot : on en concluait
+  // qu'aucune prise en charge n'était en attente, et personne ne relançait
+  // l'assureur.
   const loadClaims = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/insurance-claims");
       const data = await res.json();
-      if (res.ok) {
-        setClaims(data.claims);
-        setTotal(typeof data.total === "number" ? data.total : data.claims.length);
-        setTronque(!!data.tronque);
-      }
+      if (!res.ok) throw new Error(data?.error || "Demandes non chargées.");
+      setClaims(data.claims);
+      setTotal(typeof data.total === "number" ? data.total : data.claims.length);
+      setTronque(!!data.tronque);
+      setErreurMaj(null);
+    } catch (e) {
+      setErreurMaj(
+        `${e instanceof Error && e.message ? e.message : "Demandes non chargées."} Ne concluez pas qu'aucune prise en charge n'est en attente.`
+      );
     } finally {
       setLoading(false);
     }
@@ -93,7 +101,6 @@ export function InsuranceManager() {
   };
 
   const [majEnCours, setMajEnCours] = useState<string | null>(null);
-  const [erreurMaj, setErreurMaj] = useState<string | null>(null);
 
   const changerStatut = async (id: string, status: Claim["status"]) => {
     setMajEnCours(id);
@@ -115,7 +122,14 @@ export function InsuranceManager() {
 
   const pendingCount = claims.filter((c) => c.status === "pending" || c.status === "submitted").length;
   const paidTotal = claims.filter((c) => c.status === "paid").reduce((sum, c) => sum + Number(c.amount), 0);
-  const rate = claims.length > 0 ? Math.round((claims.filter((c) => c.status === "paid" || c.status === "approved").length / claims.length) * 100) : 0;
+  const rate =
+    claims.length > 0
+      ? Math.round(
+          (claims.filter((c) => c.status === "paid" || c.status === "approved").length /
+            claims.length) *
+            100
+        )
+      : null;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -126,10 +140,13 @@ export function InsuranceManager() {
             <ShieldCheck className="h-6 w-6 text-emerald-400" />
           </div>
           <div>
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Gestion des Mutuelles</h2>
+            {/* Le titre de la page annonce déjà « Prises en charge
+                mutuelles » : le répéter ici sous un autre nom donnait deux
+                appellations pour un même écran. */}
+            <h2 className="text-sm font-bold text-slate-900">File des demandes</h2>
             <div className="flex items-center gap-2">
               <Landmark className="h-3 w-3 text-blue-500" />
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Assurances & IPM</p>
+              <p className="text-[11px] text-slate-500">IPM, assurances et mutuelles de santé</p>
             </div>
           </div>
         </div>
@@ -140,7 +157,7 @@ export function InsuranceManager() {
             title={!currentPatient ? "Sélectionnez un patient d'abord" : ""}
             className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded shadow-md flex items-center gap-2 disabled:opacity-50"
           >
-            <Plus className="h-4 w-4" /> Demande PEC
+            <Plus className="h-4 w-4" /> Nouvelle demande
           </button>
         </div>
       </div>
@@ -148,9 +165,9 @@ export function InsuranceManager() {
       {/* KPI CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {[
-          { label: "PEC en attente", value: loading ? "…" : String(pendingCount), icon: AlertCircle, color: "text-amber-500", bg: "bg-amber-50" },
+          { label: "Demandes en attente", value: loading ? "…" : String(pendingCount), icon: AlertCircle, color: "text-amber-500", bg: "bg-amber-50" },
           { label: "Règlements reçus", value: loading ? "…" : `${paidTotal.toLocaleString()} F`, icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-50" },
-          { label: "Taux de Validation", value: loading ? "…" : `${rate}%`, icon: TrendingUp, color: "text-blue-500", bg: "bg-blue-50" },
+          { label: "Taux de validation", value: loading ? "…" : rate === null ? "—" : `${rate}%`, icon: TrendingUp, color: "text-blue-500", bg: "bg-blue-50" },
         ].map((kpi, i) => (
           <div key={i} className="bg-white border border-slate-200 p-5 rounded-sm shadow-sm flex flex-col justify-center">
              <div className="flex items-center gap-2 mb-2">
@@ -254,7 +271,7 @@ export function InsuranceManager() {
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
-                Demande PEC — {currentPatient?.name}
+                Demande de prise en charge — {currentPatient?.name}
               </h3>
               <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-700">
                 <X className="h-4 w-4" />
