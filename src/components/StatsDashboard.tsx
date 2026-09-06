@@ -80,12 +80,10 @@ export function StatsDashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Statistiques du cabinet</h1>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Analyse de Performance & Pilotage</p>
-        </div>
+      {/* Le sélecteur de période seul : le titre de la page annonce déjà
+          « Statistiques du cabinet », le répéter ici en majuscules le disait
+          deux fois sur le même écran. */}
+      <div className="flex flex-col md:flex-row md:items-center justify-end gap-6">
         <div className="flex items-center gap-3">
           <div className="flex bg-white border border-slate-200 rounded-sm p-1 shadow-sm">
             {PERIOD_OPTIONS.map((p) => (
@@ -109,13 +107,15 @@ export function StatsDashboard() {
 
       {!loading && data && (
         <>
-          {/* KPI GRID */}
+          {/* Indicateurs.
+              Ces cartes entraient une par une depuis une opacité nulle, à un
+              dixième de seconde d'intervalle : qui arrivait sur l'écran voyait
+              d'abord une carte à demi transparente et les autres absentes. Un
+              tableau de bord se lit d'un coup d'œil ; il doit être là quand on
+              le regarde. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {mainKpis.map((kpi, i) => (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
+              <div
                 key={i}
                 className="bg-white border border-slate-200 p-6 rounded-sm shadow-sm relative overflow-hidden group hover:border-blue-300 transition-colors"
               >
@@ -140,7 +140,7 @@ export function StatsDashboard() {
                 <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity">
                   <kpi.icon className="h-24 w-24" />
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
 
