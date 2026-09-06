@@ -9,7 +9,6 @@ const ALL_PERMISSIONS: ModulePermissions = Object.fromEntries(
   MODULES.map((m) => [String(m.id), { view: true, manage: true }])
 );
 
-import { StaffChatWidget } from "@/components/StaffChatWidget";
 
 export default async function AppLayout({
   children,
@@ -29,7 +28,6 @@ export default async function AppLayout({
         }}
       >
         {children}
-        <StaffChatWidget />
       </AuthProvider>
     );
   }
@@ -81,7 +79,6 @@ export default async function AppLayout({
       }}
     >
       {children}
-      <StaffChatWidget />
     </AuthProvider>
   );
 }

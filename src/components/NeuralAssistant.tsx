@@ -503,35 +503,21 @@ export function NeuralAssistant() {
 
   return (
     <>
-      {/* Bouton flottant.
-          Les deux bulles — assistant et messagerie interne — étaient empilées
-          l'une au-dessus de l'autre : ensemble elles occupaient 130 px de haut
-          contre le bord droit et recouvraient le contenu de travail, jusqu'à
-          masquer un libellé de panneau sur téléphone. Elles tiennent
-          désormais sur une seule ligne, plus petites, et portent un nom :
-          deux ronds bleus sans libellé n'apprenaient rien à personne. */}
-      <div className="fixed bottom-3 right-[3.75rem] sm:bottom-6 sm:right-[4.75rem] z-[9999]">
-        <motion.button
-          whileHover={{ scale: 1.05, boxShadow: "0 0 24px rgba(59,130,246,0.5)" }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsOpen(!isOpen)}
-          title={isOpen ? "Fermer l'assistant" : "Assistant du cabinet"}
-          aria-label={isOpen ? "Fermer l'assistant" : "Assistant du cabinet"}
-          className={cn(
-            "h-10 w-10 sm:h-12 sm:w-12 rounded-full flex items-center justify-center transition-all duration-500 border-2",
-            isOpen
-              ? "bg-slate-900 border-slate-700 text-white rotate-90"
-              : "bg-blue-600 border-blue-400 text-white shadow-2xl shadow-blue-500/40"
-          )}
-        >
-          {isOpen ? <X className="h-6 w-6" /> : <Brain className="h-6 w-6" />}
-          {!isOpen && (
-            <div className="absolute -top-1 -right-1 h-4 w-4 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
-              <Zap className="h-2.5 w-2.5 text-white fill-current" />
-            </div>
-          )}
-        </motion.button>
-      </div>
+      {/* Le déclencheur était une bulle flottante posée sur le contenu de
+          travail. Un bouton permanent qui masque une commande n'a pas sa place
+          au-dessus de l'écran : il rejoint la barre du haut, avec les autres
+          commandes globales. Le panneau, lui, s'ouvre à la demande. */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        title={isOpen ? "Fermer l'assistant" : "Assistant du cabinet"}
+        aria-label={isOpen ? "Fermer l'assistant" : "Assistant du cabinet"}
+        className={cn(
+          "h-9 w-9 rounded-lg flex items-center justify-center transition-colors",
+          isOpen ? "bg-slate-900 text-white" : "text-current opacity-70 hover:opacity-100 hover:bg-black/5"
+        )}
+      >
+        {isOpen ? <X className="h-5 w-5" /> : <Brain className="h-5 w-5" />}
+      </button>
 
       {/* Panel */}
       <AnimatePresence>
@@ -541,7 +527,7 @@ export function NeuralAssistant() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 40, scale: 0.96 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="fixed bottom-[9.5rem] right-6 z-[9998] w-[430px] max-w-[calc(100vw-1.5rem)] h-[660px] bg-white rounded-3xl shadow-[0_32px_80px_-12px_rgba(0,0,0,0.25)] border border-slate-200 overflow-hidden flex flex-col"
+          className="fixed bottom-6 right-4 sm:right-6 z-[9998] w-[430px] max-w-[calc(100vw-2rem)] h-[660px] max-h-[calc(100vh-140px)] bg-white rounded-3xl shadow-[0_32px_80px_-12px_rgba(0,0,0,0.25)] border border-slate-200 overflow-hidden flex flex-col"
           >
             {/* Header */}
             <div className="bg-[#0F172A] p-5 text-white shrink-0 relative overflow-hidden">

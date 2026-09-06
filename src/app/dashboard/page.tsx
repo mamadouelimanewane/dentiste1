@@ -29,6 +29,7 @@ import { NewDossier } from "@/components/NewDossier";
 import { StatsDashboard } from "@/components/StatsDashboard";
 import { PatientDirectory } from "@/components/PatientDirectory";
 import { NeuralAssistant } from "@/components/NeuralAssistant";
+import { StaffChatWidget } from "@/components/StaffChatWidget";
 import { NeuralLogsDashboard } from "@/components/NeuralLogsDashboard";
 import {
   Activity,
@@ -429,6 +430,12 @@ export default function Home() {
               <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">{user.roleLabel}</span>
               <span className="text-sm font-black text-slate-900 tracking-tight">{user.fullName}</span>
             </div>
+            {/* Assistant et messagerie interne : ils étaient deux bulles
+                flottantes posées sur le contenu de travail, où elles
+                masquaient des commandes. Ce sont des outils globaux — leur
+                place est ici, avec les autres. */}
+            <NeuralAssistant />
+            <StaffChatWidget />
             {/* Bouton Portail */}
             <button
               onClick={() => {
@@ -451,7 +458,9 @@ export default function Home() {
             >
               <LogOut className="h-4 w-4" />
             </button>
-            <span className="text-xs font-bold text-slate-400 uppercase bg-slate-100 px-3 py-1.5 rounded-full">v1.4.0</span>
+            {/* Débordait du bord droit sur tablette : c'est l'information la
+                moins utile de la barre, elle se replie la première. */}
+            <span className="hidden xl:inline text-xs font-bold text-slate-400 uppercase bg-slate-100 px-3 py-1.5 rounded-full flex-shrink-0">v1.4.0</span>
           </div>
         </header>
 
@@ -606,7 +615,6 @@ export default function Home() {
         )}
       </AnimatePresence>
     </div>
-    <NeuralAssistant />
     </>
   );
 }

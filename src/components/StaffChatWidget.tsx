@@ -83,16 +83,22 @@ export function StaffChatWidget() {
     }
   };
 
+  // Le déclencheur était une bulle flottante posée par-dessus le contenu :
+  // au fauteuil, elle recouvrait le champ de recherche du catalogue et, avant
+  // cela, le libellé d'un panneau. Un bouton permanent qui masque une commande
+  // n'a pas sa place au-dessus de l'écran de travail — il est désormais dans
+  // la barre du haut, avec les autres commandes globales. Seul le panneau,
+  // ouvert à la demande, reste ancré en bas.
   return (
-    <div className="fixed bottom-3 right-3 sm:bottom-6 sm:right-6 z-50">
+    <div className="relative">
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="absolute bottom-16 right-0 w-[calc(100vw-3rem)] sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col mb-4"
-            style={{ height: "400px", maxHeight: "calc(100vh - 120px)" }}
+            className="fixed bottom-6 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
+            style={{ height: "400px", maxHeight: "calc(100vh - 140px)" }}
           >
             {/* Header */}
             <div className="bg-slate-900 p-4 flex items-center justify-between">
@@ -191,8 +197,8 @@ export function StaffChatWidget() {
         title="Messagerie interne"
         aria-label="Messagerie interne"
         className={cn(
-          "h-10 w-10 sm:h-12 sm:w-12 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110",
-          isOpen ? "bg-slate-900 text-white" : "bg-blue-600 text-white"
+          "h-9 w-9 rounded-lg flex items-center justify-center transition-colors",
+          isOpen ? "bg-slate-900 text-white" : "text-current opacity-70 hover:opacity-100 hover:bg-black/5"
         )}
       >
         {isOpen ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}

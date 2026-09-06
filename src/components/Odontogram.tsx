@@ -49,7 +49,9 @@ function ToothSvg({
       )}
     >
       {isUpper && <span className={cn("text-[10px] font-bold", isSelected ? "text-blue-600" : "text-slate-400")}>{number}</span>}
-      <svg width="24" height="32" viewBox="0 0 24 32" className="drop-shadow-sm">
+      {/* Taille fixée en classes plutôt qu'en attributs : la dent s'agrandit
+          sur les écrans qui ont la place, sans changer le tracé. */}
+      <svg viewBox="0 0 24 32" className="w-6 h-8 lg:w-7 lg:h-9 drop-shadow-sm">
         <g stroke={strokeColor} strokeWidth={isSelected ? "2" : "1"} fill={baseColor}>
           {/* Racine */}
           {isUpper ? (

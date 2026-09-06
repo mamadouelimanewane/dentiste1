@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { ArrowRight, Search, LayoutGrid, Sparkles, LogOut, Star, Clock, AlertTriangle, Zap } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { StaffChatWidget } from "@/components/StaffChatWidget";
 import { useAuth } from "@/lib/auth-context";
 import { hasPermission } from "@/lib/modules";
 import {
@@ -129,24 +130,36 @@ export default function DentalAppsHubPage() {
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-sm font-semibold text-emerald-300 mr-2">{currentPatient.name}</span>
+                {/* Disait « Alerte » sans dire de quoi : il fallait survoler
+                    pour apprendre qu'il s'agissait d'une allergie, et laquelle. */}
                 {currentPatient.allergies && (
-                  <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-red-100 bg-red-600/80 px-2 py-0.5 rounded-full" title={`Allergies: ${currentPatient.allergies}`}>
-                    <AlertTriangle className="h-3 w-3" />
-                    Alerte
+                  <span
+                    className="flex items-center gap-1 flex-shrink-0 text-[10px] font-bold uppercase tracking-wide text-white bg-red-600 px-2 py-0.5 rounded-full max-w-[12rem] truncate"
+                    title={`Allergies : ${currentPatient.allergies}`}
+                  >
+                    <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">{currentPatient.allergies}</span>
                   </span>
                 )}
               </div>
             )}
 
+            {/* Ce bouton affichait « Fonctionnalité Urgence activée » sans
+                rien activer du tout. Le même défaut avait été corrigé sur
+                l'autre écran ; il subsistait ici. Il ouvre maintenant
+                réellement l'accueil, où l'on enregistre un patient qui se
+                présente en urgence. */}
             <button
               onClick={() => {
-                alert("Accès Rapide : Fonctionnalité Urgence activée.");
+                localStorage.setItem("dentiste_lite_step", "1");
+                localStorage.setItem("dentiste_home_view", "workflow");
+                window.location.href = "/dashboard";
               }}
-              title="Accès Rapide / Urgence"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 transition-colors border border-rose-500/20"
+              title="Urgence — ouvrir l'écran d'enregistrement"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 transition-colors border border-rose-500/30"
             >
               <Zap className="h-3.5 w-3.5" />
-              <span className="text-xs font-black uppercase tracking-widest">Urgence</span>
+              <span className="text-xs font-semibold">Urgence</span>
             </button>
 
             {user && (
@@ -172,6 +185,13 @@ export default function DentalAppsHubPage() {
               <LayoutGrid size={15} />
               <span className="hidden sm:inline">Vue workflow</span>
             </button>
+
+            {/* La messagerie interne était montée dans le gabarit sous forme
+                de bulle flottante ; elle rejoint la barre, ici comme sur les
+                écrans de travail. */}
+            <div className="text-slate-300">
+              <StaffChatWidget />
+            </div>
 
             <div className="hidden lg:block">
               <ThemeSwitcher />
