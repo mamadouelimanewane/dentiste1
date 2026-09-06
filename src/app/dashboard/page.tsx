@@ -92,9 +92,15 @@ const steps = DENTAL_MODULE_GROUPS.flatMap((g) => g.modules)
 const moduleParId = new Map(steps.map((m) => [m.id, m]));
 
 // Modules qui affichent une grille, un tableau ou des colonnes multiples :
-// une largeur de lecture de 1024px les comprime inutilement sur un écran de
+// une largeur de lecture de 1024 px les comprime inutilement sur un écran de
 // bureau. Agenda, Comptabilité, Statistiques, Journal, Recherche, Super Admin.
-const MODULES_LARGES = [8, 13, 20, 22, 23, 24];
+//
+// La consultation et la réalisation s'y ajoutent : ce sont deux écrans à
+// trois colonnes — catalogue des actes, récapitulatif, notes cliniques — et
+// la contrainte de 1024 px réduisait le catalogue à trois cents pixels sur
+// un écran qui en offrait mille six cents. Les noms d'actes s'y brisaient en
+// deux lignes, au moment précis où l'on chiffre un plan de traitement.
+const MODULES_LARGES = [4, 5, 8, 13, 20, 22, 23, 24];
 
 // Colonne de droite : elle n'a pas à suivre partout.
 //
