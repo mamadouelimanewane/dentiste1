@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Save, Zap, Check, StickyNote, AlertTriangle } from "lucide-react";
+import { Save, Check, StickyNote, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatient } from "@/lib/context";
 import { useToast } from "@/lib/ToastContext";
@@ -19,18 +19,26 @@ interface NoteClinique {
   auteur: string | null;
 }
 
-// « phase_3 » ne dit rien au praticien qui relit le dossier six mois plus tard.
+// « phase_5 » ne dit rien au praticien qui relit le dossier six mois plus
+// tard. La table associait par ailleurs des libellés aux numéros 1 à 4 alors
+// que les modules cliniques portent les numéros 1, 2, 4, 5, 7 et 11 : une note
+// prise en Réalisation s'affichait « Phase 5 », une note de Suivi « Phase 7 ».
 const LIBELLES_PHASE: Record<string, string> = {
   phase_1: "Accueil",
-  phase_2: "Diagnostic",
-  phase_3: "Soins",
-  phase_4: "Suivi",
+  phase_2: "Arrivée",
+  phase_4: "Consultation",
+  phase_5: "Réalisation",
+  phase_7: "Suivi",
+  phase_11: "Téléconsultation",
   general: "Observation",
+  ordonnance: "Ordonnance",
+  plan: "Plan de traitement",
+  consultation: "Consultation",
 };
 
 function libellePhase(type: string | null) {
   if (!type) return "Observation";
-  return LIBELLES_PHASE[type] || type.replace("phase_", "Phase ");
+  return LIBELLES_PHASE[type] || "Observation";
 }
 
 function dateLisible(iso: string) {
@@ -135,8 +143,12 @@ export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
           <StickyNote className="h-5 w-5 text-blue-400" />
           <h3 className="text-xs font-bold uppercase tracking-[0.2em]">Notes Cliniques</h3>
         </div>
-        <div className="h-8 w-8 border border-slate-700 bg-slate-800 rounded flex items-center justify-center">
-          <span className="text-xs font-bold text-slate-400">{phaseId}</span>
+        {/* Ce cadre affichait le numéro d'étape de l'écran — 4 en
+            consultation, 5 en réalisation, 7 en suivi — présenté comme un
+            compteur, juste au-dessus d'un « 0 note ». Il annonce maintenant
+            ce qu'il y a réellement au dossier. */}
+        <div className="px-2 h-7 min-w-7 border border-slate-700 bg-slate-800 rounded flex items-center justify-center">
+          <span className="text-xs font-bold text-slate-300">{notes.length}</span>
         </div>
       </div>
 
@@ -176,10 +188,9 @@ export function ClinicalNotes({ phaseId }: ClinicalNotesProps) {
         </div>
 
         <div className="flex justify-between items-center pt-2">
-          <div className="flex items-center gap-1.5">
-            <Zap className="h-4 w-4 text-blue-500" />
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Base de Données</span>
-          </div>
+          <p className="text-[10px] text-slate-400 leading-relaxed max-w-[18rem]">
+            Chaque observation est conservée, datée et signée de son auteur.
+          </p>
           <button 
             onClick={saveNote}
             disabled={isSaving || !currentPatient}
