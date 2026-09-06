@@ -87,7 +87,7 @@ export const DENTAL_MODULE_GROUPS: DentalGroup[] = [
     hint: "Dictée vocale, statistiques et journal d'activité",
     modules: [
       { id: 12, name: 'Dictée vocale',  fullTitle: 'Dictée vocale',             desc: 'Reconnaissance vocale du navigateur, sauvegarde locale.',                 icon: Brain },
-      { id: 23, name: 'Statistiques',   fullTitle: 'Statistiques du cabinet', desc: 'KPIs, analyse de performance et pilotage confidentiel.',               icon: Calculator, badge: 'NEW' },
+      { id: 23, name: 'Statistiques',   fullTitle: 'Statistiques du cabinet', desc: 'Activité, encaissements et actes les plus réalisés.',               icon: Calculator, badge: 'NEW' },
       { id: 24, name: 'Journal',        fullTitle: "Journal d'activité",        desc: "Historique des actions enregistrees par l'assistant de saisie.",        icon: Database   },
     ],
   },
@@ -96,9 +96,9 @@ export const DENTAL_MODULE_GROUPS: DentalGroup[] = [
     label: 'Système & Administration',
     hint: 'Utilisateurs, config et accès',
     modules: [
-      { id: 10, name: 'Utilisateurs',  fullTitle: 'Comptes et rôles',   desc: 'Rôles RBAC, privilèges et gestion des comptes staff.',                   icon: Users      },
+      { id: 10, name: 'Utilisateurs',  fullTitle: 'Comptes et rôles',   desc: "Comptes du personnel, rôles et droits d'accès.",                   icon: Users      },
       { id: 21, name: 'Configuration', fullTitle: 'Configuration du cabinet',   desc: 'Logo, informations légales et personnalisation des documents.',           icon: Settings   },
-      { id: 22, name: 'Super Admin',   fullTitle: "Administration du cabinet", desc: 'Logs, catalogue des actes et Business Intelligence.',                     icon: ShieldAlert},
+      { id: 22, name: 'Super Admin',   fullTitle: "Administration du cabinet", desc: "Journal d'audit, catalogue des actes et chiffres du cabinet.",                     icon: ShieldAlert},
     ],
   },
 ];
