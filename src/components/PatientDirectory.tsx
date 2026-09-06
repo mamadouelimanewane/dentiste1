@@ -123,7 +123,8 @@ export function PatientDirectory() {
             <FolderOpen className="h-6 w-6 text-amber-400" />
           </div>
           <div>
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Dossiers Patients</h2>
+            {/* Redisait « Recherche de dossiers », déjà en titre de page. */}
+            <h2 className="text-sm font-bold text-slate-900">Rechercher un dossier</h2>
             <div className="flex items-center gap-2">
               <Search className="h-3 w-3 text-amber-500" />
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Recherche & Indexation</p>

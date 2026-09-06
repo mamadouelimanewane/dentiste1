@@ -132,7 +132,8 @@ export function InventoryManager() {
             <Package className="h-6 w-6 text-fuchsia-400" />
           </div>
           <div>
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Gestion des Stocks</h2>
+            {/* Redisait « Stock du cabinet », déjà en titre de page. */}
+            <h2 className="text-sm font-bold text-slate-900">Inventaire</h2>
             <div className="flex items-center gap-2">
               <Box className="h-3 w-3 text-fuchsia-500" />
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{articlesReferences} article(s) référencé(s)</p>

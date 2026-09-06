@@ -171,7 +171,8 @@ export function ClinicSettings() {
             <Settings className="h-5 w-5 text-slate-300" />
           </div>
           <div>
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Paramètres du Cabinet</h2>
+            {/* Redisait « Configuration du cabinet », déjà en titre de page. */}
+            <h2 className="text-sm font-bold text-slate-900">Identité et documents</h2>
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-3 w-3 text-emerald-500" />
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Configuration Globale</p>

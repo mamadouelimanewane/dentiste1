@@ -292,8 +292,9 @@ export function AdminHub() {
             <Lock className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-black uppercase tracking-widest text-emerald-400">Administration du cabinet</h2>
-            <p className="text-xs font-medium text-slate-400">Accès restreint. Toutes les actions sont tracées et archivées.</p>
+            {/* Reprenait mot pour mot le titre de la page. */}
+            <h2 className="text-lg font-bold text-emerald-400">Accès restreint</h2>
+            <p className="text-xs font-medium text-slate-400">Toutes les actions menées ici sont tracées et archivées.</p>
           </div>
         </div>
         <ShieldAlert className="absolute -right-4 -top-4 h-32 w-32 text-slate-800 opacity-50 z-0" />

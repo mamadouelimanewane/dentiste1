@@ -178,7 +178,8 @@ export function ProstheticsLab() {
             <Layers className="h-7 w-7" />
           </div>
           <div>
-            <h2 className="text-base font-black text-slate-900 uppercase tracking-tighter">Labo & Prothèses</h2>
+            {/* Redisait « Laboratoire & prothèses », déjà en titre de page. */}
+            <h2 className="text-base font-bold text-slate-900">Travaux en cours</h2>
             {/* Affichait le nombre de lignes reçues comme s'il s'agissait du
                 total : un laboratoire à 250 travaux en lisait 100. */}
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">
