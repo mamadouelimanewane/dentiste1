@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Mic, MicOff, Globe, History, Brain, FileText, Pill, Activity, CheckCircle2, Save, Sparkles, Languages, Cpu, Zap, Database, Search } from "lucide-react";
+import { Mic, MicOff, Globe, History, Brain, FileText, Pill, Activity, CheckCircle2, Save, Sparkles, Languages, Zap, Database, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
@@ -141,8 +141,14 @@ export function VoiceDictation() {
             <Brain className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Dictée Vocale</h2>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reconnaissance vocale du navigateur</p>
+            {/* Le titre de la page l'annonce déjà, et le panneau ci-dessous
+                une troisième fois. */}
+            <h2 className="text-sm font-bold text-slate-900">
+              {recognition ? "Micro disponible sur ce poste" : "Aucun micro reconnu par ce navigateur"}
+            </h2>
+            <p className="text-[11px] text-slate-500">
+              Le texte reste sur ce poste tant qu&apos;il n&apos;est pas versé à un dossier.
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-6">
@@ -311,12 +317,7 @@ export function VoiceDictation() {
                    <p className="text-[10px] font-black text-white uppercase tracking-tight">Local (navigateur)</p>
                  </div>
                </div>
-               <div className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-blue-900/50 rounded border border-blue-800">
-                 <Cpu className="h-3.5 w-3.5 text-blue-400" />
-                 <span className="text-[9px] font-bold text-blue-100 uppercase tracking-widest">
-                   Reconnaissance vocale native — aucune correction IA appliquée
-                 </span>
-               </div>
+
             </div>
           </div>
         </div>
