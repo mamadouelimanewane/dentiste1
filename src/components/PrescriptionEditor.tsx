@@ -172,6 +172,22 @@ export function PrescriptionEditor() {
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm p-3">{error}</div>
       )}
 
+      {/* Une ordonnance porte le nom du compte connecté. Un administrateur ou
+          un comptable a accès à cet écran par ses privilèges de module, mais
+          il ne prescrit pas : l'ordonnance sortirait à son nom, avec son
+          libellé de rôle sous le titre. L'écran le dit plutôt que de laisser
+          faire en silence. */}
+      {!user.isPractitioner && (
+        <div className="flex items-start gap-2 rounded-sm border border-amber-300 bg-amber-50 p-3 text-xs font-bold text-amber-900 leading-relaxed">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span>
+            Votre compte n&apos;est pas un compte de praticien : l&apos;ordonnance porterait votre nom
+            et la mention « {user.roleLabel} ». Faites-la établir par le praticien qui a examiné le
+            patient.
+          </span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* LEFT COLUMN - EDITOR */}
         <div className="space-y-6">
@@ -346,17 +362,24 @@ export function PrescriptionEditor() {
           {/* A4 Paper */}
           <div className="bg-white w-full max-w-[210mm] min-h-[297mm] shadow-xl p-10 md:p-14 relative font-serif text-slate-800">
              {/* Header */}
+             {/* Le nom du cabinet et « Dakar, Sénégal » étaient écrits en dur
+                 dans cet aperçu, alors que le PDF lit désormais l'identité
+                 réelle : les deux documents pouvaient se contredire. */}
              <div className="text-center border-b-2 border-slate-800 pb-6 mb-8">
                <h1 className="text-2xl font-bold uppercase tracking-wider text-[#1E3A8A]">{user.fullName}</h1>
                <p className="text-sm font-semibold tracking-widest mt-1">{user.roleLabel}</p>
                <div className="mt-4 text-xs space-y-1 text-slate-600">
-                 <p>Cabinet Dentaire du Cap Vert — Dakar, Sénégal</p>
+                 <p>{cabinet?.clinic_name || "Cabinet dentaire"}</p>
+                 {!!cabinet?.address && <p>{cabinet.address}</p>}
                </div>
              </div>
 
              {/* Date */}
              <div className="text-right mb-12">
-               <p className="text-sm italic">Dakar, le {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+               {/* « Dakar » était écrit en dur : ce cabinet y est, un autre non. */}
+               <p className="text-sm italic">
+                 Le {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+               </p>
              </div>
 
              {/* Patient */}

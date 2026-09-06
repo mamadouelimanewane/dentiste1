@@ -13,6 +13,9 @@ interface AuthUser {
   roleLabel: string;
   permissions: ModulePermissions;
   manageRoles: boolean;
+  // Le rôle est-il un rôle de soin ? Un administrateur ou un comptable a
+  // accès à l'écran d'ordonnance, mais ne prescrit pas.
+  isPractitioner: boolean;
 }
 
 interface AuthContextType {

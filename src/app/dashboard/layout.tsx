@@ -25,6 +25,7 @@ export default async function AppLayout({
           roleLabel: "Administrateur",
           permissions: ALL_PERMISSIONS,
           manageRoles: true,
+          isPractitioner: true,
         }}
       >
         {children}
@@ -76,6 +77,7 @@ export default async function AppLayout({
         roleLabel: role.label,
         permissions: role.permissions,
         manageRoles: role.manage_roles,
+        isPractitioner: role.is_practitioner,
       }}
     >
       {children}
