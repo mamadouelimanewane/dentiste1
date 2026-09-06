@@ -74,32 +74,22 @@ import { useAuth, type Role } from "@/lib/auth-context";
 import { hasPermission, type ModulePermissions } from "@/lib/modules";
 import { DENTAL_MODULE_GROUPS } from "@/lib/dentalModules";
 
-const steps = [
-  { id: 1, title: "Accueil", fullTitle: "Accueil & Prise en charge", desc: "Enregistrement et vérification des droits.", icon: UserPlus },
-  { id: 2, title: "Arrivée", fullTitle: "Arrivée au Cabinet", desc: "Pointage et questionnaire médical.", icon: LogIn },
-  { id: 3, title: "Nouv. Dossier", fullTitle: "Nouveau dossier patient", desc: "Réinitialisation et nouveau cycle patient.", icon: RotateCcw },
-  { id: 4, title: "Consultation", fullTitle: "Consultation Clinique", desc: "Diagnostic et plan de traitement.", icon: Stethoscope },
-  { id: 5, title: "Réalisation", fullTitle: "Réalisation des Actes", desc: "Soins et interventions techniques.", icon: Activity },
-  { id: 6, title: "Administration", fullTitle: "Gestion Administrative", desc: "Facturation et règlements.", icon: FileText },
-  { id: 7, title: "Suivi", fullTitle: "Suivi & Archivage", desc: "Clôture et planification futurs RDV.", icon: History },
-  { id: 8, title: "Comptabilité", fullTitle: "Comptabilité & Finances", desc: "Registre, factures et destinataires.", icon: Calculator },
-  { id: 9, title: "Mutuelles", fullTitle: "Gestion des Mutuelles", desc: "Prises en charge, IPM et Assurances.", icon: ShieldCheck },
-  { id: 10, title: "Utilisateurs", fullTitle: "Gestion des Utilisateurs", desc: "Rôles, privilèges et comptes.", icon: Users },
-  { id: 11, title: "Téléconsult", fullTitle: "Téléconsultation", desc: "Consultations vidéo et suivi à distance.", icon: Video },
-  { id: 12, title: "Dictée vocale", fullTitle: "Dictée Vocale", desc: "Reconnaissance vocale du navigateur, sauvegarde locale.", icon: Brain },
-  { id: 13, title: "Agenda", fullTitle: "Agenda du cabinet", desc: "Rendez-vous, salle d'attente et rappels.", icon: Calendar },
-  { id: 14, title: "Imagerie", fullTitle: "Clichés du patient", desc: "Consultation des radiographies du patient.", icon: Scan },
-  { id: 15, title: "Comparaison", fullTitle: "Comparaison de clichés", desc: "Superposition de deux photographies du dossier.", icon: Smile },
-  { id: 16, title: "Labo & CFAO", fullTitle: "Laboratoire & prothèses", desc: "Gestion des flux numériques et travaux prothétiques.", icon: Layers },
-  { id: 17, title: "Ordonnances", fullTitle: "Ordonnances", desc: "Création et impression d'ordonnances.", icon: Pill },
-  { id: 18, title: "Communication", fullTitle: "Messages aux patients", desc: "Gestion automatisée des rendez-vous et rappels.", icon: MessageSquare },
-  { id: 19, title: "Stocks", fullTitle: "Stock du cabinet", desc: "Gestion des consommables et commandes.", icon: Package },
-  { id: 20, title: "Recherche", fullTitle: "Recherche de dossiers", desc: "Recherche et indexation des dossiers patients.", icon: FolderOpen },
-  { id: 21, title: "Configuration", fullTitle: "Paramètres du Cabinet", desc: "Configuration du profil, logo et infos légales.", icon: Settings },
-  { id: 22, title: "Super Admin", fullTitle: "Administration du cabinet", desc: "Utilisateurs, Logs, Catalogue et BI.", icon: ShieldAlert },
-  { id: 23, title: "Statistiques", fullTitle: "Statistiques du cabinet", desc: "Analyse de performance et pilotage confidentiel.", icon: Calculator },
-  { id: 24, title: "Journal", fullTitle: "Journal d'activité", desc: "Historique des actions enregistrées par l'assistant de saisie.", icon: Database },
-];
+// Source unique des modules.
+//
+// Cette liste existait ici en double de src/lib/dentalModules.ts : la même
+// vingtaine de modules décrite deux fois, avec des libellés qui avaient
+// divergé. Le module de facturation portait ainsi trois noms selon l'écran —
+// « Administration » dans la barre latérale, « Gestion Administrative » en
+// titre, « Facturation et règlements » en description — et le portail des
+// modules, qui lit l'autre fichier, en affichait encore un quatrième.
+//
+// Les deux listes n'en font plus qu'une. Renommer un module se fait à un
+// seul endroit, et tous les écrans suivent.
+const steps = DENTAL_MODULE_GROUPS.flatMap((g) => g.modules)
+  .map((m) => ({ id: m.id, title: m.name, fullTitle: m.fullTitle, desc: m.desc, icon: m.icon }))
+  .sort((a, b) => a.id - b.id);
+
+const moduleParId = new Map(steps.map((m) => [m.id, m]));
 
 // Modules qui affichent une grille, un tableau ou des colonnes multiples :
 // une largeur de lecture de 1024px les comprime inutilement sur un écran de
@@ -200,6 +190,7 @@ export default function Home() {
   }, [isMounted, role, currentStep, allVisibleSteps]);
 
   const currentIndex = visibleSteps.findIndex(s => s.id === currentStep);
+  const moduleCourant = moduleParId.get(currentStep) ?? steps[0];
 
   const afficherHub =
     MODULES_AVEC_HUB.includes(currentStep) && hasPermission(permissions, 5, 'view');
@@ -506,10 +497,10 @@ export default function Home() {
             <div className="border-b border-foreground/10 pb-4 flex items-start justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-foreground tracking-tight">
-                  {steps[currentStep-1].fullTitle}
+                  {moduleCourant.fullTitle}
                 </h2>
                 <p className="text-sm text-foreground/50 mt-1">
-                  {steps[currentStep-1].desc}
+                  {moduleCourant.desc}
                 </p>
               </div>
               {/* « Nouveau dossier » figurait deux fois à l'écran — en bleu au
