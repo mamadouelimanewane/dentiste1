@@ -127,7 +127,7 @@ export function PatientDirectory() {
             <h2 className="text-sm font-bold text-slate-900">Rechercher un dossier</h2>
             <div className="flex items-center gap-2">
               <Search className="h-3 w-3 text-amber-500" />
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Recherche & Indexation</p>
+              <p className="text-[11px] text-slate-500">Par nom, numéro de dossier ou téléphone</p>
             </div>
           </div>
         </div>
@@ -158,15 +158,14 @@ export function PatientDirectory() {
 
       <div className="bg-[#0F172A] text-white p-6 rounded-sm flex justify-between items-center relative overflow-hidden">
         <div className="relative z-10 flex items-center gap-8 w-full">
-          {/* Le titre du module est déjà affiché par la page ; « Indexation
-              ultra-rapide » ne décrivait rien de vérifiable. */}
-          <div className="space-y-1">
-            <h3 className="text-lg font-black uppercase tracking-widest text-amber-400">Dossiers patients</h3>
-            <p className="text-slate-300 text-xs font-medium">Recherche par nom, numéro de dossier ou téléphone.</p>
-          </div>
-          <div className="hidden md:flex gap-6 border-l border-slate-700 pl-8">
+          {/* « Recherche de dossiers » en titre de page, « Rechercher un
+              dossier » dans le bandeau au-dessus, et ici « Dossiers patients
+              — recherche par nom, numéro de dossier ou téléphone » : trois
+              fois la même chose avant d'atteindre la liste. Ne reste que le
+              compteur, seule information de ce bloc. */}
+          <div className="flex gap-6">
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Patients</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dossiers au fichier</p>
               {/* Affichait `patients.length`, donc au plus 100 : un cabinet de
                   300 dossiers lisait « Total Patients : 100 ». */}
               <p className="text-2xl font-black text-white">{loading ? "…" : total}</p>

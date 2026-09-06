@@ -105,7 +105,7 @@ export function AiRadioLab() {
         <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
         <p className="text-xs text-amber-900 leading-relaxed">
           <strong>Aucune analyse automatisée n&apos;est réalisée.</strong> Ce module sert uniquement à
-          consulter les clichés importés dans le dossier du patient (module Imagerie). L&apos;interprétation
+          consulter les clichés déjà versés au dossier du patient. L&apos;interprétation
           radiologique et le diagnostic relèvent exclusivement du praticien.
         </p>
       </div>
@@ -138,7 +138,10 @@ export function AiRadioLab() {
           <ImageIcon className="h-10 w-10 text-slate-300 mx-auto mb-3" />
           <p className="text-sm font-bold text-slate-700">Aucun cliché pour ce patient</p>
           <p className="text-xs text-slate-400 mt-1">
-            Importez une radiographie depuis le module Imagerie pour la consulter ici.
+            {/* Renvoyait au « module Imagerie » — c'est-à-dire à cet écran
+                même. L'import se fait depuis Suivi, où les clichés du dossier
+                sont gérés. */}
+            Les clichés s&apos;importent depuis l&apos;écran Suivi ; ils apparaissent ensuite ici.
           </p>
         </div>
       )}
