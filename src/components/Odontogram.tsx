@@ -82,39 +82,63 @@ function ToothSvg({
   );
 }
 
-export function Odontogram({ selectedTooth, onSelectTooth, toothStates = {} }: OdontogramProps) {
+// Une hémi-arcade : huit dents d'un même côté.
+function HemiArcade({
+  dents,
+  selectedTooth,
+  onSelectTooth,
+  toothStates,
+  alignement,
+}: {
+  dents: number[];
+  selectedTooth: number | null;
+  onSelectTooth: (t: number) => void;
+  toothStates: Record<number, "healthy" | "caries" | "filled" | "missing">;
+  alignement: string;
+}) {
   return (
-    <div className="flex flex-col items-center gap-8 py-6 w-full max-w-4xl mx-auto overflow-x-auto">
-      {/* Mâchoire supérieure */}
-      <div className="flex items-end justify-center gap-1 sm:gap-2 min-w-max px-4">
-        {UPPER_TEETH.map((t) => (
-          <React.Fragment key={t}>
-            <ToothSvg
-              number={t}
-              isSelected={selectedTooth === t}
-              state={toothStates[t] || "healthy"}
-              onClick={() => onSelectTooth(t)}
-            />
-            {t === 11 && <div className="w-4 border-r-2 border-dashed border-slate-200 h-10 mr-4" />}
-          </React.Fragment>
-        ))}
+    <div className={cn("flex gap-0.5 sm:gap-1.5", alignement)}>
+      {dents.map((t) => (
+        <ToothSvg
+          key={t}
+          number={t}
+          isSelected={selectedTooth === t}
+          state={toothStates[t] || "healthy"}
+          onClick={() => onSelectTooth(t)}
+        />
+      ))}
+    </div>
+  );
+}
+
+export function Odontogram({ selectedTooth, onSelectTooth, toothStates = {} }: OdontogramProps) {
+  // L'arcade était une seule ligne de seize dents en largeur fixe, dans un
+  // cadre à défilement horizontal : sur téléphone la moitié sortait du champ
+  // et seule une fine barre grise le signalait. On ne voyait jamais la bouche
+  // entière — précisément sur l'écran qu'on tient à la main au fauteuil.
+  //
+  // Les hémi-arcades sont désormais des blocs autonomes : côte à côte quand
+  // la place existe, l'une sous l'autre quand elle manque. Chaque quadrant
+  // tient alors dans la largeur, sans défilement, et sans rétrécir les dents
+  // au point qu'on ne puisse plus les viser au doigt.
+  const commun = { selectedTooth, onSelectTooth, toothStates };
+
+  return (
+    <div className="flex flex-col items-center gap-6 py-6 w-full max-w-4xl mx-auto px-2">
+      {/* Maxillaire */}
+      <div className="flex flex-wrap items-end justify-center gap-x-3 gap-y-5">
+        <HemiArcade dents={UPPER_TEETH.slice(0, 8)} alignement="items-end" {...commun} />
+        <div className="hidden sm:block border-r-2 border-dashed border-slate-200 h-10 self-end" />
+        <HemiArcade dents={UPPER_TEETH.slice(8)} alignement="items-end" {...commun} />
       </div>
 
       <div className="w-full h-px bg-slate-200" />
 
-      {/* Mâchoire inférieure */}
-      <div className="flex items-start justify-center gap-1 sm:gap-2 min-w-max px-4">
-        {LOWER_TEETH.map((t) => (
-          <React.Fragment key={t}>
-            <ToothSvg
-              number={t}
-              isSelected={selectedTooth === t}
-              state={toothStates[t] || "healthy"}
-              onClick={() => onSelectTooth(t)}
-            />
-            {t === 41 && <div className="w-4 border-r-2 border-dashed border-slate-200 h-10 mr-4" />}
-          </React.Fragment>
-        ))}
+      {/* Mandibule */}
+      <div className="flex flex-wrap items-start justify-center gap-x-3 gap-y-5">
+        <HemiArcade dents={LOWER_TEETH.slice(0, 8)} alignement="items-start" {...commun} />
+        <div className="hidden sm:block border-r-2 border-dashed border-slate-200 h-10 self-start" />
+        <HemiArcade dents={LOWER_TEETH.slice(8)} alignement="items-start" {...commun} />
       </div>
     </div>
   );

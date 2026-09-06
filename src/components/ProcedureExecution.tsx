@@ -223,7 +223,10 @@ export function ProcedureExecution() {
           <span className="text-[9px] font-bold text-blue-200 uppercase">Cliquez sur une dent pour l'isoler</span>
         </div>
 
-        <div className="p-8 flex flex-col items-center gap-6 bg-slate-50/50 overflow-x-auto">
+        {/* Plus de défilement horizontal : l'arcade se replie par quadrant
+            quand la largeur manque (voir Odontogram). Un cadre qui défile
+            latéralement cachait la moitié de la bouche. */}
+        <div className="p-4 sm:p-8 flex flex-col items-center gap-6 bg-slate-50/50">
           <Odontogram
             selectedTooth={selectedTooth}
             onSelectTooth={toggleTooth}
