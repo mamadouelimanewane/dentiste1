@@ -161,7 +161,16 @@ export default function Home() {
   const allVisibleSteps = stepsForPermissions(permissions);
   
   const activeGroup = DENTAL_MODULE_GROUPS.find(g => g.modules.some(m => m.id === currentStep));
-  const [openGroups, setOpenGroups] = useState<string[]>([]);
+  // Les deux groupes du quotidien sont dépliés d'emblée.
+  //
+  // Seul le groupe courant l'était : depuis l'accueil, atteindre la
+  // Réalisation — le geste le plus fréquent de la journée — demandait de
+  // déplier « Clinique & Soins » avant de cliquer. Les modules de soin et de
+  // gestion patient sont ceux qu'on ouvre dix fois par jour ; l'administratif
+  // et les réglages, une fois par semaine. La place existe depuis que le
+  // bouton « Nouveau dossier » a quitté le bas de cette barre.
+  const GROUPES_DU_QUOTIDIEN = ['Gestion Patient', 'Clinique & Soins'];
+  const [openGroups, setOpenGroups] = useState<string[]>(GROUPES_DU_QUOTIDIEN);
 
   // Le groupe de l'étape courante s'ouvre automatiquement.
   useEffect(() => {

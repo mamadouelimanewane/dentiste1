@@ -707,15 +707,24 @@ export function BillingManager() {
             Aucun e-mail n'est envoyé : l'application n'a pas de service
             d'envoi de courriel. Le personnel croyait le patient et le
             comptable servis, et ne remettait donc pas la facture en main. */}
-        <div className="bg-white border border-slate-200 rounded-sm p-6 space-y-4 shadow-sm">
-          <h3 className="text-sm font-black text-blue-900 uppercase tracking-tight">Facture et comptabilité</h3>
-          <p className="text-[11px] text-slate-600 leading-relaxed">
-            La facture alimente <strong>automatiquement</strong> la Comptabilité dès son
-            émission : il n&apos;y a rien à transmettre. En revanche, l&apos;application{" "}
-            <strong>n&apos;envoie aucun e-mail</strong> — pour remettre son exemplaire au
-            patient, téléchargez le PDF ci-dessus et imprimez-le ou envoyez-le
-            vous-même.
+        {/* Ce pavé d'aide était affiché en permanence et occupait autant de
+            place que les moyens de paiement, alors qu'on le lit une fois. Il
+            se réduit à ce qui doit être su au moment d'encaisser — que rien
+            ne part par e-mail — et le reste s'ouvre à la demande. */}
+        <div className="bg-white border border-slate-200 rounded-sm p-5 space-y-3 shadow-sm">
+          <p className="text-xs text-slate-700 leading-relaxed">
+            L&apos;application <strong>n&apos;envoie aucun e-mail</strong> : remettez son
+            exemplaire au patient en téléchargeant le PDF ci-dessus.
           </p>
+          <details className="group">
+            <summary className="cursor-pointer text-[11px] font-semibold text-blue-700 hover:underline list-none">
+              Et la comptabilité ?
+            </summary>
+            <p className="mt-2 text-[11px] text-slate-600 leading-relaxed">
+              La facture y est portée dès son émission : il n&apos;y a rien à transmettre,
+              ni à ressaisir.
+            </p>
+          </details>
           {isPaid && (
             <div className="mt-4 p-3 bg-emerald-50 border border-emerald-100 rounded-sm flex items-start gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5" />
