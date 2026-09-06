@@ -5,11 +5,16 @@ import { UserPlus, RotateCcw, ShieldCheck, Sparkles, ArrowRight } from "lucide-r
 import { motion } from "framer-motion";
 
 export function NewDossier() {
+  // « dentiste_lite_patient » n'a jamais existé : le dossier courant est
+  // enregistré sous « dentiste_lite_patient_id ». Ce bouton, qui promet de
+  // préparer l'interface pour le patient suivant, laissait donc le dossier
+  // précédent ouvert.
   const handleReset = () => {
     localStorage.removeItem("dentiste_lite_step");
     localStorage.removeItem("dentiste_lite_notes");
     localStorage.removeItem("dentiste_lite_executed");
-    localStorage.removeItem("dentiste_lite_patient");
+    localStorage.removeItem("dentiste_lite_patient_id");
+    localStorage.removeItem("dentiste_lite_dictations");
     window.location.reload();
   };
 
@@ -27,7 +32,9 @@ export function NewDossier() {
            </div>
            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Initialiser un Nouveau Dossier ?</h2>
            <p className="text-sm text-slate-500 leading-relaxed px-6">
-              Cette action va clôturer la session actuelle et préparer l'interface pour le prochain patient. Toutes les données temporaires seront archivées.
+              Le dossier ouvert sera refermé et l&apos;écran remis à l&apos;accueil, prêt pour le
+              patient suivant. Rien n&apos;est supprimé : tout ce qui a été enregistré reste au
+              dossier du patient.
            </p>
         </div>
 
@@ -44,16 +51,12 @@ export function NewDossier() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-         <div className="bg-slate-900 p-4 rounded-sm border border-slate-800 text-white flex items-center gap-3">
-            <ShieldCheck className="h-5 w-5 text-emerald-400" />
-            <span className="text-[10px] font-bold uppercase tracking-widest leading-tight">Archive Automatique Activée</span>
-         </div>
-         <div className="bg-emerald-50 p-4 rounded-sm border border-emerald-100 text-emerald-900 flex items-center gap-3">
-            <ArrowRight className="h-5 w-5" />
-            <span className="text-[10px] font-bold uppercase tracking-widest leading-tight">Prochain: M. Ndiaye (11:30)</span>
-         </div>
-      </div>
+      {/* Deux blocs écrits en dur ont été retirés d'ici : « Archive
+          automatique activée » — rien n'archive quoi que ce soit à cet
+          endroit — et « Prochain : M. Ndiaye (11:30) », un patient et une
+          heure entièrement inventés, affichés même un dimanche sans aucun
+          rendez-vous. Le prochain rendez-vous se lit dans l'Agenda, qui le
+          connaît vraiment. */}
     </div>
   );
 }

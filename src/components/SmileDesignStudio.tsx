@@ -102,11 +102,11 @@ export function SmileDesignStudio() {
             <Images className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-base font-black text-slate-900 uppercase tracking-tighter">
-              Comparaison de clichés
-            </h2>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">
-              {currentPatient.name}
+            {/* Le titre de la page annonce déjà « Comparaison de clichés ».
+                Ce bandeau n'apportait que le nom du patient. */}
+            <h2 className="text-base font-bold text-slate-900">{currentPatient.name}</h2>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {images.length} cliché{images.length > 1 ? "s" : ""} au dossier
             </p>
           </div>
         </div>
@@ -147,7 +147,9 @@ export function SmileDesignStudio() {
               : "Un seul cliché au dossier : il en faut deux pour comparer."}
           </p>
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            Les photographies s&apos;importent depuis le module Imagerie. La comparaison devient
+            {/* Renvoyait au « module Imagerie », qui ne permet que la
+                consultation : l'import se fait depuis Suivi. */}
+            Les photographies s&apos;importent depuis l&apos;écran Suivi. La comparaison devient
             possible dès que le dossier contient au moins deux clichés.
           </p>
         </div>

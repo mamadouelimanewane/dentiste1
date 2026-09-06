@@ -212,11 +212,15 @@ export default function Home() {
   };
   const reset = () => {
     // Clear all storage before reload
+    // « dentiste_lite_patient » n'a jamais existé : le contexte enregistre le
+    // dossier courant sous « dentiste_lite_patient_id ». Passer au patient
+    // suivant laissait donc le dossier précédent ouvert, avec son nom dans le
+    // bandeau — au risque de saisir des actes sur le mauvais dossier.
     const keysToRemove = [
       "dentiste_lite_step",
       "dentiste_lite_notes",
       "dentiste_lite_executed",
-      "dentiste_lite_patient",
+      "dentiste_lite_patient_id",
       "dentiste_lite_dictations"
     ];
     keysToRemove.forEach(k => localStorage.removeItem(k));
