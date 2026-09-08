@@ -47,11 +47,11 @@ export const DENTAL_MODULE_GROUPS: DentalGroup[] = [
     label: 'Gestion Patient',
     hint: 'Accueil, rendez-vous et admission',
     modules: [
-      { id: 1,  name: 'Accueil',       fullTitle: 'Accueil & prise en charge',   desc: 'Enregistrement, bienvenue SMS/WhatsApp et vérification des droits.',  icon: UserPlus   },
+      { id: 1,  name: 'Accueil',       fullTitle: 'Accueil & prise en charge',   desc: 'Enregistrement du patient, coordonnées et couverture.',  icon: UserPlus   },
       { id: 2,  name: 'Arrivée',       fullTitle: 'Arrivée au cabinet',          desc: 'Pointage et questionnaire médical numérique.',                          icon: LogIn      },
       { id: 3,  name: 'Nouveau Dossier', fullTitle: 'Nouveau dossier patient',   desc: 'Réinitialisation et nouveau cycle patient.',                            icon: RotateCcw  },
       { id: 13, name: 'Agenda',         fullTitle: 'Agenda du cabinet',        desc: "Rendez-vous, salle d'attente, reports et rappels aux patients.", icon: Calendar  },
-      { id: 18, name: 'Communication',  fullTitle: 'Messages aux patients',        desc: 'Envoi automatique et manuel de messages patients.',                       icon: MessageSquare },
+      { id: 18, name: 'Communication',  fullTitle: 'Messages aux patients',        desc: "File d'envoi, historique des échanges et messages programmés.",                       icon: MessageSquare },
     ],
   },
   {
@@ -77,7 +77,7 @@ export const DENTAL_MODULE_GROUPS: DentalGroup[] = [
     modules: [
       { id: 6,  name: 'Facturation',   fullTitle: 'Facturation & règlements',  desc: 'Devis, facturation et enregistrement des paiements.',                    icon: FileText   },
       { id: 8,  name: 'Comptabilité',   fullTitle: 'Comptabilité & finances',   desc: 'Registre des recettes, dépenses et rapports financiers.',                icon: Calculator },
-      { id: 9,  name: 'Mutuelles',      fullTitle: 'Prises en charge mutuelles',     desc: 'Prises en charge IPM, assurances et calcul automatique des parts.',      icon: ShieldCheck},
+      { id: 9,  name: 'Mutuelles',      fullTitle: 'Prises en charge mutuelles',     desc: 'Demandes de prise en charge, suivi des règlements et part restant au patient.',      icon: ShieldCheck},
       { id: 19, name: 'Stocks',         fullTitle: 'Stock du cabinet',     desc: 'Consommables, alertes de stock et commandes fournisseurs.',              icon: Package    },
     ],
   },
