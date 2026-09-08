@@ -4,9 +4,28 @@ import "./globals.css";
 
 const outfit = Outfit({ subsets: ["latin"], display: "swap", variable: "--font-outfit" });
 
+// Aucune balise de partage n'était déclarée : un lien envoyé sur WhatsApp —
+// le canal principal ici — s'affichait sans titre lisible ni description,
+// réduit à son adresse. Et la description tenait de la formule publicitaire
+// (« Haute Précision ») plutôt que de dire ce que le logiciel fait.
 export const metadata: Metadata = {
-  title: "Elite ERP CABINET DENTAIRE DU CAP VERT",
-  description: "Système de Gestion Dentaire de Haute Précision",
+  title: "Cabinet Dentaire du Cap Vert",
+  description:
+    "Logiciel du cabinet : dossiers patients, agenda, soins, devis et facturation.",
+  openGraph: {
+    title: "Cabinet Dentaire du Cap Vert",
+    description:
+      "Logiciel du cabinet : dossiers patients, agenda, soins, devis et facturation.",
+    locale: "fr_SN",
+    type: "website",
+  },
+  robots: {
+    // Un logiciel de cabinet n'a pas vocation à être indexé : la page
+    // d'accueil est une porte d'entrée pour le personnel, pas une vitrine
+    // publique à référencer.
+    index: false,
+    follow: false,
+  },
 };
 
 import { PatientProvider } from "@/lib/context";

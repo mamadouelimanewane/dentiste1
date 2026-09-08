@@ -99,19 +99,24 @@ const MODULES_PREVIEW = [
 // ── Composant principal ───────────────────────────────────────────────────────
 
 export default function LandingPage() {
-  const [mounted, setMounted] = useState(false);
   const [activeFeature, setActiveFeature] = useState(0);
   const { scrollY } = useScroll();
   const heroOpacity = useTransform(scrollY, [0, 400], [1, 0]);
   const heroY = useTransform(scrollY, [0, 400], [0, -80]);
 
   useEffect(() => {
-    setMounted(true);
     const interval = setInterval(() => setActiveFeature(f => (f + 1) % FEATURES.length), 4000);
     return () => clearInterval(interval);
   }, []);
 
-  if (!mounted) return null;
+  // Cette page ne rendait RIEN tant que React n'avait pas monté côté client :
+  // `if (!mounted) return null`. Le HTML servi ne contenait donc pas un mot du
+  // contenu — sept kilo-octets de scripts et pas une phrase. Conséquence
+  // concrète : partager le lien du cabinet sur WhatsApp, le canal principal
+  // ici, produisait un aperçu vide ; et un moteur de recherche voyait une page
+  // blanche à son premier passage. Rien dans cette page ne justifiait
+  // d'attendre le client — aucune lecture de `localStorage`, aucune mesure du
+  // navigateur avant le premier rendu.
 
   return (
     <div className="min-h-screen bg-[#030712] text-white font-sans overflow-x-hidden selection:bg-indigo-500/40">
