@@ -22,6 +22,9 @@ export default async function PortalLayout({ children }: { children: React.React
   `;
   const patient = rows[0];
 
+  const reglages = await sql`select clinic_name from clinic_settings limit 1`;
+  const nomCabinet = (reglages[0]?.clinic_name as string) || 'Votre cabinet dentaire';
+
   // Le jeton vit sept jours. Un dossier clôturé au titre du droit à l'oubli
   // restait donc consultable une semaine : l'anonymisation supprime les liens
   // magiques, mais pas les sessions déjà ouvertes. Le porteur du téléphone
@@ -32,16 +35,23 @@ export default async function PortalLayout({ children }: { children: React.React
 
   return (
     <div className="min-h-screen bg-[#F1F5F9]">
-      <header className="bg-[#0F172A] text-white px-6 py-4 flex items-center justify-between">
+      {/* Sur téléphone — l'écran sur lequel un patient ouvre son lien — les
+          trois blocs de cet en-tête se chevauchaient : le nom du cabinet
+          passait sur deux lignes, le nom du patient s'empilait, et le bouton
+          de déconnexion se brisait en deux. Ils se placent désormais l'un sous
+          l'autre tant que la largeur manque.
+
+          Le nom du cabinet était par ailleurs écrit en dur, alors que le
+          patient doit reconnaître celui qui lui a envoyé le lien. Et le numéro
+          de dossier — un identifiant interne — occupait une place précieuse
+          sans rien apprendre au patient. */}
+      <header className="bg-[#0F172A] text-white px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Espace Patient</p>
-          <h1 className="text-lg font-black">Cabinet Dentaire du Cap Vert</h1>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Espace patient</p>
+          <h1 className="text-lg font-black leading-tight">{nomCabinet}</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="text-sm font-bold">{patient.full_name}</p>
-            <p className="text-[10px] text-slate-400">{patient.dossier_number}</p>
-          </div>
+        <div className="flex items-center justify-between sm:justify-end gap-4">
+          <p className="text-sm font-bold">{patient.full_name}</p>
           <PortalLogoutButton />
         </div>
       </header>

@@ -42,18 +42,24 @@ export default async function PortalHomePage() {
           className="bg-white border border-slate-200 rounded p-5 shadow-sm hover:border-blue-300 transition-colors"
         >
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Messagerie</p>
-          <p className="text-sm font-bold text-slate-900 mt-1">Contacter le cabinet</p>
+          <p className="text-sm font-bold text-slate-900 mt-1 flex items-center gap-1.5">
+            Contacter le cabinet <span aria-hidden="true">→</span>
+          </p>
         </Link>
         <Link
           href="/portal/documents"
           className="bg-white border border-slate-200 rounded p-5 shadow-sm hover:border-blue-300 transition-colors"
         >
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Documents</p>
-          <p className="text-sm font-bold text-slate-900 mt-1">Ordonnances, devis, fichiers</p>
+          <p className="text-sm font-bold text-slate-900 mt-1 flex items-center gap-1.5">
+            Ordonnances, devis, fichiers <span aria-hidden="true">→</span>
+          </p>
         </Link>
         <div className="bg-white border border-slate-200 rounded p-5 shadow-sm">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rendez-vous à venir</p>
-          <p className="text-sm font-bold text-slate-900 mt-1">{nbAVenir}</p>
+          <p className="text-sm font-bold text-slate-900 mt-1">
+            {nbAVenir === 0 ? "Aucun" : nbAVenir}
+          </p>
         </div>
       </div>
 
