@@ -9,7 +9,6 @@ import { hasPermission } from "@/lib/modules";
 import {
   DENTAL_MODULE_GROUPS,
   DENTAL_CATEGORY_STYLE,
-  type DentalCategoryKey,
   type DentalModule,
 } from "@/lib/dentalModules";
 import { usePatient } from "@/lib/context";
@@ -91,19 +90,11 @@ export default function DentalAppsHubPage() {
       .filter(g => g.modules.length > 0);
   }, [search, authorizedGroups]);
 
-  const categoryKeys = Object.keys(DENTAL_CATEGORY_STYLE) as DentalCategoryKey[];
 
   if (!isMounted) return null;
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300 pb-16">
-      {/* Barre d'accent multicolore */}
-      <div className="h-1 w-full flex">
-        {categoryKeys.map(k => (
-          <div key={k} className="flex-1" style={{ background: DENTAL_CATEGORY_STYLE[k].color }} />
-        ))}
-      </div>
-
       {/* ── HEADER ───────────────────────────────────────────────────────── */}
       <header className="glass-dark sticky top-0 z-50">
         {/* Sur tablette (768 px), l'en-tête débordait : 871 px de contenu pour
@@ -194,7 +185,7 @@ export default function DentalAppsHubPage() {
             </div>
 
             <div className="hidden lg:block">
-              <ThemeSwitcher />
+              <ThemeSwitcher compact />
             </div>
 
             <button
