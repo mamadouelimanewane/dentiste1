@@ -22,8 +22,8 @@ const FEATURES = [
   },
   {
     icon: Calendar,
-    title: "Agenda Premium",
-    desc: "Réservation multi-patients (famille), notifications SMS/WhatsApp automatiques et vue équipe.",
+    title: "Agenda du cabinet",
+    desc: "Rendez-vous par praticien, salle d'attente, reports et rappels préparés pour envoi.",
     gradient: "from-blue-500 to-cyan-500",
     glow: "shadow-blue-500/25",
   },
@@ -198,9 +198,8 @@ export default function LandingPage() {
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45, duration: 0.6 }}
             className="text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto font-medium leading-relaxed">
-            Un écosystème ERP complet avec{" "}
-            <span className="text-white font-semibold">24 modules intégrés</span> — patients, agenda,
-            finances, IA diagnostique et communication — tout en un.
+            Dossiers patients, agenda, soins, devis et facturation — du fauteuil au comptoir,{" "}
+            <span className="text-white font-semibold">dans un seul logiciel</span>.
           </motion.p>
 
           {/* CTA */}

@@ -36,17 +36,29 @@ export default function LoginPage() {
             Système connecté
           </div>
           <h1 className="text-4xl lg:text-5xl font-black text-white leading-[1.1] tracking-tight mb-6">
-            Gérez votre cabinet avec une <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">précision chirurgicale</span>.
+            Le dossier de vos patients, au cabinet.
           </h1>
+          {/* « Agenda intelligent » et « analyses cliniques » : l'agenda n'a
+              rien d'intelligent et aucune analyse clinique n'existe. */}
           <p className="text-lg text-slate-400 font-medium leading-relaxed mb-10">
-            Accédez à vos dossiers patients, votre agenda intelligent et vos analyses cliniques depuis une plateforme unique sécurisée.
+            Dossiers, rendez-vous, soins, devis et facturation — au même endroit, du fauteuil
+            au comptoir.
           </p>
-          
+
+          {/* Trois allégations ont été retirées d'ici, sur l'écran que voit
+              chaque utilisateur avant d'ouvrir des dossiers de santé :
+              « chiffrées de bout en bout », qui a un sens précis — seules les
+              extrémités déchiffrent — et que cette application ne remplit pas,
+              son serveur lisant tout en clair ; « Conformité RGPD », un
+              règlement européen qui ne s'applique pas au Sénégal, où la loi
+              2008-12 et la CDP font foi, et qu'aucun audit n'a établie ici ;
+              et « sauvegarde continue », qui dépend du plan d'hébergement.
+              Ne restent que des faits vérifiables. */}
           <div className="space-y-4">
             {[
-              "Données chiffrées de bout en bout (Neon Postgres)",
-              "Conformité RGPD et secret médical",
-              "Sauvegarde continue dans le cloud"
+              "Connexion chiffrée (HTTPS) et données chiffrées au repos",
+              "Accès par rôle : chacun ne voit que ses modules",
+              "Les actions sensibles sont enregistrées au journal d'audit"
             ].map((feature, i) => (
               <div key={i} className="flex items-center gap-3 text-slate-300 font-medium">
                 <CheckCircle2 className="h-5 w-5 text-emerald-500" />
