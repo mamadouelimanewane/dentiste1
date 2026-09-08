@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 import { sql } from '@/lib/db';
 import { requirePermission } from '@/lib/permissions';
 import { recordAudit } from '@/lib/audit';
@@ -156,10 +156,18 @@ export async function DELETE(request: Request) {
   // compris : sinon, plus personne ne peut dire ce qui a été retiré.
   const rows = await sql`
     delete from patient_documents where id = ${id}
-    returning id, patient_id, file_name, uploaded_by_patient
+    returning id, patient_id, file_name, uploaded_by_patient, blob_url
   `;
   if (rows.length === 0) {
     return NextResponse.json({ error: 'Document introuvable.' }, { status: 404 });
+  }
+
+  // La ligne disparaissait, le fichier restait dans le magasin — pour
+  // toujours. Un document retiré du dossier continuait donc d'exister.
+  try {
+    await del(rows[0].blob_url as string);
+  } catch (e) {
+    console.error('Suppression du fichier dans le magasin impossible :', e);
   }
 
   await recordAudit({

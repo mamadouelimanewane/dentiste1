@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 import { sql } from '@/lib/db';
 import { requirePermission } from '@/lib/permissions';
 import { recordAudit } from '@/lib/audit';
@@ -102,9 +102,19 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'id est requis.' }, { status: 400 });
   }
 
-  const rows = await sql`delete from patient_images where id = ${id} returning id, patient_id`;
+  const rows = await sql`delete from patient_images where id = ${id} returning id, patient_id, blob_url`;
   if (rows.length === 0) {
     return NextResponse.json({ error: 'Cliché introuvable.' }, { status: 404 });
+  }
+
+  // La ligne disparaissait, le fichier restait dans le magasin — pour
+  // toujours. Un cliché « supprimé » du dossier continuait donc d'exister.
+  // L'échec de la suppression du fichier ne remet pas la ligne : le dossier
+  // fait foi, et le journal garde la trace.
+  try {
+    await del(rows[0].blob_url as string);
+  } catch (e) {
+    console.error('Suppression du fichier dans le magasin impossible :', e);
   }
 
   await recordAudit({
