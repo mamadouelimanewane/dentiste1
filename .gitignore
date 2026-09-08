@@ -34,6 +34,11 @@ next-env.d.ts
 
 .vercel
 .env*
-sauvegardes/
+# Dumps produits par scripts/sauvegarde-donnees.mjs. La barre initiale ancre
+# la règle à la racine : sans elle, elle emportait aussi
+# src/app/api/admin/sauvegardes/ — le code de la fonctionnalité était ignoré
+# par git, poussé nulle part, et l'écran d'administration appelait une route
+# absente en production.
+/sauvegardes/
 identifiants-*.txt
 identifiants-admin-*.txt
