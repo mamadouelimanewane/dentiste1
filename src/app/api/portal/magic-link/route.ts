@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { sql } from '@/lib/db';
 import { requirePermission } from '@/lib/permissions';
-import { sendWhatsAppMessage } from '@/lib/integrations/whatsapp';
-import { sendSms } from '@/lib/integrations/sms';
+import { notifyPatient } from '@/lib/integrations/notify';
 
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h pour cliquer le lien
 
@@ -26,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'patientId est requis.' }, { status: 400 });
   }
 
-  const patients = await sql`select id, full_name, phone from patients where id = ${patientId} limit 1`;
+  const patients = await sql`select id, full_name, phone, whatsapp_phone from patients where id = ${patientId} limit 1`;
   const patient = patients[0];
 
   if (!patient) {
@@ -45,15 +44,30 @@ export async function POST(request: Request) {
   `;
 
   const link = `${getBaseUrl(request)}/portal/auth?token=${token}`;
-  const messageBody = `Bonjour ${patient.full_name}, voici votre lien sécurisé vers l'espace patient du Cabinet Dentaire du Cap Vert (valable 24h) : ${link}`;
 
-  const result =
-    channel === 'sms'
-      ? await sendSms({ patientId, phone: patient.phone, body: messageBody, sentBy: session!.userId })
-      : await sendWhatsAppMessage({ patientId, phone: patient.phone, body: messageBody, sentBy: session!.userId });
+  // Nom du cabinet tel qu'il est paramétré : un lien signé d'un nom que le
+  // patient ne reconnaît pas se lit comme une tentative d'hameçonnage.
+  const reglages = await sql`select clinic_name from clinic_settings limit 1`;
+  const nomCabinet = (reglages[0]?.clinic_name as string) || 'votre cabinet dentaire';
+
+  const messageBody = `Bonjour ${patient.full_name}, voici votre lien sécurisé vers l'espace patient du ${nomCabinet} (valable 24h) : ${link}`;
+
+  // Passe par notifyPatient plutôt que par un canal unique : le lien
+  // bénéficie ainsi du repli SMS et, si aucun canal n'aboutit, de la file
+  // d'envoi manuel — le seul canal réellement opérationnel aujourd'hui.
+  // Auparavant l'envoi partait sur un canal unique et l'écran annonçait
+  // « Lien envoyé au patient » sans regarder si l'envoi avait échoué.
+  const result = await notifyPatient({
+    patientId,
+    phone: patient.phone,
+    whatsappPhone: patient.whatsapp_phone,
+    body: messageBody,
+    sentBy: session!.userId,
+  });
 
   return NextResponse.json({
     link,
+    canal: result.canal,
     simulated: result.simulated,
     error: result.error,
   });

@@ -106,8 +106,17 @@ export function PatientDirectory() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Échec de l'envoi.");
+      // L'écran annonçait « Lien envoyé au patient » sans regarder si l'envoi
+      // avait abouti : aucun canal automatique n'étant configuré, le message
+      // partait en réalité dans la file d'envoi manuel — et personne ne le
+      // savait. Le lien est désormais toujours affiché, pour que l'accueil
+      // puisse le transmettre lui-même.
       setPortalFeedback(
-        data.simulated ? `Lien (mode démo, non envoyé réellement) : ${data.link}` : "Lien envoyé au patient."
+        data.canal === "manuel"
+          ? `Message préparé dans la file d'envoi : envoyez-le depuis Communication, ou transmettez ce lien vous-même — ${data.link}`
+          : data.error
+            ? `L'envoi a échoué (${data.error}). Transmettez ce lien vous-même : ${data.link}`
+            : `Lien envoyé au patient par ${data.canal === "sms" ? "SMS" : "WhatsApp"}. Copie : ${data.link}`
       );
     } catch (e) {
       setPortalFeedback(e instanceof Error ? e.message : "Erreur inconnue.");
