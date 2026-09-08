@@ -2,6 +2,7 @@
 
 **Objet** : Élite ERP — Cabinet Dentaire du Cap Vert (dentiste1.vercel.app)
 **Version constatée** : 8b6a7ea · **Date** : 8 septembre 2026
+**Mise à jour** : 8 septembre 2026 — R7 levée (procédure de restauration écrite et répétée)
 **Périmètre** : 24 modules, 78 routes, 35 migrations, 57 tests au build
 
 > Ce document est un procès-verbal de recette établi par le concepteur de
@@ -30,12 +31,13 @@ chaque construction ; la construction échoue si l'un d'eux échoue.
 | La base est sauvegardée chaque nuit | 2h30, chiffrée AES-256-GCM, 30 jours de rétention ; cycle exercé en production (26 tables, 140 lignes, restitution déchiffrée valide) |
 | Aucun message n'est déclaré envoyé sans l'être | trois états seulement ; ce qu'aucun canal ne porte tombe dans la file d'envoi manuel |
 | Les actions sensibles laissent une trace | journal d'audit alimenté, 38 entrées |
+| La restauration d'une sauvegarde fonctionne | répétée en conditions réelles sur une base de test : 35 migrations, 148 lignes restaurées en 42 s, empreinte SHA-256 de chaque table comparée à la sauvegarde, 13 tables sur 13 identiques |
 | La base est vierge d'activité fictive | 0 acte, 0 facture, 0 devis, 0 ordonnance, 0 fichier ; restent 2 dossiers de test réels, 8 comptes, 5 rôles, catalogue et stock |
 
 ## 3. Réserves
 
-Aucune ne relève du code. R1 à R6 se lèvent le jour de l'ouverture ; R7 est un
-point de suivi non bloquant.
+Aucune ne relève du code. R1 à R6 se lèvent le jour de l'ouverture. R7 a été
+levée le 8 septembre 2026.
 
 | # | Réserve | Levée | Vérification |
 |---|---|---|---|
@@ -45,7 +47,7 @@ point de suivi non bloquant.
 | R4 | Tâche de sauvegarde jamais exécutée | attendre la première nuit | un fichier daté figure dans Administration → Sauvegardes |
 | R5 | Formalités sur les données de santé (CDP, loi 2008-12) — **signalé, pas tranché** | faire confirmer et accomplir par un conseil juridique | récépissé ou avis écrit |
 | R6 | Consentement des patients pour la messagerie | recueillir à l'accueil, tracer au dossier | les dossiers de la première semaine portent la mention |
-| R7 | Procédure de restauration ni écrite ni exercée | écrire le script et l'exercer sur une base de test | base reconstituée, durée connue |
+| R7 | ~~Procédure de restauration ni écrite ni exercée~~ — **levée** | `scripts/restauration.mjs` écrit, procédure dans `docs/restauration.md` | répétition du 8 septembre 2026 : 13 tables sur 13 identiques à la sauvegarde, 42 s |
 
 ## 4. Hors périmètre
 
@@ -55,14 +57,17 @@ point de suivi non bloquant.
 - **L'envoi automatique des messages n'est ouvert chez aucun opérateur** — dossiers
   administratifs suivis à part (voir `docs/messagerie-operateurs.md`).
 - **La conformité réglementaire n'est pas attestée** (voir R5).
+- **La restauration ne couvre pas les fichiers** (clichés, documents, notes
+  vocales) : ils vivent dans le magasin de fichiers, la sauvegarde n'en contient
+  que les références.
 
 ## 5. Conclusion
 
 **Apte à la mise en service, sous réserve de la levée des points R1 à R6.**
 
 Les six réserves bloquantes ne demandent aucune modification du logiciel : elles
-relèvent de la saisie, des accès et des formalités. R7 est à traiter dans les
-premières semaines.
+relèvent de la saisie, des accès et des formalités. R7, seule réserve technique,
+a été levée le jour même.
 
 Recommandation d'exploitation : conserver le carnet papier en parallèle la
 première semaine, et regarder l'écran Sauvegardes chaque lundi.
