@@ -175,42 +175,38 @@ export default function LandingPage() {
             style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "72px 72px" }} />
         </div>
 
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          className="max-w-5xl mx-auto text-center space-y-8">
+        {/* Ce premier écran s'animait en JavaScript, depuis une opacité
+            nulle : rien n'était visible tant que le script n'avait pas été
+            chargé et exécuté. L'animation est désormais en CSS — elle part
+            avec la feuille de style, donc avec le HTML — et s'efface pour qui
+            a demandé moins de mouvement. */}
+        <div className="apparition max-w-5xl mx-auto text-center space-y-8">
 
           {/* Badge */}
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-bold tracking-[0.2em] uppercase"
+          <div
+            className="apparition apparition-1 inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-bold tracking-[0.2em] uppercase"
             style={{ background: "rgba(99,102,241,0.1)", borderColor: "rgba(99,102,241,0.3)", color: "#a5b4fc" }}>
             <Sparkles className="h-3.5 w-3.5" />
             Système de gestion de nouvelle génération
-          </motion.div>
+          </div>
 
           {/* Titre principal */}
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.7 }}
-            className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.0]">
+          <h1 className="apparition apparition-2 text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.0]">
             Votre Cabinet Dentaire,{" "}
             <span className="block mt-2"
               style={{ background: "linear-gradient(135deg, #60a5fa 0%, #a78bfa 40%, #f472b6 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
               Réinventé.
             </span>
-          </motion.h1>
+          </h1>
 
           {/* Sous-titre */}
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45, duration: 0.6 }}
-            className="text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto font-medium leading-relaxed">
+          <p className="apparition apparition-3 text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto font-medium leading-relaxed">
             Dossiers patients, agenda, soins, devis et facturation — du fauteuil au comptoir,{" "}
             <span className="text-white font-semibold">dans un seul logiciel</span>.
-          </motion.p>
+          </p>
 
           {/* CTA */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          <div className="apparition apparition-4 flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <Link href="/login"
               className="group w-full sm:w-auto flex items-center justify-center gap-3 px-10 py-5 rounded-2xl text-base font-black uppercase tracking-widest transition-all shadow-2xl hover:brightness-110 hover:-translate-y-1"
               style={{ background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)", boxShadow: "0 20px 60px -15px rgba(99,102,241,0.5)" }}>
@@ -222,12 +218,10 @@ export default function LandingPage() {
               Découvrir les modules
               <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </a>
-          </motion.div>
+          </div>
 
           {/* Stats en ligne */}
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8, duration: 0.6 }}
-            className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
+          <div className="apparition apparition-4 pt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
             {STATS.map((s, i) => {
               const Icon = s.icon;
               return (
@@ -239,13 +233,11 @@ export default function LandingPage() {
                 </div>
               );
             })}
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
         {/* Mockup aperçu dashboard */}
-        <motion.div initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.0, duration: 0.9 }}
-          className="mt-20 w-full max-w-5xl mx-auto relative">
+        <div className="apparition apparition-4 mt-20 w-full max-w-5xl mx-auto relative">
           <div className="rounded-3xl border overflow-hidden shadow-2xl"
             style={{ borderColor: "rgba(99,102,241,0.3)", boxShadow: "0 60px 120px -30px rgba(99,102,241,0.4)", background: "rgba(15,23,42,0.95)" }}>
             {/* Barre titre du mockup */}
@@ -313,7 +305,7 @@ export default function LandingPage() {
           {/* Reflet au bas du mockup */}
           <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-3/4 h-20 rounded-full opacity-30"
             style={{ background: "radial-gradient(ellipse, #6366f1 0%, transparent 80%)", filter: "blur(30px)" }} />
-        </motion.div>
+        </div>
       </motion.section>
 
       {/* ── BANDE DÉFILANTE ──────────────────────────────────────────────────── */}
