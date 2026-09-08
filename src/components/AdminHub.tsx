@@ -831,8 +831,9 @@ export function AdminHub() {
                   <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Sauvegardes de la base</h3>
                   <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
                     Une copie complète est déposée chaque nuit à 2h30, chez un hébergeur
-                    distinct de la base, en accès privé. Elle contient tous les dossiers
-                    patients&nbsp;: son téléchargement est journalisé.
+                    distinct de la base, <strong>chiffrée</strong>. Elle contient tous les
+                    dossiers patients&nbsp;: elle n&apos;est lisible que depuis cet écran, et
+                    chaque téléchargement est journalisé.
                   </p>
                 </div>
                 <button

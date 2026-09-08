@@ -1,4 +1,5 @@
 import 'server-only';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { put, list, del } from '@vercel/blob';
 import { sql } from '@/lib/db';
 
@@ -18,15 +19,22 @@ import { sql } from '@/lib/db';
 // fichier est un JSON complet, table par table ; le remonter demande une
 // intervention. C'est une sauvegarde, pas une haute disponibilité.
 //
-// Le fichier est déposé en accès **privé** : il n'est lisible qu'avec le jeton
-// du magasin, jamais par son URL. C'est la moindre des choses pour un dossier
-// qui contient l'intégralité des patients du cabinet.
+// LE FICHIER EST CHIFFRÉ. Le magasin de fichiers du cabinet est un magasin
+// public : tout ce qui y est déposé est lisible par quiconque en connaît
+// l'URL. Y déposer en clair l'intégralité des dossiers patients aurait été
+// indéfendable. Le contenu est donc chiffré en AES-256-GCM avant l'envoi et
+// déchiffré côté serveur, à la demande d'un administrateur authentifié. Sans
+// la clé, le fichier n'est qu'un bloc d'octets.
 
 const PREFIXE = 'sauvegardes/';
 
 // Un mois de sauvegardes quotidiennes. Au-delà, une erreur ancienne aurait de
 // toute façon déjà été recopiée dans toutes les copies conservées.
 export const RETENTION_JOURS = 30;
+
+// En-tête du fichier chiffré : quatre octets qui permettent de reconnaître le
+// format sans se fier au nom, et de le faire évoluer sans casser l'ancien.
+const MAGIE = Buffer.from('CVS1', 'latin1');
 
 export interface Sauvegarde {
   chemin: string;
@@ -42,6 +50,38 @@ export interface ResultatSauvegarde {
   supprimees: string[];
 }
 
+// La clé dédiée est préférable : elle se change sans toucher aux sessions.
+// À défaut, on dérive du secret de session — mieux que rien, mais une rotation
+// de ce secret rendrait les anciennes sauvegardes illisibles. C'est écrit ici
+// pour que personne ne l'apprenne le jour où il en a besoin.
+function cle(): Buffer {
+  const secret = process.env.SAUVEGARDE_SECRET || process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error(
+      "Aucun secret de chiffrement (SAUVEGARDE_SECRET ou SESSION_SECRET) : sauvegarde refusée plutôt que déposée en clair."
+    );
+  }
+  return createHash('sha256').update(`sauvegarde-v1|${secret}`).digest();
+}
+
+function chiffrer(clair: string): Buffer {
+  const iv = randomBytes(12);
+  const chiffreur = createCipheriv('aes-256-gcm', cle(), iv);
+  const corps = Buffer.concat([chiffreur.update(clair, 'utf8'), chiffreur.final()]);
+  return Buffer.concat([MAGIE, iv, chiffreur.getAuthTag(), corps]);
+}
+
+export function dechiffrer(fichier: Buffer): string {
+  if (!fichier.subarray(0, 4).equals(MAGIE)) {
+    throw new Error("Ce fichier n'est pas une sauvegarde chiffrée de ce cabinet.");
+  }
+  const iv = fichier.subarray(4, 16);
+  const tag = fichier.subarray(16, 32);
+  const dechiffreur = createDecipheriv('aes-256-gcm', cle(), iv);
+  dechiffreur.setAuthTag(tag);
+  return Buffer.concat([dechiffreur.update(fichier.subarray(32)), dechiffreur.final()]).toString('utf8');
+}
+
 function estConfiguree() {
   return !!process.env.BLOB_READ_WRITE_TOKEN;
 }
@@ -49,7 +89,7 @@ function estConfiguree() {
 // Le nom porte la date en tête pour que le tri alphabétique soit le tri
 // chronologique — la liste du magasin ne garantit pas d'autre ordre.
 function nomFichier(date: Date) {
-  return `${PREFIXE}${date.toISOString().replace(/[:.]/g, '-')}.json`;
+  return `${PREFIXE}${date.toISOString().replace(/[:.]/g, '-')}.sauvegarde`;
 }
 
 export async function executerSauvegarde(): Promise<ResultatSauvegarde> {
@@ -84,13 +124,15 @@ export async function executerSauvegarde(): Promise<ResultatSauvegarde> {
     tables: contenu,
   };
 
-  const corps = JSON.stringify(dump);
-  const chemin = nomFichier(maintenant);
+  const corps = chiffrer(JSON.stringify(dump));
 
-  const blob = await put(chemin, corps, {
-    access: 'private',
-    addRandomSuffix: false,
-    contentType: 'application/json',
+  const blob = await put(nomFichier(maintenant), corps, {
+    access: 'public',
+    // Le magasin est public : un nom prévisible suffirait à retrouver le
+    // fichier. Le suffixe aléatoire ajoute une barrière — la vraie protection
+    // restant le chiffrement.
+    addRandomSuffix: true,
+    contentType: 'application/octet-stream',
   });
 
   const supprimees = await purgerAnciennes(maintenant);
@@ -115,6 +157,20 @@ export async function listerSauvegardes(): Promise<Sauvegarde[]> {
       creele: typeof b.uploadedAt === 'string' ? b.uploadedAt : b.uploadedAt.toISOString(),
     }))
     .sort((a, b) => b.creele.localeCompare(a.creele));
+}
+
+// Rend le contenu déchiffré d'une sauvegarde. Le magasin étant public, l'URL
+// n'est jamais rendue à l'appelant : elle ouvrirait le fichier chiffré sans
+// contrôle, et laisserait fuiter un chemin permanent.
+export async function lireSauvegarde(chemin: string): Promise<string | null> {
+  const { blobs } = await list({ prefix: chemin, limit: 1 });
+  const cible = blobs.find((b) => b.pathname === chemin);
+  if (!cible) return null;
+
+  const reponse = await fetch(cible.url, { cache: 'no-store' });
+  if (!reponse.ok) throw new Error('Sauvegarde illisible dans le magasin.');
+
+  return dechiffrer(Buffer.from(await reponse.arrayBuffer()));
 }
 
 async function purgerAnciennes(maintenant: Date): Promise<string[]> {
