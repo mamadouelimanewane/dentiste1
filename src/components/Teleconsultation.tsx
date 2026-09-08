@@ -291,7 +291,11 @@ export function Teleconsultation({ onNavigate }: { onNavigate?: (step: number) =
               <>
                 <div className="absolute top-4 left-4 flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
-                  <span className="text-xs font-bold text-white uppercase tracking-widest">Live Connect</span>
+                  {/* « Live Connect » ne dit rien : ni ce qu'on y fait, ni
+                      dans quelle langue on travaille. */}
+                  <span className="text-xs font-bold text-white uppercase tracking-widest">
+                    Salle de consultation
+                  </span>
                 </div>
 
                 <div className="text-center space-y-4">
