@@ -19,6 +19,13 @@ export async function PUT(request: Request) {
     clinicName, slogan, phone, email, website, address, rpps, ninea, rccm, currency,
   } = body as Record<string, string | undefined>;
 
+  // Mode démonstration. Tant qu'il est levé, factures, devis et ordonnances
+  // portent la mention qui les prive de valeur. Absent du corps, il reste tel
+  // quel : un enregistrement partiel ne doit pas rendre « réels » des
+  // documents de démonstration, ni l'inverse.
+  const modeDemoBrut = (body as { modeDemo?: unknown }).modeDemo;
+  const modeDemo = typeof modeDemoBrut === 'boolean' ? modeDemoBrut : null;
+
   if (!clinicName?.trim()) {
     return NextResponse.json({ error: 'Le nom du cabinet est requis.' }, { status: 400 });
   }
@@ -52,6 +59,7 @@ export async function PUT(request: Request) {
       ninea = ${ninea || null},
       rccm = ${rccm || null},
       currency = ${currency || 'FCFA'},
+      mode_demo = coalesce(${modeDemo}, mode_demo),
       -- Absente du corps : on conserve la valeur en place plutôt que de la
       -- remettre à la valeur par défaut.
       valeur_d = coalesce(${valeurD}, valeur_d),

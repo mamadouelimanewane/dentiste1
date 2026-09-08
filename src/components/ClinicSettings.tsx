@@ -27,6 +27,9 @@ const DEFAULT_SETTINGS = {
   currency: "FCFA",
   // Valeur par défaut de la lettre-clé D, en FCFA.
   valeurD: "1200",
+  // Par défaut non : un cabinet nouvellement paramétré émet de vrais
+  // documents. Le mode démonstration se lève sciemment.
+  modeDemo: false,
 };
 
 export function ClinicSettings() {
@@ -122,6 +125,7 @@ export function ClinicSettings() {
             ninea: data.settings.ninea ?? "",
             rccm: data.settings.rccm ?? "",
             currency: data.settings.currency ?? "FCFA",
+            modeDemo: !!data.settings.mode_demo,
           });
         }
       })
@@ -344,6 +348,53 @@ export function ClinicSettings() {
                   </select>
                 </div>
               </div>
+
+              {/* Mode démonstration.
+                  Le cabinet a besoin de montrer l'application avec des
+                  documents complets — une facture sans mentions légales ne
+                  ressemble pas à une facture. Mais des mentions fiscales
+                  inventées sur un document qui sort du cabinet, c'est
+                  exactement ce qui a été corrigé partout ailleurs. Tant que
+                  cet interrupteur est levé, les documents le disent
+                  eux-mêmes. Il se baisse le jour de l'ouverture, quand les
+                  vraies mentions sont saisies. */}
+              <label
+                htmlFor="modeDemo"
+                className={cn(
+                  "flex items-start gap-3 p-4 rounded border cursor-pointer transition-colors",
+                  formData.modeDemo
+                    ? "bg-amber-50 border-amber-300"
+                    : "bg-slate-50 border-slate-200 hover:border-slate-300"
+                )}
+              >
+                <input
+                  id="modeDemo"
+                  type="checkbox"
+                  name="modeDemo"
+                  checked={formData.modeDemo}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, modeDemo: e.target.checked }))
+                  }
+                  className="mt-0.5 h-4 w-4 accent-amber-600"
+                />
+                <span className="space-y-1">
+                  <span className="block text-[11px] font-black uppercase tracking-widest text-slate-900">
+                    Mode démonstration
+                  </span>
+                  <span className="block text-[11px] text-slate-600 leading-relaxed">
+                    Coché, chaque facture, devis et ordonnance porte la mention
+                    <strong> « Document de démonstration »</strong> : les documents peuvent être
+                    présentés sans qu&apos;aucun ne puisse servir de pièce comptable, fiscale ou
+                    médicale. À décocher le jour de l&apos;ouverture, une fois les vraies mentions
+                    ci-dessus saisies.
+                  </span>
+                  {formData.modeDemo && (
+                    <span className="block text-[11px] font-bold text-amber-700">
+                      Actuellement actif : les documents émis n&apos;ont aucune valeur.
+                    </span>
+                  )}
+                </span>
+              </label>
             </div>
 
           </div>

@@ -49,6 +49,12 @@ const styles = StyleSheet.create({
   signatureLine: { borderTopWidth: 1, borderTopColor: '#CBD5E1', paddingTop: 5 },
   signatureLabel: { fontSize: 8, color: '#94A3B8', textAlign: 'center' },
   
+  bandeauDemo: {
+    position: 'absolute', bottom: 62, left: 50, right: 50,
+    paddingVertical: 5,
+    borderWidth: 1, borderColor: '#B45309', backgroundColor: '#FEF3C7', borderRadius: 3,
+    fontSize: 8, color: '#92400E', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1,
+  },
   footer: { position: 'absolute', bottom: 30, left: 50, right: 50, fontSize: 8, color: '#94A3B8', textAlign: 'center', borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 10 }
 });
 
@@ -98,6 +104,7 @@ export const QuotePDF = ({
     .map((v) => (v || '').trim())
     .filter(Boolean);
   const dateDevis = issuedAt ? new Date(issuedAt) : new Date();
+  const demo = !!clinic?.mode_demo;
 
   return (
   <Document>
@@ -198,6 +205,12 @@ export const QuotePDF = ({
           )}
         </View>
       </View>
+
+      {demo && (
+        <Text style={styles.bandeauDemo}>
+          Document de démonstration — sans valeur d&apos;engagement
+        </Text>
+      )}
 
       {/* Le pied portait une adresse, un téléphone (« +221 77 000 00 00 ») et
           un NINEA (« 012345678 ») entièrement inventés. */}

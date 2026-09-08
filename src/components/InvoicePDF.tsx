@@ -196,6 +196,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     transform: 'rotate(-5deg)',
   },
+  bandeauDemo: {
+    marginTop: 24,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#B45309',
+    backgroundColor: '#FEF3C7',
+    borderRadius: 3,
+  },
+  bandeauDemoTexte: {
+    fontSize: 9,
+    color: '#92400E',
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
   stampText: {
     fontSize: 10,
     fontWeight: 'bold',
@@ -228,6 +244,12 @@ export interface ReglagesCabinetPDF {
   email?: string | null;
   ninea?: string | null;
   rccm?: string | null;
+  // Tant que le cabinet est en démonstration, ses documents le disent.
+  // Remplir NINEA et RCCM pour une présentation est légitime ; laisser sortir
+  // une facture d'apparence réelle avec des mentions fiscales inventées ne
+  // l'est pas. Le drapeau se baisse depuis Configuration, le jour de
+  // l'ouverture.
+  mode_demo?: boolean | null;
 }
 
 interface InvoicePDFProps {
@@ -270,6 +292,7 @@ export const InvoicePDF = ({
     .filter(Boolean);
   const dateEmission = issuedAt ? new Date(issuedAt) : new Date();
   const acquittee = status === 'paid';
+  const demo = !!clinic?.mode_demo;
 
   return (
   <Document>
@@ -342,6 +365,14 @@ export const InvoicePDF = ({
       </View>
 
       {/* Footer / Certification */}
+      {demo && (
+        <View style={styles.bandeauDemo}>
+          <Text style={styles.bandeauDemoTexte}>
+            Document de démonstration — sans valeur comptable ni fiscale
+          </Text>
+        </View>
+      )}
+
       <View style={styles.footer}>
         <View style={styles.certificationBlock}>
           <View>

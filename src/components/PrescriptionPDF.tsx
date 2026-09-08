@@ -79,6 +79,15 @@ const styles = StyleSheet.create({
     borderTopColor: '#F1F5F9',
     paddingTop: 10,
   },
+  bandeauDemo: {
+    position: 'absolute', bottom: 92, left: 56, right: 56,
+    paddingVertical: 6,
+    borderWidth: 1, borderColor: '#B45309', backgroundColor: '#FEF3C7', borderRadius: 3,
+  },
+  bandeauDemoTexte: {
+    fontSize: 9, color: '#92400E', textAlign: 'center',
+    textTransform: 'uppercase', letterSpacing: 1,
+  },
   footerText: {
     fontSize: 8,
     color: '#94A3B8',
@@ -143,6 +152,14 @@ export const PrescriptionPDF = ({
             {med.posology && <Text style={styles.medDetail}>{med.posology}</Text>}
           </View>
         ))
+      )}
+
+      {clinic?.mode_demo && (
+        <View style={styles.bandeauDemo}>
+          <Text style={styles.bandeauDemoTexte}>
+            Ordonnance de démonstration — ne pas délivrer
+          </Text>
+        </View>
       )}
 
       <View style={styles.footer}>
