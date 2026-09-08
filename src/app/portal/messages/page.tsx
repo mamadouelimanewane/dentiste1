@@ -10,7 +10,7 @@ interface PortalMessage {
   direction: "inbound" | "outbound";
   status: string;
   created_at: string;
-  media_url: string | null;
+  a_media: boolean;
   media_type: string | null;
 }
 
@@ -126,8 +126,13 @@ export default function PortalMessagesPage() {
                 : "bg-white border border-slate-200 rounded-bl-none"
             )}
           >
-            {m.media_url ? (
-              <audio controls src={m.media_url} className="max-w-full" style={{ height: 32 }} />
+            {m.a_media ? (
+              <audio
+                controls
+                src={`/api/portal/messages/media?id=${m.id}`}
+                className="max-w-full"
+                style={{ height: 32 }}
+              />
             ) : (
               m.body
             )}

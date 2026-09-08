@@ -15,7 +15,8 @@ export async function GET() {
   const session = { patientId: acces.patientId };
 
   const messages = await sql`
-    select id, body, direction, status, created_at, media_url, media_type
+    select id, body, direction, status, created_at,
+           (media_url is not null) as a_media, media_type
     from patient_messages
     where patient_id = ${session.patientId} and channel in ('portal', 'whatsapp', 'sms')
     order by created_at asc

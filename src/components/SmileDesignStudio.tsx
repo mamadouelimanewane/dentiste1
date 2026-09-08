@@ -7,7 +7,7 @@ import { usePatient } from "@/lib/context";
 
 interface PatientImage {
   id: string;
-  blob_url: string;
+
   type: string | null;
   notes: string | null;
   created_at: string;
@@ -161,7 +161,7 @@ export function SmileDesignStudio() {
               <div className="absolute inset-0 flex items-center justify-center bg-black">
                 {left && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={left.blob_url} alt={legend(left)} className="max-h-full max-w-full object-contain" />
+                  <img src={`/api/patient-images/fichier?id=${left.id}`} alt={legend(left)} className="max-h-full max-w-full object-contain" />
                 )}
                 <p className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-sm">
                   {legend(left)}
@@ -175,7 +175,7 @@ export function SmileDesignStudio() {
               >
                 {right && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={right.blob_url} alt={legend(right)} className="max-h-full max-w-full object-contain" />
+                  <img src={`/api/patient-images/fichier?id=${right.id}`} alt={legend(right)} className="max-h-full max-w-full object-contain" />
                 )}
                 <p className="absolute top-4 right-4 bg-blue-600 text-white px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-sm">
                   {legend(right)}
@@ -215,7 +215,7 @@ export function SmileDesignStudio() {
                       )}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img.blob_url} alt="" className="h-10 w-10 object-cover rounded-sm border border-slate-200" />
+                      <img src={`/api/patient-images/fichier?id=${img.id}`} alt="" className="h-10 w-10 object-cover rounded-sm border border-slate-200" />
                       <div className="min-w-0">
                         <p className="text-[11px] font-bold text-slate-900 truncate">{img.type || "Cliché"}</p>
                         <p className="text-[9px] font-bold text-slate-400 uppercase">

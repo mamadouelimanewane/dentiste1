@@ -45,7 +45,7 @@ export async function GET(request: Request) {
   }
 
   const documents = await sql`
-    select d.id, d.file_name, d.blob_url, d.mime_type, d.size_bytes,
+    select d.id, d.file_name, d.mime_type, d.size_bytes,
            d.uploaded_by_patient, d.visible_to_patient, d.created_at,
            u.full_name as depose_par
     from patient_documents d
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
       (patient_id, uploaded_by_user, file_name, blob_url, mime_type, size_bytes, visible_to_patient)
     values
       (${patientId}, ${session!.userId}, ${file.name}, ${blob.url}, ${file.type}, ${file.size}, ${visiblePatient})
-    returning id, file_name, blob_url, mime_type, size_bytes, uploaded_by_patient, visible_to_patient, created_at
+    returning id, file_name, mime_type, size_bytes, uploaded_by_patient, visible_to_patient, created_at
   `;
 
   await recordAudit({

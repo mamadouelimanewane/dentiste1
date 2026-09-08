@@ -9,7 +9,7 @@ export default async function PortalDocumentsPage() {
   const session = await verifyPortalSessionToken(token);
 
   const documents = await sql`
-    select id, file_name, blob_url, mime_type, created_at, uploaded_by_patient
+    select id, file_name, mime_type, created_at, uploaded_by_patient
     from patient_documents
     where patient_id = ${session!.patientId} and visible_to_patient = true
     order by created_at desc
@@ -135,7 +135,7 @@ export default async function PortalDocumentsPage() {
               </p>
             </div>
             <a
-              href={doc.blob_url}
+              href={`/api/portal/documents/fichier?id=${doc.id}`}
               target="_blank"
               rel="noreferrer"
               className="text-blue-600 hover:text-blue-700 text-xs font-bold uppercase"

@@ -18,7 +18,7 @@ import { usePatient } from "@/lib/context";
 
 interface ImageRecord {
   id: string;
-  blob_url: string;
+
   type: string;
   notes: string | null;
   created_at: string;
@@ -155,7 +155,7 @@ export function AiRadioLab() {
           >
             <div className="relative h-56 overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.blob_url} alt={img.notes || img.type} className="w-full h-full object-contain" />
+              <img src={`/api/patient-images/fichier?id=${img.id}`} alt={img.notes || img.type} className="w-full h-full object-contain" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                 <span className="text-white text-xs font-bold flex items-center gap-1">
                   <Maximize2 className="h-4 w-4" /> Agrandir
@@ -207,7 +207,7 @@ export function AiRadioLab() {
             <div className="flex-1 overflow-auto p-4 flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={selected.blob_url}
+                src={`/api/patient-images/fichier?id=${selected.id}`}
                 alt={selected.notes || selected.type}
                 style={{ transform: `scale(${zoom})`, filter: `contrast(${contraste}%)` }}
                 className="max-w-full max-h-full object-contain transition-transform duration-150"

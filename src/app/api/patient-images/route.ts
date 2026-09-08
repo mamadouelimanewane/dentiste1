@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   }
 
   const images = await sql`
-    select id, patient_id, blob_url, type, notes, mime_type, size_bytes, created_at
+    select id, patient_id, type, notes, mime_type, size_bytes, created_at
     from patient_images
     where patient_id = ${patientId}
     order by created_at desc
@@ -47,8 +47,8 @@ export async function POST(request: Request) {
   if (!file || !patientId) {
     return NextResponse.json({ error: 'file et patientId sont requis.' }, { status: 400 });
   }
-  // Le SVG passe le test « image/ » mais peut porter du script, et le fichier
-  // est stocké en accès public : on l'exclut explicitement.
+  // Le SVG passe le test « image/ » mais peut porter du script, et il serait
+  // ensuite servi par l'application elle-même : on l'exclut explicitement.
   if (file.type === 'image/svg+xml') {
     return NextResponse.json(
       { error: "Le format SVG n'est pas accepté pour un cliché." },
@@ -65,8 +65,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Type de cliché invalide.' }, { status: 400 });
   }
 
-  // Vercel Blob génère un suffixe aléatoire non devinable dans l'URL — même
-  // niveau de confidentialité que les documents patients (portal/documents).
+  // Le magasin du cabinet est public : le suffixe aléatoire rend l'URL non
+  // devinable, mais c'est tout. La confidentialité tient désormais au fait que
+  // cette URL ne quitte plus le serveur — l'écran passe par
+  // /api/patient-images/fichier, sous permission (voir src/lib/fichiers.ts).
   const blob = await put(`patient-images/${patientId}/${file.name}`, file, {
     access: 'public',
     contentType: file.type,
@@ -76,7 +78,7 @@ export async function POST(request: Request) {
   const rows = await sql`
     insert into patient_images (patient_id, blob_url, type, notes, mime_type, size_bytes, uploaded_by)
     values (${patientId}, ${blob.url}, ${type}, ${notes || null}, ${file.type}, ${file.size}, ${session!.userId})
-    returning id, patient_id, blob_url, type, notes, mime_type, size_bytes, created_at
+    returning id, patient_id, type, notes, mime_type, size_bytes, created_at
   `;
 
   await recordAudit({

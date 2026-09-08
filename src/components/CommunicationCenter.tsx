@@ -22,7 +22,7 @@ interface Message {
   direction: "inbound" | "outbound";
   body: string;
   status: string;
-  media_url: string | null;
+  a_media: boolean;
   created_at: string;
 }
 
@@ -593,9 +593,9 @@ export function CommunicationCenter() {
                       )}
                     >
                       <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
-                      {msg.media_url && (
+                      {msg.a_media && (
                         <a
-                          href={msg.media_url}
+                          href={`/api/messages/media?id=${msg.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={cn("text-xs underline", isMine ? "text-blue-100" : "text-blue-600")}

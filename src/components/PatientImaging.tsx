@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 interface ImageRecord {
   id: string;
-  blob_url: string;
+
   type: string;
   notes: string | null;
   created_at: string;
@@ -213,7 +213,7 @@ export function PatientImaging() {
             <div className="relative h-48 overflow-hidden bg-slate-900">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={img.blob_url}
+                src={`/api/patient-images/fichier?id=${img.id}`}
                 alt={img.notes || img.type}
                 className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
               />
@@ -276,7 +276,7 @@ export function PatientImaging() {
               <motion.img
                 initial={{ scale: 0.9 }}
                 animate={{ scale: 1 }}
-                src={selectedImage.blob_url}
+                src={`/api/patient-images/fichier?id=${selectedImage.id}`}
                 alt={selectedImage.notes || selectedImage.type}
                 className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
               />

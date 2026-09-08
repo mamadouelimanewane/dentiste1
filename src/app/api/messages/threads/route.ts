@@ -17,7 +17,10 @@ export async function GET(request: Request) {
 
   if (patientId) {
     const messages = await sql`
-      select id, patient_id, phone, channel, direction, body, status, media_url, media_type, created_at
+      select id, patient_id, phone, channel, direction, body, status,
+             -- L'URL du magasin ne sort plus : le navigateur recoit un
+             -- booleen et passe par /api/messages/media pour le contenu.
+             (media_url is not null) as a_media, media_type, created_at
       from patient_messages
       where patient_id = ${patientId}
       order by created_at asc

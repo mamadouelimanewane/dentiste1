@@ -16,7 +16,9 @@ import { cn } from "@/lib/utils";
 interface DocumentDossier {
   id: string;
   file_name: string;
-  blob_url: string;
+  // L'URL du magasin ne descend plus jusqu'au navigateur : le fichier se
+  // demande par son identifiant, a une route authentifiee.
+
   mime_type: string | null;
   size_bytes: number | null;
   uploaded_by_patient: boolean;
@@ -218,7 +220,7 @@ export function PatientDocuments() {
               </span>
 
               <a
-                href={doc.blob_url}
+                href={`/api/patient-documents/fichier?id=${doc.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 px-3 py-1.5 border border-slate-300 rounded-sm text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50"
