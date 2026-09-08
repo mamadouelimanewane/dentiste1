@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import {
   Users, ShieldAlert, BookOpen, FileText, BarChart3, Building,
   Plus, Filter, CheckCircle2,
-  Lock, Download, Shield
+  Lock, Download, Shield, DatabaseBackup
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -109,6 +109,13 @@ export function AdminHub() {
   const [biOverview, setBiOverview] = useState<StatsOverview | null>(null);
   const [biPractitioners, setBiPractitioners] = useState<PractitionerStat[]>([]);
   const [biLoading, setBiLoading] = useState(false);
+  // Sauvegardes. La liste montre les fichiers reellement deposes, jamais une
+  // promesse de sauvegarde : si le magasin est vide, l'ecran le dit.
+  const [sauvegardes, setSauvegardes] = useState<{ chemin: string; taille: number; creele: string }[]>([]);
+  const [sauvegardesRetention, setSauvegardesRetention] = useState<number | null>(null);
+  const [sauvegardesChargement, setSauvegardesChargement] = useState(false);
+  const [sauvegardeEnCours, setSauvegardeEnCours] = useState(false);
+  const [sauvegardesErreur, setSauvegardesErreur] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeTab !== "utilisateurs") return;
@@ -262,6 +269,12 @@ export function AdminHub() {
       .finally(() => setBiLoading(false));
   }, [activeTab, biPeriod]);
 
+  useEffect(() => {
+    if (activeTab !== "sauvegardes") return;
+    chargerSauvegardes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   function formatFcfa(n: number) {
     return `${Math.round(n).toLocaleString("fr-FR")} F`;
   }
@@ -275,6 +288,44 @@ export function AdminHub() {
     return new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   }
 
+  const chargerSauvegardes = () => {
+    setSauvegardesChargement(true);
+    setSauvegardesErreur(null);
+    fetch("/api/admin/sauvegardes")
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d?.error || "Sauvegardes illisibles.");
+        return d;
+      })
+      .then((d) => {
+        setSauvegardes(d.sauvegardes || []);
+        setSauvegardesRetention(d.retentionJours ?? null);
+      })
+      .catch((e) => setSauvegardesErreur(e instanceof Error ? e.message : "Erreur inconnue."))
+      .finally(() => setSauvegardesChargement(false));
+  };
+
+  const lancerSauvegarde = async () => {
+    setSauvegardeEnCours(true);
+    setSauvegardesErreur(null);
+    try {
+      const r = await fetch("/api/admin/sauvegardes", { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || "La sauvegarde a échoué.");
+      chargerSauvegardes();
+    } catch (e) {
+      setSauvegardesErreur(e instanceof Error ? e.message : "Erreur inconnue.");
+    } finally {
+      setSauvegardeEnCours(false);
+    }
+  };
+
+  function formatTaille(octets: number) {
+    if (octets < 1024) return `${octets} o`;
+    if (octets < 1024 * 1024) return `${(octets / 1024).toFixed(0)} Ko`;
+    return `${(octets / (1024 * 1024)).toFixed(1)} Mo`;
+  }
+
   const tabs = [
     { id: "utilisateurs", label: "Comptes du personnel", icon: Users },
     { id: "roles", label: "Rôles & Privilèges", icon: Shield },
@@ -282,6 +333,7 @@ export function AdminHub() {
     { id: "catalogue", label: "Catalogue des Actes", icon: BookOpen },
     { id: "templates", label: "Modèles & Contrats", icon: FileText },
     { id: "bi", label: "Chiffres du cabinet", icon: BarChart3 },
+    { id: "sauvegardes", label: "Sauvegardes", icon: DatabaseBackup },
     { id: "multisite", label: "Multi-Sites", icon: Building },
   ];
 
@@ -768,6 +820,93 @@ export function AdminHub() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* SAUVEGARDES */}
+          {activeTab === "sauvegardes" && (
+            <div className="flex-1 p-6 space-y-5">
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Sauvegardes de la base</h3>
+                  <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
+                    Une copie complète est déposée chaque nuit à 2h30, chez un hébergeur
+                    distinct de la base, en accès privé. Elle contient tous les dossiers
+                    patients&nbsp;: son téléchargement est journalisé.
+                  </p>
+                </div>
+                <button
+                  onClick={lancerSauvegarde}
+                  disabled={sauvegardeEnCours}
+                  className="shrink-0 h-9 px-4 bg-slate-900 text-white rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2"
+                >
+                  <DatabaseBackup className="h-3.5 w-3.5" />
+                  {sauvegardeEnCours ? "Sauvegarde en cours…" : "Sauvegarder maintenant"}
+                </button>
+              </div>
+
+              {/* Ce qui est couvert, et ce qui ne l'est pas. Une sauvegarde
+                  dont on croit qu'elle fait plus qu'elle ne fait est pire
+                  qu'une absence de sauvegarde. */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-sm p-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 mb-1.5">Ce que cela protège</p>
+                  <p className="text-[11px] text-emerald-900 leading-relaxed">
+                    Une suppression ou un écrasement accidentel de données, et la perte de
+                    la base elle-même — le fichier est ailleurs.
+                  </p>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-sm p-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-1.5">Ce que cela ne fait pas</p>
+                  <p className="text-[11px] text-amber-900 leading-relaxed">
+                    La restauration n&apos;est pas automatique. Le fichier est un JSON complet,
+                    table par table&nbsp;; le remonter demande une intervention technique.
+                  </p>
+                </div>
+              </div>
+
+              {sauvegardesErreur && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-sm p-3">{sauvegardesErreur}</div>
+              )}
+              {sauvegardesChargement && <p className="text-xs text-slate-400 py-6 text-center">Chargement…</p>}
+
+              {!sauvegardesChargement && !sauvegardesErreur && sauvegardes.length === 0 && (
+                <div className="border border-dashed border-slate-300 rounded-sm p-8 text-center">
+                  <p className="text-sm font-bold text-slate-700">Aucune sauvegarde déposée à ce jour.</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    La première tâche automatique n&apos;a pas encore tourné, ou elle a échoué.
+                    Le bouton ci-dessus en crée une immédiatement.
+                  </p>
+                </div>
+              )}
+
+              {sauvegardes.length > 0 && (
+                <div className="border border-slate-200 rounded-sm divide-y divide-slate-100">
+                  {sauvegardes.map((s) => (
+                    <div key={s.chemin} className="flex items-center justify-between gap-4 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-900">
+                          {new Date(s.creele).toLocaleString("fr-FR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                        <p className="text-[10px] font-medium text-slate-400 truncate">{formatTaille(s.taille)}</p>
+                      </div>
+                      <a
+                        href={`/api/admin/sauvegardes/telecharger?chemin=${encodeURIComponent(s.chemin)}`}
+                        className="shrink-0 h-8 px-3 border border-slate-200 rounded-sm text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-slate-400 hover:text-slate-900 flex items-center gap-1.5"
+                      >
+                        <Download className="h-3.5 w-3.5" /> Télécharger
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {sauvegardesRetention !== null && sauvegardes.length > 0 && (
+                <p className="text-[11px] text-slate-500">
+                  Les sauvegardes de plus de {sauvegardesRetention} jours sont supprimées
+                  automatiquement.
+                </p>
+              )}
             </div>
           )}
 
