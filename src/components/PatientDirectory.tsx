@@ -106,17 +106,26 @@ export function PatientDirectory() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Échec de l'envoi.");
-      // L'écran annonçait « Lien envoyé au patient » sans regarder si l'envoi
-      // avait abouti : aucun canal automatique n'étant configuré, le message
-      // partait en réalité dans la file d'envoi manuel — et personne ne le
-      // savait. Le lien est désormais toujours affiché, pour que l'accueil
-      // puisse le transmettre lui-même.
+      // « Lien envoyé au patient » était affirmé sans regarder si l'envoi
+      // avait abouti. Mais même corrigé, ce message ne peut pas être
+      // catégorique : WhatsApp ACCEPTE le message puis le rejette une seconde
+      // plus tard par notification, tant que l'entreprise n'est pas vérifiée
+      // chez Meta. Vérifié en production — l'API répond « envoyé par
+      // WhatsApp » pendant que la même seconde dépose le message en file
+      // d'envoi manuel.
+      //
+      // On dit donc ce qui est vrai : le message a été transmis à l'opérateur,
+      // sa remise n'est pas confirmée, et voici le lien pour le transmettre
+      // soi-même. Un canal absent ou inconnu ne vaut jamais « envoyé ».
+      const remis = data.canal === "sms" || data.canal === "whatsapp";
       setPortalFeedback(
         data.canal === "manuel"
           ? `Message préparé dans la file d'envoi : envoyez-le depuis Communication, ou transmettez ce lien vous-même — ${data.link}`
           : data.error
             ? `L'envoi a échoué (${data.error}). Transmettez ce lien vous-même : ${data.link}`
-            : `Lien envoyé au patient par ${data.canal === "sms" ? "SMS" : "WhatsApp"}. Copie : ${data.link}`
+            : remis
+              ? `Lien transmis par ${data.canal === "sms" ? "SMS" : "WhatsApp"} — la remise n'est pas confirmée. Vérifiez dans Communication qu'il n'est pas revenu dans la file. Copie : ${data.link}`
+              : `Transmettez ce lien au patient : ${data.link}`
       );
     } catch (e) {
       setPortalFeedback(e instanceof Error ? e.message : "Erreur inconnue.");
