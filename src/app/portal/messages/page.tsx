@@ -117,7 +117,10 @@ export default function PortalMessagesPage() {
           <div
             key={m.id}
             className={cn(
-              "max-w-[75%] p-3 rounded-2xl text-sm",
+              // Sans césure, un lien de connexion au portail — long et sans
+              // espace — sortait du cadre et forçait un défilement latéral :
+              // le patient ne pouvait ni le lire en entier, ni le copier.
+              "max-w-[75%] p-3 rounded-2xl text-sm break-words [overflow-wrap:anywhere]",
               m.direction === "inbound"
                 ? "self-end ml-auto bg-blue-600 text-white rounded-br-none"
                 : "bg-white border border-slate-200 rounded-bl-none"
@@ -128,6 +131,22 @@ export default function PortalMessagesPage() {
             ) : (
               m.body
             )}
+            {/* Aucun message ne portait de date : dans une conversation avec
+                son cabinet, savoir quand on a été contacté fait partie de
+                l'information. */}
+            <p
+              className={cn(
+                "text-[10px] mt-1.5",
+                m.direction === "inbound" ? "text-blue-100" : "text-slate-400"
+              )}
+            >
+              {new Date(m.created_at).toLocaleString("fr-FR", {
+                day: "2-digit",
+                month: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
           </div>
         ))}
         <div ref={bottomRef} />

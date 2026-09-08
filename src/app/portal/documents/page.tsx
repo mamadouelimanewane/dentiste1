@@ -68,10 +68,15 @@ export default async function PortalDocumentsPage() {
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-slate-400">
-          Respectez la posologie indiquée par votre praticien. En cas de doute ou d&apos;effet
-          indésirable, contactez le cabinet.
-        </p>
+        {/* Ce rappel s'affichait sous un bloc vide, pour un patient qui n'a
+            aucune ordonnance : un conseil de posologie sans ordonnance ne
+            conseille rien. */}
+        {prescriptions.length > 0 && (
+          <p className="text-[10px] text-slate-400">
+            Respectez la posologie indiquée par votre praticien. En cas de doute ou d&apos;effet
+            indésirable, contactez le cabinet.
+          </p>
+        )}
       </div>
 
       {/* DEVIS */}
