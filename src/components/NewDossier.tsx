@@ -19,7 +19,7 @@ export function NewDossier() {
   };
 
   return (
-    <div className="max-w-xl mx-auto space-y-8 animate-in fade-in duration-500 py-12">
+    <div className="max-w-xl mx-auto space-y-8 py-12">
       <div className="bg-white border border-slate-200 rounded-sm shadow-xl p-10 text-center space-y-6">
         <div className="h-20 w-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto border-2 border-blue-100">
            <RotateCcw className="h-10 w-10 text-blue-600" />

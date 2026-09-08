@@ -133,7 +133,7 @@ export function VoiceDictation() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6">
       {/* HEADER BAR - DASHBOARD STYLE */}
       <div className="bg-white border border-slate-200 rounded-sm p-4 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">

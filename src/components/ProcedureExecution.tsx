@@ -299,7 +299,7 @@ export function ProcedureExecution() {
             ) : (
               <div className="space-y-3">
                 {executedActs.map(act => (
-                  <div key={act.id} className="flex items-center gap-4 p-3 border border-slate-100 rounded-sm bg-slate-50/50 group animate-in fade-in slide-in-from-left-2">
+                  <div key={act.id} className="flex items-center gap-4 p-3 border border-slate-100 rounded-sm bg-slate-50/50 group">
                     <div className="h-8 w-8 rounded bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
                       {act.tooth ? (
                         <span className="text-[10px] font-black text-blue-600">{act.tooth}</span>

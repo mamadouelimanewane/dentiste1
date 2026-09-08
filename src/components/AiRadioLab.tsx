@@ -84,7 +84,7 @@ export function AiRadioLab() {
   const affichees = filtre === "Toutes" ? images : images.filter((i) => i.type === filtre);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6">
       {/* HEADER */}
       <div className="bg-white border border-slate-200 rounded-sm p-5 flex flex-col md:flex-row items-center justify-between shadow-sm gap-4">
         <div className="flex items-center gap-5">

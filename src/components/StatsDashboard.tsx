@@ -79,7 +79,7 @@ export function StatsDashboard() {
     : [];
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
+    <div className="space-y-8 pb-12">
       {/* Le sélecteur de période seul : le titre de la page annonce déjà
           « Statistiques du cabinet », le répéter ici en majuscules le disait
           deux fois sur le même écran. */}

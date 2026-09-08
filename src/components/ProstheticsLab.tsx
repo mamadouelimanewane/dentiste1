@@ -171,7 +171,7 @@ export function ProstheticsLab() {
   const termines = orders.filter((o) => o.status === "completed").length;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700">
+    <div className="space-y-6">
       <div className="bg-white border border-slate-200 rounded-sm p-5 flex flex-col md:flex-row items-center justify-between shadow-sm gap-4">
         <div className="flex items-center gap-5">
           <div className="h-12 w-12 bg-[#0F172A] text-sky-400 rounded flex items-center justify-center shadow-xl shadow-blue-900/10 border border-blue-800/20">

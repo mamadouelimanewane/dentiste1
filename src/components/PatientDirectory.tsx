@@ -133,7 +133,7 @@ export function PatientDirectory() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6">
       {/* HEADER */}
       <div className="bg-white border border-slate-200 rounded-sm p-4 flex flex-col md:flex-row items-center justify-between shadow-sm gap-4">
         <div className="flex items-center gap-4 w-full md:w-auto">

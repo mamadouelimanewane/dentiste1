@@ -551,7 +551,7 @@ export function AgendaModule() {
 
   return (
     <div className={cn(
-      "animate-in fade-in duration-500",
+      " duration-500",
       isFullscreen ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-4 sm:p-6 overflow-y-auto flex flex-col space-y-6" : "space-y-6"
     )}>
       {chargeErreur && (

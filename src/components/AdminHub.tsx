@@ -286,7 +286,7 @@ export function AdminHub() {
   ];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* HEADER */}
       <div className="bg-slate-900 border border-slate-800 rounded-sm p-6 flex flex-col md:flex-row items-center justify-between shadow-xl gap-4 relative overflow-hidden">
         <div className="relative z-10 flex items-center gap-4 w-full md:w-auto text-white">
